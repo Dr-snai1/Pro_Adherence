@@ -82,6 +82,21 @@
     "external_namespace": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9_.-]*$"
+    },
+    "code_ref_id": {
+      "$ref": "#/$defs/uuid_v7"
+    },
+    "config_ref_id": {
+      "$ref": "#/$defs/uuid_v7"
+    },
+    "model_ref_id": {
+      "$ref": "#/$defs/uuid_v7"
+    },
+    "environment_ref_id": {
+      "$ref": "#/$defs/uuid_v7"
+    },
+    "supersession_relation_id": {
+      "$ref": "#/$defs/uuid_v7"
     }
   }
 }
