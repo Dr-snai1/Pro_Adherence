@@ -1,0 +1,47 @@
+{
+  "artifact": {
+    "artifact_id": "018f0c50-7b1d-7cc3-8a5b-0123456789ab",
+    "artifact_type": "synthetic_output",
+    "uri": "derived/synthetic/example.json",
+    "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "schema_version": "1.0.0",
+    "access_license": {
+      "access_class": "project-internal",
+      "license_class": "not-applicable",
+      "license_status": "not-applicable",
+      "license_evidence_ref": null,
+      "publication_permissions": {
+        "metadata": "deny",
+        "raw_text": "deny",
+        "derived": "deny"
+      }
+    },
+    "immutable": true,
+    "status": "validated",
+    "corpus_release_id": "018f0c50-7b1d-7cc3-9a5b-1123456789ab",
+    "source_fetch_id": null,
+    "created_at": "2026-10-07T20:00:00Z"
+  },
+  "run": {
+    "run_id": "018f0c50-7b1d-7cc3-aa5b-2123456789ab",
+    "run_type": "synthetic_compute",
+    "corpus_release_id": "018f0c50-7b1d-7cc3-9a5b-1123456789ab",
+    "code_ref_id": "018f0c50-7b1d-7cc3-ba5b-3123456789ab",
+    "config_ref_id": "018f0c50-7b1d-7cc3-8a5b-4123456789ab",
+    "model_ref_id": null,
+    "environment_ref_id": "018f0c50-7b1d-7cc3-9a5b-5123456789ab",
+    "seed_policy": {
+      "mode": "not-applicable",
+      "seed": null,
+      "notes": null
+    },
+    "status": "succeeded",
+    "started_at": "2026-10-07T20:00:00Z",
+    "finished_at": "2026-10-07T20:00:01Z"
+  },
+  "run_output": {
+    "run_id": "018f0c50-7b1d-7cc3-aa5b-2123456789ab",
+    "artifact_id": "018f0c50-7b1d-7cc3-8a5b-0123456789ab",
+    "role": "result"
+  }
+}
