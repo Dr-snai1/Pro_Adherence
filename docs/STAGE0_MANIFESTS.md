@@ -25,6 +25,6 @@ A `draft` release may be empty. A `promoted` release must name a corpus release,
 
 ## Hash semantics
 
-`manifest_hash` is the SHA-256 of the canonical serialized manifest payload **excluding the `manifest_hash` field itself**. The executable validator will enforce this rule and cross-field invariants such as `article_count == len(canonical_article_ids)`.
+`manifest_hash` is the SHA-256 of the manifest payload **excluding the `manifest_hash` field itself**, serialized as UTF-8 JSON with object keys sorted lexicographically, no insignificant whitespace, and separators `,` and `:`. Arrays retain their declared order. The executable validator will enforce this rule and cross-field invariants such as `article_count == len(canonical_article_ids)`.
 
 The JSON Schemas intentionally handle record shape; repository validation handles referential integrity and hash/count reconciliation.
