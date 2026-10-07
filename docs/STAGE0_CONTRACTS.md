@@ -1,37 +1,33 @@
 # Stage 0 contracts — IDs, entities, access/license
 
-Status: implemented, developer-checked; independent QA pending.
+Status: QA blocking defects QA-S0-001–004 fixed in implementation; independent QA rerun pending.
 
-## Internal IDs
+## Internal IDs and immutable versions
 
-Internal surrogate identifiers use canonical lowercase UUIDv7. They do not encode scientific meaning or provider identity. External identifiers such as DOI, PMID, ORCID and ROR remain separate fields/namespaces.
+Internal surrogate identifiers use canonical lowercase UUIDv7. External DOI/PMID/ORCID/ROR identifiers remain separate. `source_id` remains a stable provider key.
 
-The exception is `source_id`, which is a stable provider key because the source entity is the provider itself (for example `pubmed` or `apa_psycinfo`).
+Exact version/revision fields now use `ids.schema.json#/$defs/immutable_version_ref`. Mutable pointers such as `latest`, `current`, `HEAD`, `main`, `master`, `tip`, `trunk`, `default`, `stable` and `newest` are invalid in these fields. Human-readable labels remain ordinary strings where no immutable reference is required.
 
-## Entity contract
+## Entity contract and identity history
 
-`contracts/schemas/entities.schema.json` implements the entity fields fixed by TECHNICAL_ARCHITECTURE §§3.2–3.6: article, article external ID, source record, author, authorship, affiliation, author-affiliation, source, venue and citation edge.
+`contracts/schemas/entities.schema.json` defines the canonical entity records from TECHNICAL_ARCHITECTURE §§3.2–3.6 and now adds versioned `identity_resolution_event` records for `article`, `author` and `affiliation`.
 
-Source and venue are distinct entities. Authorship and author-affiliation preserve original source strings and source-record provenance. Citation edges distinguish a resolved canonical target from an external unresolved target.
+Events explicitly represent `alias`, `merge`, `split` and `supersession`; they retain predecessor ID(s), successor ID(s), immutable resolution version, method, reason, evidence/provenance and timestamp. `identity_resolution_history_bundle` provides a validating example container.
+
+The legacy `article.superseded_by` field is retained and marked deprecated. It remains a one-to-one compatibility shortcut; complete history uses `identity_resolution_event.successor_ids` and is never silently rewritten or deleted.
 
 ## Access / license
 
-The four architectural access classes are fixed exactly as: `public`, `project-internal`, `restricted-license`, `secret`.
-
-Actual legal license classes are deliberately not invented by implementation. `license_class` is an explicit provider/project-defined value with evidence and a status. Publication permissions are explicit for metadata, raw text and derived outputs.
-
-Default is deny: an unknown license status cannot allow raw-text publication; `secret` denies all publication; the policy registry requires access class `public` for promotion to the public bundle.
+The access classes remain `public`, `project-internal`, `restricted-license`, `secret`. Publication permissions remain explicit and fail closed.
 
 ## Artifact / run / provenance
 
-`contracts/schemas/provenance.schema.json` now defines immutable artifacts, runs, run input/output bindings, code/config/model/environment refs, source fetches, quality reports, promotion/supersession records, compute assets and a typed lineage query result.
-
-Lineage is defined through exact artifact/run identifiers rather than filenames or "latest" state. Computation signatures are content-addressed from input hashes plus code/config/model/schema components. Cross-record validation must reject more than one producing run for the same immutable output artifact.
+All root provenance records carry an explicit `record_type` discriminator, so `run_input` and `run_output` are machine-distinct under root `oneOf`. A validating `lineage_bundle` contract contains artifacts, producing runs, run bindings, code/config/model/environment refs, source fetches and corpus references.
 
 ## Corpus / release manifests
 
-`contracts/schemas/corpus-release.schema.json` fixes the exact scientific corpus composition, input hashes and policy refs. `contracts/schemas/release-manifest.schema.json` fixes an exact compatible public serving set by artifact ID, content hash, schema version and policy metadata; it never resolves "latest" artifacts.
+Corpus schema/resolver versions and release artifact schema versions use immutable-version references. Release assembly therefore cannot express mutable aliases such as `latest` in exact-version fields.
 
-The empty draft corpus/release fixtures are valid and use reproducible manifest hashes. A promoted release must reference a corpus release, at least one exact artifact and promotion evidence, and every public artifact must pass the access/license publication gate.
+The empty draft fixtures remain valid. Hash/count reconciliation and cross-record referential integrity remain repository-validator responsibilities outside this defect-fix scope.
 
-This implements, rather than replaces, TECHNICAL_ARCHITECTURE. Quality contracts and the executable repository validation/build flow remain separate Stage 0 iterations.
+See `docs/STAGE0_CONTRACT_MIGRATION_2026-10-08.md` for migration semantics.

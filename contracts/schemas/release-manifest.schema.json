@@ -97,8 +97,7 @@
           "$ref": "provenance.schema.json#/$defs/sha256"
         },
         "schema_version": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "ids.schema.json#/$defs/immutable_version_ref"
         },
         "role": {
           "type": "string",

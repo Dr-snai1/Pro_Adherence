@@ -1,47 +1,183 @@
 {
-  "artifact": {
-    "artifact_id": "018f0c50-7b1d-7cc3-8a5b-0123456789ab",
-    "artifact_type": "synthetic_output",
-    "uri": "derived/synthetic/example.json",
-    "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "schema_version": "1.0.0",
-    "access_license": {
-      "access_class": "project-internal",
-      "license_class": "not-applicable",
-      "license_status": "not-applicable",
-      "license_evidence_ref": null,
-      "publication_permissions": {
-        "metadata": "deny",
-        "raw_text": "deny",
-        "derived": "deny"
+  "record_type": "lineage_bundle",
+  "root_output_artifact_id": "018f0c50-7b1d-7cc3-8a5b-0123456789ab",
+  "corpus_release_ids": [
+    "018f0c50-7b1d-7cc3-9a5b-3123456789ab"
+  ],
+  "artifacts": [
+    {
+      "record_type": "artifact",
+      "artifact_id": "018f0c50-7b1d-7cc3-8a5b-2123456789ab",
+      "artifact_type": "raw_source_payload",
+      "uri": "data/raw/pubmed/synthetic-source.json",
+      "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "schema_version": "1.0.0",
+      "access_license": {
+        "access_class": "project-internal",
+        "license_class": "not-applicable",
+        "license_status": "not-applicable",
+        "license_evidence_ref": null,
+        "publication_permissions": {
+          "metadata": "deny",
+          "raw_text": "deny",
+          "derived": "deny"
+        }
+      },
+      "immutable": true,
+      "status": "validated",
+      "corpus_release_id": null,
+      "source_fetch_id": "018f0c50-7b1d-7cc3-ba5b-9123456789ab",
+      "created_at": "2026-10-08T00:00:00Z"
+    },
+    {
+      "record_type": "artifact",
+      "artifact_id": "018f0c50-7b1d-7cc3-8a5b-1123456789ab",
+      "artifact_type": "canonical_input_snapshot",
+      "uri": "data/canonical/synthetic-input.json",
+      "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "schema_version": "1.0.0",
+      "access_license": {
+        "access_class": "project-internal",
+        "license_class": "not-applicable",
+        "license_status": "not-applicable",
+        "license_evidence_ref": null,
+        "publication_permissions": {
+          "metadata": "deny",
+          "raw_text": "deny",
+          "derived": "deny"
+        }
+      },
+      "immutable": true,
+      "status": "validated",
+      "corpus_release_id": "018f0c50-7b1d-7cc3-9a5b-3123456789ab",
+      "source_fetch_id": "018f0c50-7b1d-7cc3-ba5b-9123456789ab",
+      "created_at": "2026-10-08T00:00:01Z"
+    },
+    {
+      "record_type": "artifact",
+      "artifact_id": "018f0c50-7b1d-7cc3-8a5b-0123456789ab",
+      "artifact_type": "synthetic_output",
+      "uri": "derived/synthetic/example.json",
+      "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "schema_version": "1.0.0",
+      "access_license": {
+        "access_class": "project-internal",
+        "license_class": "not-applicable",
+        "license_status": "not-applicable",
+        "license_evidence_ref": null,
+        "publication_permissions": {
+          "metadata": "deny",
+          "raw_text": "deny",
+          "derived": "deny"
+        }
+      },
+      "immutable": true,
+      "status": "validated",
+      "corpus_release_id": "018f0c50-7b1d-7cc3-9a5b-3123456789ab",
+      "source_fetch_id": null,
+      "created_at": "2026-10-08T00:00:03Z"
+    }
+  ],
+  "runs": [
+    {
+      "record_type": "run",
+      "run_id": "018f0c50-7b1d-7cc3-aa5b-4123456789ab",
+      "run_type": "synthetic_compute",
+      "corpus_release_id": "018f0c50-7b1d-7cc3-9a5b-3123456789ab",
+      "code_ref_id": "018f0c50-7b1d-7cc3-ba5b-5123456789ab",
+      "config_ref_id": "018f0c50-7b1d-7cc3-8a5b-6123456789ab",
+      "model_ref_id": "018f0c50-7b1d-7cc3-9a5b-7123456789ab",
+      "environment_ref_id": "018f0c50-7b1d-7cc3-aa5b-8123456789ab",
+      "seed_policy": {
+        "mode": "fixed",
+        "seed": 42,
+        "notes": "Synthetic regression fixture"
+      },
+      "status": "succeeded",
+      "started_at": "2026-10-08T00:00:02Z",
+      "finished_at": "2026-10-08T00:00:03Z"
+    }
+  ],
+  "run_inputs": [
+    {
+      "record_type": "run_input",
+      "run_id": "018f0c50-7b1d-7cc3-aa5b-4123456789ab",
+      "artifact_id": "018f0c50-7b1d-7cc3-8a5b-1123456789ab",
+      "role": "input"
+    }
+  ],
+  "run_outputs": [
+    {
+      "record_type": "run_output",
+      "run_id": "018f0c50-7b1d-7cc3-aa5b-4123456789ab",
+      "artifact_id": "018f0c50-7b1d-7cc3-8a5b-0123456789ab",
+      "role": "result"
+    }
+  ],
+  "code_refs": [
+    {
+      "record_type": "code_ref",
+      "code_ref_id": "018f0c50-7b1d-7cc3-ba5b-5123456789ab",
+      "vcs": "git",
+      "repository": "https://github.com/Dr-snai1/Pro_Adherence",
+      "commit_sha": "1111111111111111111111111111111111111111",
+      "working_tree_clean": true
+    }
+  ],
+  "config_refs": [
+    {
+      "record_type": "config_ref",
+      "config_ref_id": "018f0c50-7b1d-7cc3-8a5b-6123456789ab",
+      "uri": "configs/synthetic.json",
+      "content_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    }
+  ],
+  "model_refs": [
+    {
+      "record_type": "model_ref",
+      "model_ref_id": "018f0c50-7b1d-7cc3-9a5b-7123456789ab",
+      "model_name": "synthetic-model",
+      "immutable_revision": "model-revision-2026-10-08",
+      "digest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    }
+  ],
+  "environment_refs": [
+    {
+      "record_type": "environment_ref",
+      "environment_ref_id": "018f0c50-7b1d-7cc3-aa5b-8123456789ab",
+      "lockfile_uri": "requirements.lock",
+      "lockfile_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "runtime": "python-3.13",
+      "container_digest": null
+    }
+  ],
+  "source_fetches": [
+    {
+      "record_type": "source_fetch",
+      "source_fetch_id": "018f0c50-7b1d-7cc3-ba5b-9123456789ab",
+      "source_id": "pubmed",
+      "adapter_version": "1.0.0",
+      "retrieval_time": "2026-10-08T00:00:00Z",
+      "query_definition": {
+        "fixture": true
+      },
+      "source_cursor_export_id": "synthetic-export",
+      "raw_artifact_id": "018f0c50-7b1d-7cc3-8a5b-2123456789ab",
+      "byte_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "access_license": {
+        "access_class": "project-internal",
+        "license_class": "not-applicable",
+        "license_status": "not-applicable",
+        "license_evidence_ref": null,
+        "publication_permissions": {
+          "metadata": "deny",
+          "raw_text": "deny",
+          "derived": "deny"
+        }
+      },
+      "completeness_flags": {
+        "complete": true
       }
-    },
-    "immutable": true,
-    "status": "validated",
-    "corpus_release_id": "018f0c50-7b1d-7cc3-9a5b-1123456789ab",
-    "source_fetch_id": null,
-    "created_at": "2026-10-07T20:00:00Z"
-  },
-  "run": {
-    "run_id": "018f0c50-7b1d-7cc3-aa5b-2123456789ab",
-    "run_type": "synthetic_compute",
-    "corpus_release_id": "018f0c50-7b1d-7cc3-9a5b-1123456789ab",
-    "code_ref_id": "018f0c50-7b1d-7cc3-ba5b-3123456789ab",
-    "config_ref_id": "018f0c50-7b1d-7cc3-8a5b-4123456789ab",
-    "model_ref_id": null,
-    "environment_ref_id": "018f0c50-7b1d-7cc3-9a5b-5123456789ab",
-    "seed_policy": {
-      "mode": "not-applicable",
-      "seed": null,
-      "notes": null
-    },
-    "status": "succeeded",
-    "started_at": "2026-10-07T20:00:00Z",
-    "finished_at": "2026-10-07T20:00:01Z"
-  },
-  "run_output": {
-    "run_id": "018f0c50-7b1d-7cc3-aa5b-2123456789ab",
-    "artifact_id": "018f0c50-7b1d-7cc3-8a5b-0123456789ab",
-    "role": "result"
-  }
+    }
+  ]
 }

@@ -1,30 +1,19 @@
 # Stage 0 corpus and serving release manifests
 
-Status: implemented, developer-checked; independent QA pending.
+Status: QA-S0-004 fixed in implementation; independent QA rerun pending.
 
 ## Corpus release
 
-`contracts/schemas/corpus-release.schema.json` fixes the exact scientific corpus snapshot:
-
-- exact `canonical_article_ids`;
-- canonical schema and entity-resolution versions;
-- explicit inclusion/exclusion policy refs with content hashes;
-- exact input artifact IDs and hashes;
-- `article_count`;
-- manifest hash and lifecycle status.
-
-A corpus release is therefore not a mutable database state. Once frozen, correction requires a new release; supersession is explicit.
+`contracts/schemas/corpus-release.schema.json` fixes the exact corpus snapshot. `canonical_schema_version` and `entity_resolution_version` are now immutable version references rather than arbitrary non-empty strings.
 
 ## Public serving release
 
-`contracts/schemas/release-manifest.schema.json` fixes a compatible serving set by exact artifact ID, content hash, schema version, role and public path. It never selects "latest" artifacts.
+`contracts/schemas/release-manifest.schema.json` fixes serving artifacts by exact artifact ID, content hash, immutable schema version, role and public path. Mutable aliases such as `latest`, `current` or `HEAD` are schema-invalid in exact version fields.
 
-Every public release artifact carries access/license metadata and a publication-permission basis. The schema requires `access_class = public` and an explicit `allow` permission for the type being published.
-
-A `draft` release may be empty. A `promoted` release must name a corpus release, contain at least one exact artifact, and cite at least one promotion event. This permits the Stage 0 empty-manifest acceptance test without weakening the promotion gate.
+Access/license and publication-permission gates are unchanged.
 
 ## Hash semantics
 
-`manifest_hash` is the SHA-256 of the manifest payload **excluding the `manifest_hash` field itself**, serialized as UTF-8 JSON with object keys sorted lexicographically, no insignificant whitespace, and separators `,` and `:`. Arrays retain their declared order. The executable validator will enforce this rule and cross-field invariants such as `article_count == len(canonical_article_ids)`.
+`manifest_hash` remains the SHA-256 of the payload excluding `manifest_hash`, serialized as UTF-8 JSON with lexicographically sorted object keys, no insignificant whitespace, separators `,` and `:`, and declared array order preserved.
 
-The JSON Schemas intentionally handle record shape; repository validation handles referential integrity and hash/count reconciliation.
+The executable repository validator will continue to own hash/count reconciliation and referential integrity; this defect-fix changes only version-reference shape constraints.

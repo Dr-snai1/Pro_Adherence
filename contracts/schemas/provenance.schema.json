@@ -68,6 +68,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "record_type",
         "artifact_id",
         "artifact_type",
         "uri",
@@ -79,6 +80,9 @@
         "created_at"
       ],
       "properties": {
+        "record_type": {
+          "const": "artifact"
+        },
         "artifact_id": {
           "$ref": "ids.schema.json#/$defs/artifact_id"
         },
@@ -94,8 +98,7 @@
           "$ref": "#/$defs/sha256"
         },
         "schema_version": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "ids.schema.json#/$defs/immutable_version_ref"
         },
         "access_license": {
           "$ref": "access-license.schema.json#/$defs/access_license_metadata"
@@ -137,6 +140,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "record_type",
         "run_id",
         "run_type",
         "code_ref_id",
@@ -147,6 +151,9 @@
         "started_at"
       ],
       "properties": {
+        "record_type": {
+          "const": "run"
+        },
         "run_id": {
           "$ref": "ids.schema.json#/$defs/run_id"
         },
@@ -207,11 +214,15 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "record_type",
         "run_id",
         "artifact_id",
         "role"
       ],
       "properties": {
+        "record_type": {
+          "const": "run_input"
+        },
         "run_id": {
           "$ref": "ids.schema.json#/$defs/run_id"
         },
@@ -228,11 +239,15 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "record_type",
         "run_id",
         "artifact_id",
         "role"
       ],
       "properties": {
+        "record_type": {
+          "const": "run_output"
+        },
         "run_id": {
           "$ref": "ids.schema.json#/$defs/run_id"
         },
@@ -249,6 +264,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "record_type",
         "code_ref_id",
         "vcs",
         "repository",
@@ -256,6 +272,9 @@
         "working_tree_clean"
       ],
       "properties": {
+        "record_type": {
+          "const": "code_ref"
+        },
         "code_ref_id": {
           "$ref": "ids.schema.json#/$defs/code_ref_id"
         },
@@ -279,11 +298,15 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "record_type",
         "config_ref_id",
         "uri",
         "content_hash"
       ],
       "properties": {
+        "record_type": {
+          "const": "config_ref"
+        },
         "config_ref_id": {
           "$ref": "ids.schema.json#/$defs/config_ref_id"
         },
@@ -300,10 +323,14 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "record_type",
         "model_ref_id",
         "model_name"
       ],
       "properties": {
+        "record_type": {
+          "const": "model_ref"
+        },
         "model_ref_id": {
           "$ref": "ids.schema.json#/$defs/model_ref_id"
         },
@@ -312,11 +339,14 @@
           "minLength": 1
         },
         "immutable_revision": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "minLength": 1
+          "anyOf": [
+            {
+              "$ref": "ids.schema.json#/$defs/immutable_version_ref"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "digest": {
           "anyOf": [
@@ -336,8 +366,7 @@
           ],
           "properties": {
             "immutable_revision": {
-              "type": "string",
-              "minLength": 1
+              "$ref": "ids.schema.json#/$defs/immutable_version_ref"
             }
           }
         },
@@ -357,12 +386,16 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "record_type",
         "environment_ref_id",
         "lockfile_uri",
         "lockfile_hash",
         "runtime"
       ],
       "properties": {
+        "record_type": {
+          "const": "environment_ref"
+        },
         "environment_ref_id": {
           "$ref": "ids.schema.json#/$defs/environment_ref_id"
         },
@@ -390,6 +423,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "record_type",
         "source_fetch_id",
         "source_id",
         "adapter_version",
@@ -401,6 +435,9 @@
         "completeness_flags"
       ],
       "properties": {
+        "record_type": {
+          "const": "source_fetch"
+        },
         "source_fetch_id": {
           "$ref": "ids.schema.json#/$defs/source_fetch_id"
         },
@@ -408,8 +445,7 @@
           "$ref": "ids.schema.json#/$defs/source_id"
         },
         "adapter_version": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "ids.schema.json#/$defs/immutable_version_ref"
         },
         "retrieval_time": {
           "type": "string",
@@ -476,12 +512,16 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "record_type",
         "quality_report_id",
         "status",
         "checks",
         "created_at"
       ],
       "properties": {
+        "record_type": {
+          "const": "quality_report"
+        },
         "quality_report_id": {
           "$ref": "ids.schema.json#/$defs/quality_report_id"
         },
@@ -538,6 +578,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "record_type",
         "promotion_event_id",
         "artifact_ids",
         "quality_report_ids",
@@ -545,6 +586,9 @@
         "created_at"
       ],
       "properties": {
+        "record_type": {
+          "const": "promotion_event"
+        },
         "promotion_event_id": {
           "$ref": "ids.schema.json#/$defs/promotion_event_id"
         },
@@ -615,6 +659,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "record_type",
         "supersession_relation_id",
         "superseded_artifact_id",
         "successor_artifact_id",
@@ -622,6 +667,9 @@
         "created_at"
       ],
       "properties": {
+        "record_type": {
+          "const": "supersession_relation"
+        },
         "supersession_relation_id": {
           "$ref": "ids.schema.json#/$defs/supersession_relation_id"
         },
@@ -679,8 +727,7 @@
           ]
         },
         "schema_version": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "ids.schema.json#/$defs/immutable_version_ref"
         }
       }
     },
@@ -688,6 +735,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "record_type",
         "asset_type",
         "asset_id",
         "input_artifact_ids",
@@ -704,6 +752,9 @@
         "computation_signature"
       ],
       "properties": {
+        "record_type": {
+          "const": "compute_asset"
+        },
         "asset_type": {
           "type": "string",
           "pattern": "^[a-z][a-z0-9_.-]*$"
@@ -771,6 +822,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "record_type",
         "root_output_artifact_id",
         "root_producing_run_id",
         "ancestor_artifact_ids",
@@ -782,6 +834,9 @@
         "environment_ref_ids"
       ],
       "properties": {
+        "record_type": {
+          "const": "lineage_query_result"
+        },
         "root_output_artifact_id": {
           "$ref": "ids.schema.json#/$defs/artifact_id"
         },
@@ -851,6 +906,103 @@
           }
         }
       }
+    },
+    "lineage_bundle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_type",
+        "root_output_artifact_id",
+        "corpus_release_ids",
+        "artifacts",
+        "runs",
+        "run_inputs",
+        "run_outputs",
+        "code_refs",
+        "config_refs",
+        "model_refs",
+        "environment_refs",
+        "source_fetches"
+      ],
+      "properties": {
+        "record_type": {
+          "const": "lineage_bundle"
+        },
+        "root_output_artifact_id": {
+          "$ref": "ids.schema.json#/$defs/artifact_id"
+        },
+        "corpus_release_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "ids.schema.json#/$defs/corpus_release_id"
+          }
+        },
+        "artifacts": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "$ref": "#/$defs/artifact"
+          }
+        },
+        "runs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/run"
+          }
+        },
+        "run_inputs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/run_input"
+          }
+        },
+        "run_outputs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/run_output"
+          }
+        },
+        "code_refs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/code_ref"
+          }
+        },
+        "config_refs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/config_ref"
+          }
+        },
+        "model_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/model_ref"
+          },
+          "description": "May be empty only when no model participates in the represented lineage."
+        },
+        "environment_refs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/environment_ref"
+          }
+        },
+        "source_fetches": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/source_fetch"
+          }
+        }
+      }
     }
   },
   "oneOf": [
@@ -895,6 +1047,9 @@
     },
     {
       "$ref": "#/$defs/lineage_query_result"
+    },
+    {
+      "$ref": "#/$defs/lineage_bundle"
     }
   ]
 }

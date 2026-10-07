@@ -1,41 +1,31 @@
 # Stage 0 provenance contract
 
-Status: implemented, developer-checked; independent QA pending.
+Status: QA-S0-001 and QA-S0-002 fixed in implementation; independent QA rerun pending.
 
-## What is represented
+## Root record discriminator
 
-`contracts/schemas/provenance.schema.json` implements the minimum provenance catalog required by TECHNICAL_ARCHITECTURE:
+Every root provenance record has required `record_type` with a schema-level `const`. This makes record types machine-unique under the root `oneOf`; specifically, a valid `run_input` no longer also validates as `run_output`, and vice versa.
 
-- immutable `artifact`;
-- `run`;
-- normalized `run_input` and `run_output` bindings;
-- `code_ref`, `config_ref`, optional `model_ref`, and `environment_ref`;
-- `source_fetch`;
-- `quality_report`;
-- `promotion_event`;
-- `supersession_relation`;
-- the architecture-level `compute_asset` contract;
-- a typed `lineage_query_result`.
+## Complete lineage bundle
 
-## Lineage rule
+`lineage_bundle` is a first-class root contract. It requires:
 
-A scientific output is not defined by a filename or by "latest". Its producing run is linked through `run_output`; that run is linked to exact input artifacts through `run_input`, and to code/config/model/environment refs by immutable identifiers.
+- root output artifact ID and corpus release ID(s);
+- input/output artifacts;
+- producing run(s);
+- `run_input` and `run_output`;
+- code/config/environment refs;
+- an explicit model-ref collection (empty only when no model applies);
+- source-fetch linkage.
 
-A valid lineage implementation must additionally enforce the relational invariant that each immutable output artifact has at most one producing run. JSON Schema defines the records; repository validation will enforce cross-record uniqueness/referential integrity.
-
-## Content addressing / invalidation
-
-`computation_signature` records the components mandated by TECHNICAL_ARCHITECTURE §6.3: input artifact hashes, code ref, config hash, optional model digest, and schema version, with a SHA-256 digest for the resulting signature.
-
-Dirty state is therefore determined by dependency IDs/signatures, not by file names or modification times.
+`contracts/manifests/minimal_lineage.example.json` is a model-backed example containing a raw source artifact, canonical input artifact, output artifact, producing run, both run bindings, code/config/model/environment refs, source fetch and corpus linkage.
 
 ## Reproducibility boundaries
 
-- Code refs use Git commit SHA.
-- Config refs are content-addressed by SHA-256.
-- Models require an immutable revision or digest, not a mutable name alone.
-- Environments require a lockfile URI and hash.
-- Seed policy is explicit, including `not-applicable`.
-- Artifacts are immutable by contract; replacement is represented by a supersession relation.
+Schema, adapter and model revision fields that are immutable references use the shared immutable-version contract. Code refs remain Git commit SHAs; configs and lockfiles remain content-addressed.
 
-This contract does not yet define corpus/release manifests or the executable repository validator; those are subsequent Stage 0 iterations.
+Cross-record uniqueness/referential-integrity checks beyond JSON Schema remain a later repository-validator responsibility.
+
+## Explicitly unchanged
+
+QA-S0-005 is not addressed here. The rule that connects model identity to `compute_asset.computation_signature` still requires the separate architecture decision and must not be inferred from this defect-fix.

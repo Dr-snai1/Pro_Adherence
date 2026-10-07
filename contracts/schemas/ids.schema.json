@@ -76,8 +76,8 @@
       "description": "Stable bibliographic source key, e.g. pubmed or apa_psycinfo."
     },
     "version_ref": {
-      "type": "string",
-      "minLength": 1
+      "$ref": "#/$defs/immutable_version_ref",
+      "description": "Backward-compatible name for an immutable version reference; mutable aliases are forbidden."
     },
     "external_namespace": {
       "type": "string",
@@ -96,6 +96,17 @@
       "$ref": "#/$defs/uuid_v7"
     },
     "supersession_relation_id": {
+      "$ref": "#/$defs/uuid_v7"
+    },
+    "immutable_version_ref": {
+      "type": "string",
+      "minLength": 1,
+      "not": {
+        "pattern": "^(?:[Ll][Aa][Tt][Ee][Ss][Tt]|[Cc][Uu][Rr][Rr][Ee][Nn][Tt]|[Hh][Ee][Aa][Dd]|[Tt][Ii][Pp]|[Mm][Aa][Ii][Nn]|[Mm][Aa][Ss][Tt][Ee][Rr]|[Tt][Rr][Uu][Nn][Kk]|[Dd][Ee][Ff][Aa][Uu][Ll][Tt]|[Ss][Tt][Aa][Bb][Ll][Ee]|[Nn][Ee][Ww][Ee][Ss][Tt])$"
+      },
+      "description": "Immutable version/revision reference. Mutable aliases such as latest/current/HEAD/main/master are forbidden."
+    },
+    "identity_resolution_event_id": {
       "$ref": "#/$defs/uuid_v7"
     }
   }

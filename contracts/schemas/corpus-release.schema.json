@@ -34,12 +34,10 @@
       ]
     },
     "canonical_schema_version": {
-      "type": "string",
-      "minLength": 1
+      "$ref": "ids.schema.json#/$defs/immutable_version_ref"
     },
     "entity_resolution_version": {
-      "type": "string",
-      "minLength": 1
+      "$ref": "ids.schema.json#/$defs/immutable_version_ref"
     },
     "inclusion_policy": {
       "$ref": "#/$defs/policy_ref"
