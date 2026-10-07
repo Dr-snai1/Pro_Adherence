@@ -1,0 +1,21 @@
+{
+  "manifest_version": "1.0.0",
+  "corpus_release_id": "018f0c50-7b1d-7cc3-8a5b-0123456789ab",
+  "status": "draft",
+  "canonical_schema_version": "1.0.0",
+  "entity_resolution_version": "resolver-not-run",
+  "inclusion_policy": {
+    "uri": "contracts/manifests/policies/empty-inclusion.placeholder",
+    "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "exclusion_policy": {
+    "uri": "contracts/manifests/policies/empty-exclusion.placeholder",
+    "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "input_artifacts": [],
+  "canonical_article_ids": [],
+  "article_count": 0,
+  "manifest_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "created_at": "2026-10-07T21:00:00Z",
+  "superseded_by": null
+}
