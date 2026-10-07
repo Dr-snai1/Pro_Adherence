@@ -29,4 +29,4 @@ These paths are intentionally ignored by Git:
 
 The scientific layers RAW → NORMALIZED → CANONICAL → DERIVED are not publication layers. Public serving data must be produced only through an explicit promotion step into `serving/`.
 
-Secrets are never committed. Access/license rules will be enforced by Stage 0 contracts and validation, not by directory names alone.
+Secrets are never committed. Access/license rules are defined by Stage 0 contracts and policy; validation must enforce them rather than relying on directory names alone.
