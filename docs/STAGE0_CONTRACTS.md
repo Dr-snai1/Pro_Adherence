@@ -22,4 +22,10 @@ Actual legal license classes are deliberately not invented by implementation. `l
 
 Default is deny: an unknown license status cannot allow raw-text publication; `secret` denies all publication; the policy registry requires access class `public` for promotion to the public bundle.
 
-This implements, rather than replaces, TECHNICAL_ARCHITECTURE. Artifact/run/provenance and release-manifest contracts are separate Stage 0 iterations.
+## Artifact / run / provenance
+
+`contracts/schemas/provenance.schema.json` now defines immutable artifacts, runs, run input/output bindings, code/config/model/environment refs, source fetches, quality reports, promotion/supersession records, compute assets and a typed lineage query result.
+
+Lineage is defined through exact artifact/run identifiers rather than filenames or "latest" state. Computation signatures are content-addressed from input hashes plus code/config/model/schema components. Cross-record validation must reject more than one producing run for the same immutable output artifact.
+
+This implements, rather than replaces, TECHNICAL_ARCHITECTURE. Corpus/release manifests and the executable repository validation/build flow remain separate Stage 0 iterations.
