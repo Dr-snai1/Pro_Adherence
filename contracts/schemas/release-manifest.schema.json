@@ -1,0 +1,284 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "release-manifest.schema.json",
+  "title": "Pro_Adherence public serving release manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_version",
+    "release_id",
+    "status",
+    "corpus_release_id",
+    "artifacts",
+    "promotion_event_ids",
+    "manifest_hash",
+    "created_at"
+  ],
+  "properties": {
+    "manifest_version": {
+      "const": "1.0.0"
+    },
+    "release_id": {
+      "$ref": "ids.schema.json#/$defs/release_id"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "promoted",
+        "superseded"
+      ]
+    },
+    "corpus_release_id": {
+      "anyOf": [
+        {
+          "$ref": "ids.schema.json#/$defs/corpus_release_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "artifacts": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/release_artifact"
+      }
+    },
+    "promotion_event_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "ids.schema.json#/$defs/promotion_event_id"
+      }
+    },
+    "manifest_hash": {
+      "$ref": "provenance.schema.json#/$defs/sha256"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "superseded_by": {
+      "anyOf": [
+        {
+          "$ref": "ids.schema.json#/$defs/release_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "release_artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_id",
+        "artifact_type",
+        "content_hash",
+        "schema_version",
+        "role",
+        "public_path",
+        "publication_permission_basis",
+        "access_license"
+      ],
+      "properties": {
+        "artifact_id": {
+          "$ref": "ids.schema.json#/$defs/artifact_id"
+        },
+        "artifact_type": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "content_hash": {
+          "$ref": "provenance.schema.json#/$defs/sha256"
+        },
+        "schema_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "public_path": {
+          "type": "string",
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+        },
+        "publication_permission_basis": {
+          "type": "string",
+          "enum": [
+            "metadata",
+            "raw_text",
+            "derived"
+          ]
+        },
+        "access_license": {
+          "allOf": [
+            {
+              "$ref": "access-license.schema.json#/$defs/access_license_metadata"
+            },
+            {
+              "properties": {
+                "access_class": {
+                  "const": "public"
+                }
+              },
+              "required": [
+                "access_class"
+              ]
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "publication_permission_basis": {
+                "const": "metadata"
+              }
+            },
+            "required": [
+              "publication_permission_basis"
+            ]
+          },
+          "then": {
+            "properties": {
+              "access_license": {
+                "properties": {
+                  "publication_permissions": {
+                    "properties": {
+                      "metadata": {
+                        "const": "allow"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "publication_permission_basis": {
+                "const": "raw_text"
+              }
+            },
+            "required": [
+              "publication_permission_basis"
+            ]
+          },
+          "then": {
+            "properties": {
+              "access_license": {
+                "properties": {
+                  "publication_permissions": {
+                    "properties": {
+                      "raw_text": {
+                        "const": "allow"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "publication_permission_basis": {
+                "const": "derived"
+              }
+            },
+            "required": [
+              "publication_permission_basis"
+            ]
+          },
+          "then": {
+            "properties": {
+              "access_license": {
+                "properties": {
+                  "publication_permissions": {
+                    "properties": {
+                      "derived": {
+                        "const": "allow"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "draft"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {}
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "promoted"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "corpus_release_id": {
+            "$ref": "ids.schema.json#/$defs/corpus_release_id"
+          },
+          "artifacts": {
+            "minItems": 1
+          },
+          "promotion_event_ids": {
+            "minItems": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "superseded"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "required": [
+          "superseded_by"
+        ],
+        "properties": {
+          "superseded_by": {
+            "$ref": "ids.schema.json#/$defs/release_id"
+          }
+        }
+      }
+    }
+  ]
+}
