@@ -28,4 +28,10 @@ Default is deny: an unknown license status cannot allow raw-text publication; `s
 
 Lineage is defined through exact artifact/run identifiers rather than filenames or "latest" state. Computation signatures are content-addressed from input hashes plus code/config/model/schema components. Cross-record validation must reject more than one producing run for the same immutable output artifact.
 
-This implements, rather than replaces, TECHNICAL_ARCHITECTURE. Corpus/release manifests and the executable repository validation/build flow remain separate Stage 0 iterations.
+## Corpus / release manifests
+
+`contracts/schemas/corpus-release.schema.json` fixes the exact scientific corpus composition, input hashes and policy refs. `contracts/schemas/release-manifest.schema.json` fixes an exact compatible public serving set by artifact ID, content hash, schema version and policy metadata; it never resolves "latest" artifacts.
+
+The empty draft corpus/release fixtures are valid and use reproducible manifest hashes. A promoted release must reference a corpus release, at least one exact artifact and promotion evidence, and every public artifact must pass the access/license publication gate.
+
+This implements, rather than replaces, TECHNICAL_ARCHITECTURE. Quality contracts and the executable repository validation/build flow remain separate Stage 0 iterations.
