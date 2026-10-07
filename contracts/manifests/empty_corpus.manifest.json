@@ -5,17 +5,17 @@
   "canonical_schema_version": "1.0.0",
   "entity_resolution_version": "resolver-not-run",
   "inclusion_policy": {
-    "uri": "contracts/manifests/policies/empty-inclusion.placeholder",
-    "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    "uri": "contracts/manifests/policies/empty-inclusion.json",
+    "content_hash": "d083523bf9fc7855a13d2e0c6e2d9455b9526012881d54bab08db0dfbe738f26"
   },
   "exclusion_policy": {
-    "uri": "contracts/manifests/policies/empty-exclusion.placeholder",
-    "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    "uri": "contracts/manifests/policies/empty-exclusion.json",
+    "content_hash": "4ab273f4b4b1c311c0e856d287a221083fc3ae60f16db4c6ac01b13aa9ade901"
   },
   "input_artifacts": [],
   "canonical_article_ids": [],
   "article_count": 0,
-  "manifest_hash": "2c92b0a394cd6d7ff5537ff9d34c6cf43f31ebca2547b0c62ac585533b3ee024",
+  "manifest_hash": "7d02f02615c0ce32da1d28d30fc4c1afc0ed4059a36c0f63d2e026f43653eab5",
   "created_at": "2026-10-07T21:00:00Z",
   "superseded_by": null
 }
