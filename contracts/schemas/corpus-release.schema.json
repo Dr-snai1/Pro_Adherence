@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "corpus-release.schema.json",
+  "title": "Pro_Adherence corpus release manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_version",
+    "corpus_release_id",
+    "status",
+    "canonical_schema_version",
+    "entity_resolution_version",
+    "inclusion_policy",
+    "exclusion_policy",
+    "input_artifacts",
+    "canonical_article_ids",
+    "article_count",
+    "manifest_hash",
+    "created_at"
+  ],
+  "properties": {
+    "manifest_version": {
+      "const": "1.0.0"
+    },
+    "corpus_release_id": {
+      "$ref": "ids.schema.json#/$defs/corpus_release_id"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "frozen",
+        "superseded"
+      ]
+    },
+    "canonical_schema_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "entity_resolution_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "inclusion_policy": {
+      "$ref": "#/$defs/policy_ref"
+    },
+    "exclusion_policy": {
+      "$ref": "#/$defs/policy_ref"
+    },
+    "input_artifacts": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/input_artifact_ref"
+      }
+    },
+    "canonical_article_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "ids.schema.json#/$defs/canonical_article_id"
+      }
+    },
+    "article_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "manifest_hash": {
+      "$ref": "provenance.schema.json#/$defs/sha256"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "superseded_by": {
+      "anyOf": [
+        {
+          "$ref": "ids.schema.json#/$defs/corpus_release_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "policy_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uri",
+        "content_hash"
+      ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content_hash": {
+          "$ref": "provenance.schema.json#/$defs/sha256"
+        }
+      }
+    },
+    "input_artifact_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_id",
+        "content_hash"
+      ],
+      "properties": {
+        "artifact_id": {
+          "$ref": "ids.schema.json#/$defs/artifact_id"
+        },
+        "content_hash": {
+          "$ref": "provenance.schema.json#/$defs/sha256"
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "superseded"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "required": [
+          "superseded_by"
+        ],
+        "properties": {
+          "superseded_by": {
+            "$ref": "ids.schema.json#/$defs/corpus_release_id"
+          }
+        }
+      }
+    }
+  ]
+}
