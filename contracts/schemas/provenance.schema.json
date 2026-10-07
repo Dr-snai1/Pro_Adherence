@@ -1,0 +1,900 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "provenance.schema.json",
+  "title": "Pro_Adherence artifact, run and provenance contracts",
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "Lowercase hexadecimal SHA-256 digest without a prefix."
+    },
+    "seed_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "fixed",
+            "deterministic",
+            "randomized",
+            "not-applicable"
+          ]
+        },
+        "seed": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "fixed"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "required": [
+              "seed"
+            ],
+            "properties": {
+              "seed": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_id",
+        "artifact_type",
+        "uri",
+        "content_hash",
+        "schema_version",
+        "access_license",
+        "immutable",
+        "status",
+        "created_at"
+      ],
+      "properties": {
+        "artifact_id": {
+          "$ref": "ids.schema.json#/$defs/artifact_id"
+        },
+        "artifact_type": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "uri": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content_hash": {
+          "$ref": "#/$defs/sha256"
+        },
+        "schema_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "access_license": {
+          "$ref": "access-license.schema.json#/$defs/access_license_metadata"
+        },
+        "immutable": {
+          "const": true
+        },
+        "status": {
+          "type": "string",
+          "minLength": 1
+        },
+        "corpus_release_id": {
+          "anyOf": [
+            {
+              "$ref": "ids.schema.json#/$defs/corpus_release_id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_fetch_id": {
+          "anyOf": [
+            {
+              "$ref": "ids.schema.json#/$defs/source_fetch_id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run_id",
+        "run_type",
+        "code_ref_id",
+        "config_ref_id",
+        "environment_ref_id",
+        "seed_policy",
+        "status",
+        "started_at"
+      ],
+      "properties": {
+        "run_id": {
+          "$ref": "ids.schema.json#/$defs/run_id"
+        },
+        "run_type": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "corpus_release_id": {
+          "anyOf": [
+            {
+              "$ref": "ids.schema.json#/$defs/corpus_release_id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "code_ref_id": {
+          "$ref": "ids.schema.json#/$defs/code_ref_id"
+        },
+        "config_ref_id": {
+          "$ref": "ids.schema.json#/$defs/config_ref_id"
+        },
+        "model_ref_id": {
+          "anyOf": [
+            {
+              "$ref": "ids.schema.json#/$defs/model_ref_id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "environment_ref_id": {
+          "$ref": "ids.schema.json#/$defs/environment_ref_id"
+        },
+        "seed_policy": {
+          "$ref": "#/$defs/seed_policy"
+        },
+        "status": {
+          "type": "string",
+          "minLength": 1
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "finished_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        }
+      }
+    },
+    "run_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run_id",
+        "artifact_id",
+        "role"
+      ],
+      "properties": {
+        "run_id": {
+          "$ref": "ids.schema.json#/$defs/run_id"
+        },
+        "artifact_id": {
+          "$ref": "ids.schema.json#/$defs/artifact_id"
+        },
+        "role": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        }
+      }
+    },
+    "run_output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run_id",
+        "artifact_id",
+        "role"
+      ],
+      "properties": {
+        "run_id": {
+          "$ref": "ids.schema.json#/$defs/run_id"
+        },
+        "artifact_id": {
+          "$ref": "ids.schema.json#/$defs/artifact_id"
+        },
+        "role": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        }
+      }
+    },
+    "code_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code_ref_id",
+        "vcs",
+        "repository",
+        "commit_sha",
+        "working_tree_clean"
+      ],
+      "properties": {
+        "code_ref_id": {
+          "$ref": "ids.schema.json#/$defs/code_ref_id"
+        },
+        "vcs": {
+          "const": "git"
+        },
+        "repository": {
+          "type": "string",
+          "minLength": 1
+        },
+        "commit_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "working_tree_clean": {
+          "type": "boolean"
+        }
+      }
+    },
+    "config_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "config_ref_id",
+        "uri",
+        "content_hash"
+      ],
+      "properties": {
+        "config_ref_id": {
+          "$ref": "ids.schema.json#/$defs/config_ref_id"
+        },
+        "uri": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content_hash": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "model_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model_ref_id",
+        "model_name"
+      ],
+      "properties": {
+        "model_ref_id": {
+          "$ref": "ids.schema.json#/$defs/model_ref_id"
+        },
+        "model_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "immutable_revision": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "digest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "immutable_revision"
+          ],
+          "properties": {
+            "immutable_revision": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        {
+          "required": [
+            "digest"
+          ],
+          "properties": {
+            "digest": {
+              "$ref": "#/$defs/sha256"
+            }
+          }
+        }
+      ]
+    },
+    "environment_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "environment_ref_id",
+        "lockfile_uri",
+        "lockfile_hash",
+        "runtime"
+      ],
+      "properties": {
+        "environment_ref_id": {
+          "$ref": "ids.schema.json#/$defs/environment_ref_id"
+        },
+        "lockfile_uri": {
+          "type": "string",
+          "minLength": 1
+        },
+        "lockfile_hash": {
+          "$ref": "#/$defs/sha256"
+        },
+        "runtime": {
+          "type": "string",
+          "minLength": 1
+        },
+        "container_digest": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      }
+    },
+    "source_fetch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_fetch_id",
+        "source_id",
+        "adapter_version",
+        "retrieval_time",
+        "query_definition",
+        "raw_artifact_id",
+        "byte_hash",
+        "access_license",
+        "completeness_flags"
+      ],
+      "properties": {
+        "source_fetch_id": {
+          "$ref": "ids.schema.json#/$defs/source_fetch_id"
+        },
+        "source_id": {
+          "$ref": "ids.schema.json#/$defs/source_id"
+        },
+        "adapter_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retrieval_time": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "query_definition": {
+          "type": "object"
+        },
+        "source_cursor_export_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "raw_artifact_id": {
+          "$ref": "ids.schema.json#/$defs/raw_artifact_id"
+        },
+        "byte_hash": {
+          "$ref": "#/$defs/sha256"
+        },
+        "access_license": {
+          "$ref": "access-license.schema.json#/$defs/access_license_metadata"
+        },
+        "completeness_flags": {
+          "type": "object"
+        }
+      }
+    },
+    "quality_check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "check_id",
+        "status"
+      ],
+      "properties": {
+        "check_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pass",
+            "warn",
+            "fail"
+          ]
+        },
+        "message": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "evidence_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "quality_report": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "quality_report_id",
+        "status",
+        "checks",
+        "created_at"
+      ],
+      "properties": {
+        "quality_report_id": {
+          "$ref": "ids.schema.json#/$defs/quality_report_id"
+        },
+        "subject_artifact_id": {
+          "$ref": "ids.schema.json#/$defs/artifact_id"
+        },
+        "subject_run_id": {
+          "$ref": "ids.schema.json#/$defs/run_id"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pass",
+            "warn",
+            "fail"
+          ]
+        },
+        "checks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/quality_check"
+          }
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "subject_artifact_id"
+          ],
+          "not": {
+            "required": [
+              "subject_run_id"
+            ]
+          }
+        },
+        {
+          "required": [
+            "subject_run_id"
+          ],
+          "not": {
+            "required": [
+              "subject_artifact_id"
+            ]
+          }
+        }
+      ]
+    },
+    "promotion_event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "promotion_event_id",
+        "artifact_ids",
+        "quality_report_ids",
+        "decision",
+        "created_at"
+      ],
+      "properties": {
+        "promotion_event_id": {
+          "$ref": "ids.schema.json#/$defs/promotion_event_id"
+        },
+        "artifact_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "ids.schema.json#/$defs/artifact_id"
+          }
+        },
+        "quality_report_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "ids.schema.json#/$defs/quality_report_id"
+          }
+        },
+        "decision": {
+          "type": "string",
+          "enum": [
+            "promoted",
+            "rejected"
+          ]
+        },
+        "target_release_id": {
+          "anyOf": [
+            {
+              "$ref": "ids.schema.json#/$defs/release_id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "decision": {
+                "const": "promoted"
+              }
+            },
+            "required": [
+              "decision"
+            ]
+          },
+          "then": {
+            "required": [
+              "target_release_id"
+            ],
+            "properties": {
+              "target_release_id": {
+                "$ref": "ids.schema.json#/$defs/release_id"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "supersession_relation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "supersession_relation_id",
+        "superseded_artifact_id",
+        "successor_artifact_id",
+        "reason",
+        "created_at"
+      ],
+      "properties": {
+        "supersession_relation_id": {
+          "$ref": "ids.schema.json#/$defs/supersession_relation_id"
+        },
+        "superseded_artifact_id": {
+          "$ref": "ids.schema.json#/$defs/artifact_id"
+        },
+        "successor_artifact_id": {
+          "$ref": "ids.schema.json#/$defs/artifact_id"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "computation_signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "digest",
+        "input_artifact_hashes",
+        "code_ref_id",
+        "config_hash",
+        "schema_version"
+      ],
+      "properties": {
+        "digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "input_artifact_hashes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/sha256"
+          }
+        },
+        "code_ref_id": {
+          "$ref": "ids.schema.json#/$defs/code_ref_id"
+        },
+        "config_hash": {
+          "$ref": "#/$defs/sha256"
+        },
+        "model_digest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "schema_version": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "compute_asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset_type",
+        "asset_id",
+        "input_artifact_ids",
+        "corpus_release_id",
+        "code_ref_id",
+        "config_ref_id",
+        "environment_ref_id",
+        "seed_policy",
+        "output_uri",
+        "output_hash",
+        "quality_report_id",
+        "status",
+        "created_at",
+        "computation_signature"
+      ],
+      "properties": {
+        "asset_type": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.-]*$"
+        },
+        "asset_id": {
+          "$ref": "ids.schema.json#/$defs/artifact_id"
+        },
+        "input_artifact_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "ids.schema.json#/$defs/artifact_id"
+          }
+        },
+        "corpus_release_id": {
+          "$ref": "ids.schema.json#/$defs/corpus_release_id"
+        },
+        "code_ref_id": {
+          "$ref": "ids.schema.json#/$defs/code_ref_id"
+        },
+        "config_ref_id": {
+          "$ref": "ids.schema.json#/$defs/config_ref_id"
+        },
+        "model_ref_id": {
+          "anyOf": [
+            {
+              "$ref": "ids.schema.json#/$defs/model_ref_id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "environment_ref_id": {
+          "$ref": "ids.schema.json#/$defs/environment_ref_id"
+        },
+        "seed_policy": {
+          "$ref": "#/$defs/seed_policy"
+        },
+        "output_uri": {
+          "type": "string",
+          "minLength": 1
+        },
+        "output_hash": {
+          "$ref": "#/$defs/sha256"
+        },
+        "quality_report_id": {
+          "$ref": "ids.schema.json#/$defs/quality_report_id"
+        },
+        "status": {
+          "type": "string",
+          "minLength": 1
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "computation_signature": {
+          "$ref": "#/$defs/computation_signature"
+        }
+      }
+    },
+    "lineage_query_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "root_output_artifact_id",
+        "root_producing_run_id",
+        "ancestor_artifact_ids",
+        "descendant_artifact_ids",
+        "source_fetch_ids",
+        "code_ref_ids",
+        "config_ref_ids",
+        "model_ref_ids",
+        "environment_ref_ids"
+      ],
+      "properties": {
+        "root_output_artifact_id": {
+          "$ref": "ids.schema.json#/$defs/artifact_id"
+        },
+        "root_producing_run_id": {
+          "$ref": "ids.schema.json#/$defs/run_id"
+        },
+        "corpus_release_id": {
+          "anyOf": [
+            {
+              "$ref": "ids.schema.json#/$defs/corpus_release_id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ancestor_artifact_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "ids.schema.json#/$defs/artifact_id"
+          }
+        },
+        "descendant_artifact_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "ids.schema.json#/$defs/artifact_id"
+          }
+        },
+        "source_fetch_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "ids.schema.json#/$defs/source_fetch_id"
+          }
+        },
+        "code_ref_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "ids.schema.json#/$defs/code_ref_id"
+          }
+        },
+        "config_ref_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "ids.schema.json#/$defs/config_ref_id"
+          }
+        },
+        "model_ref_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "ids.schema.json#/$defs/model_ref_id"
+          }
+        },
+        "environment_ref_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "ids.schema.json#/$defs/environment_ref_id"
+          }
+        }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/artifact"
+    },
+    {
+      "$ref": "#/$defs/run"
+    },
+    {
+      "$ref": "#/$defs/run_input"
+    },
+    {
+      "$ref": "#/$defs/run_output"
+    },
+    {
+      "$ref": "#/$defs/code_ref"
+    },
+    {
+      "$ref": "#/$defs/config_ref"
+    },
+    {
+      "$ref": "#/$defs/model_ref"
+    },
+    {
+      "$ref": "#/$defs/environment_ref"
+    },
+    {
+      "$ref": "#/$defs/source_fetch"
+    },
+    {
+      "$ref": "#/$defs/quality_report"
+    },
+    {
+      "$ref": "#/$defs/promotion_event"
+    },
+    {
+      "$ref": "#/$defs/supersession_relation"
+    },
+    {
+      "$ref": "#/$defs/compute_asset"
+    },
+    {
+      "$ref": "#/$defs/lineage_query_result"
+    }
+  ]
+}
