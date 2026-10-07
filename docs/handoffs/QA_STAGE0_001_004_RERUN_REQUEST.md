@@ -1,3 +1,5 @@
+> **STATUS: SUPERSEDED.** This request was committed before the exact committed Python regression suite was executed and before the final documentation readback. Its statements that the suite was not executed and that current main is `b8d5c0dd29cb06d46cb49b2b743e0a623c7f27a1` are historical, not current. Preserve the text below as audit history. Current implementation evidence is in `docs/handoffs/STAGE0_QA_FIXES_2026-10-08.md`; 03 — Разработка should issue a fresh QA rerun request after accepting that temporary-chat handoff. QA-S0-005 remains out of scope and open.
+
 # Handoff — Stage 0 QA-S0-001–004 fixes: scoped QA rerun request
 
 **ОТ КОГО:** 03 — Разработка  
