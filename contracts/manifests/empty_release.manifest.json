@@ -1,0 +1,11 @@
+{
+  "manifest_version": "1.0.0",
+  "release_id": "018f0c50-7b1d-7cc3-9a5b-1123456789ab",
+  "status": "draft",
+  "corpus_release_id": null,
+  "artifacts": [],
+  "promotion_event_ids": [],
+  "manifest_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "created_at": "2026-10-07T21:00:00Z",
+  "superseded_by": null
+}
