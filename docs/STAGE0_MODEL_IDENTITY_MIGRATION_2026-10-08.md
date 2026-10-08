@@ -1,6 +1,6 @@
 # Stage 0 model identity migration — 2026-10-08
 
-Status: current migration note for QA-S0-005 implementation; independent QA pending.
+Status: current migration note; QA-S0-005 independently verified and CLOSED.
 
 ## Superseded contract
 
