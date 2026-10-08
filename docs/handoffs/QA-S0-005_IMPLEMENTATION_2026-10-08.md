@@ -1,3 +1,5 @@
+> **STATUS: SUPERSEDED.** This temporary-chat handoff correctly recorded the state before executable developer validation. The full suite has since been executed successfully and the accidental tree-replacement regression has been corrected. Preserve the text below as audit history. Current QA request: `docs/handoffs/QA_S0_005_RERUN_REQUEST.md`.
+
 # QA-S0-005 developer handoff — 2026-10-08
 
 ОТ КОГО: Temporary Stage 0 implementation chat.
