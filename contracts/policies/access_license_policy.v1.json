@@ -1,0 +1,31 @@
+{
+  "policy_version": "1.0.0",
+  "architecture_basis": [
+    "TECHNICAL_ARCHITECTURE §3.7",
+    "TECHNICAL_ARCHITECTURE §8.7"
+  ],
+  "access_classes": {
+    "public": {
+      "public_bundle_candidate": true,
+      "description": "May enter a public serving bundle only when explicit publication permissions for the material type are allow."
+    },
+    "project-internal": {
+      "public_bundle_candidate": false,
+      "description": "Project-only material; not public serving input."
+    },
+    "restricted-license": {
+      "public_bundle_candidate": false,
+      "description": "License-restricted source material. Derived outputs require their own explicit publication permission before any public promotion."
+    },
+    "secret": {
+      "public_bundle_candidate": false,
+      "description": "Secrets/credentials or equivalently protected material; never public."
+    }
+  },
+  "defaults": {
+    "unknown_license_status": "deny_raw_text_publication",
+    "unknown_publication_permission": "deny",
+    "promotion_requires_access_class": "public"
+  },
+  "rule": "If the right to publish cannot be demonstrated, raw text is not published."
+}

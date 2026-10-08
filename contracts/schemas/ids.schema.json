@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ids.schema.json",
+  "title": "Pro_Adherence internal identifiers",
+  "description": "Provider-independent internal identifier contract. External DOI/PMID/ORCID/ROR identifiers are stored separately.",
+  "type": "string",
+  "$defs": {
+    "uuid_v7": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+      "description": "Canonical lowercase UUIDv7."
+    },
+    "canonical_article_id": {
+      "$ref": "#/$defs/uuid_v7"
+    },
+    "canonical_author_id": {
+      "$ref": "#/$defs/uuid_v7"
+    },
+    "canonical_affiliation_id": {
+      "$ref": "#/$defs/uuid_v7"
+    },
+    "venue_id": {
+      "$ref": "#/$defs/uuid_v7"
+    },
+    "authorship_id": {
+      "$ref": "#/$defs/uuid_v7"
+    },
+    "unresolved_author_identity_id": {
+      "$ref": "#/$defs/uuid_v7"
+    },
+    "unresolved_affiliation_id": {
+      "$ref": "#/$defs/uuid_v7"
+    },
+    "source_record_id": {
+      "$ref": "#/$defs/uuid_v7"
+    },
+    "raw_artifact_id": {
+      "$ref": "#/$defs/uuid_v7"
+    },
+    "corpus_release_id": {
+      "$ref": "#/$defs/uuid_v7"
+    },
+    "graph_snapshot_id": {
+      "$ref": "#/$defs/uuid_v7"
+    },
+    "representation_artifact_id": {
+      "$ref": "#/$defs/uuid_v7"
+    },
+    "cluster_run_id": {
+      "$ref": "#/$defs/uuid_v7"
+    },
+    "analysis_run_id": {
+      "$ref": "#/$defs/uuid_v7"
+    },
+    "release_id": {
+      "$ref": "#/$defs/uuid_v7"
+    },
+    "artifact_id": {
+      "$ref": "#/$defs/uuid_v7"
+    },
+    "run_id": {
+      "$ref": "#/$defs/uuid_v7"
+    },
+    "quality_report_id": {
+      "$ref": "#/$defs/uuid_v7"
+    },
+    "promotion_event_id": {
+      "$ref": "#/$defs/uuid_v7"
+    },
+    "source_fetch_id": {
+      "$ref": "#/$defs/uuid_v7"
+    },
+    "source_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.-]*$",
+      "description": "Stable bibliographic source key, e.g. pubmed or apa_psycinfo."
+    },
+    "version_ref": {
+      "$ref": "#/$defs/immutable_version_ref",
+      "description": "Backward-compatible name for an immutable version reference; mutable aliases are forbidden."
+    },
+    "external_namespace": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.-]*$"
+    },
+    "code_ref_id": {
+      "$ref": "#/$defs/uuid_v7"
+    },
+    "config_ref_id": {
+      "$ref": "#/$defs/uuid_v7"
+    },
+    "model_ref_id": {
+      "$ref": "#/$defs/uuid_v7"
+    },
+    "environment_ref_id": {
+      "$ref": "#/$defs/uuid_v7"
+    },
+    "supersession_relation_id": {
+      "$ref": "#/$defs/uuid_v7"
+    },
+    "immutable_version_ref": {
+      "type": "string",
+      "minLength": 1,
+      "not": {
+        "pattern": "^(?:[Ll][Aa][Tt][Ee][Ss][Tt]|[Cc][Uu][Rr][Rr][Ee][Nn][Tt]|[Hh][Ee][Aa][Dd]|[Tt][Ii][Pp]|[Mm][Aa][Ii][Nn]|[Mm][Aa][Ss][Tt][Ee][Rr]|[Tt][Rr][Uu][Nn][Kk]|[Dd][Ee][Ff][Aa][Uu][Ll][Tt]|[Ss][Tt][Aa][Bb][Ll][Ee]|[Nn][Ee][Ww][Ee][Ss][Tt])$"
+      },
+      "description": "Immutable version/revision reference. Mutable aliases such as latest/current/HEAD/main/master are forbidden."
+    },
+    "identity_resolution_event_id": {
+      "$ref": "#/$defs/uuid_v7"
+    }
+  }
+}

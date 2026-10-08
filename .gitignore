@@ -1,0 +1,51 @@
+# Pro_Adherence — local/research data must never be committed
+/data/raw/
+/data/normalized/
+/data/canonical/
+/data/derived/
+/research/
+/artifacts/
+/backups/
+/local/
+
+# Restricted or secret material
+/restricted/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets.*
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Node / static web build caches
+node_modules/
+web/node_modules/
+web/dist/
+.pagefind/
+
+# Editors / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Temporary files
+*.tmp
+*.temp
+*.log
