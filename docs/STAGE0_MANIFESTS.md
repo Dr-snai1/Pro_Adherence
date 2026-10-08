@@ -1,6 +1,6 @@
 # Stage 0 corpus and serving release manifests
 
-Status: QA-S0-004 fixed in implementation; independent QA rerun pending.
+Status: QA-S0-004 independently verified and CLOSED. Stage 0 overall remains OPEN; executable validator/build/E2E gates are still pending.
 
 ## Corpus release
 
