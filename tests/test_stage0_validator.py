@@ -1,4 +1,6 @@
+import contextlib
 import copy
+import io
 import json
 import sys
 import tempfile
@@ -243,6 +245,33 @@ class Stage0ValidatorTests(unittest.TestCase):
             lineage_artifact_ids={release["artifacts"][0]["artifact_id"]},
         )
         self.assertEqual(errors, [])
+
+    def test_promoted_release_cli_with_complete_evidence_passes(self):
+        lineage, release, corpus, report, event = promoted_fixture()
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            paths = {}
+            for name, value in (
+                ("lineage", lineage),
+                ("release", release),
+                ("corpus", corpus),
+                ("report", report),
+                ("event", event),
+            ):
+                path = tmp / f"{name}.json"
+                path.write_text(json.dumps(value), encoding="utf-8")
+                paths[name] = path
+            stdout = io.StringIO()
+            with contextlib.redirect_stdout(stdout):
+                code = v.main([
+                    "release", str(paths["release"]),
+                    "--lineage", str(paths["lineage"]),
+                    "--corpus", str(paths["corpus"]),
+                    "--evidence", str(paths["report"]),
+                    "--evidence", str(paths["event"]),
+                ])
+            self.assertEqual(code, 0, stdout.getvalue())
+            self.assertIn("PASS release", stdout.getvalue())
 
     def test_promoted_release_without_validated_lineage_fails(self):
         lineage, release, corpus, report, event = promoted_fixture()

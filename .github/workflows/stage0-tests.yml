@@ -21,6 +21,15 @@ jobs:
           python -c "import importlib.metadata; print('jsonschema', importlib.metadata.version('jsonschema'))"
       - name: Run Stage 0 tests
         run: python -m unittest discover -s tests -p 'test_*.py'
+      - name: Run focused validator commands
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m pro_adherence.validate contracts
+          python -m pro_adherence.validate corpus contracts/manifests/empty_corpus.manifest.json
+          python -m pro_adherence.validate release contracts/manifests/empty_release.manifest.json
+          python -m pro_adherence.validate lineage contracts/manifests/minimal_lineage.example.json
+          python -m pro_adherence.validate boundary
       - name: Run aggregate Stage 0 validator
         env:
           PYTHONPATH: src
