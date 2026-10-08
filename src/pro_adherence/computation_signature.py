@@ -4,6 +4,11 @@ import json
 import re
 
 SHA = re.compile(r"^[0-9a-f]{64}$")
+MUTABLE_VERSION_ALIASES = {
+    "latest", "current", "head", "main", "master", "tip",
+    "trunk", "default", "stable", "newest",
+}
+
 class SignatureError(ValueError):
     pass
 
@@ -22,6 +27,8 @@ def model_descriptor(model):
         raise SignatureError("digest must be lowercase sha256")
     if revision is not None and (not isinstance(revision, str) or not revision):
         raise SignatureError("invalid immutable revision")
+    if isinstance(revision, str) and revision.casefold() in MUTABLE_VERSION_ALIASES:
+        raise SignatureError("mutable model revision alias is forbidden")
     if digest is None and revision is None:
         raise SignatureError("no immutable model identity")
     if revision is not None and (not namespace or not key):

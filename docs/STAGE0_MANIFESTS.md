@@ -1,19 +1,9 @@
 # Stage 0 corpus and serving release manifests
 
-Status: QA-S0-004 independently verified and CLOSED. Stage 0 overall remains OPEN; executable validator/build/E2E gates are still pending.
+Status: QA-S0-004 independently verified and CLOSED. Stage 0 overall remains OPEN; executable manifest reconciliation is implemented developer-side and awaits independent QA.
 
-## Corpus release
+Corpus validation now checks article_count, duplicate canonical IDs, exact input-artifact hashes, readable inclusion/exclusion policy bytes and hashes, and canonical manifest_hash recomputation.
 
-`contracts/schemas/corpus-release.schema.json` fixes the exact corpus snapshot. `canonical_schema_version` and `entity_resolution_version` are now immutable version references rather than arbitrary non-empty strings.
+Release validation now checks canonical manifest_hash, exact artifact resolution (ID/hash/schema version/type where present), publication permission against the artifact catalog, corpus compatibility, promotion-event target/decision/coverage, referenced quality-report existence and unique producing-run lineage for promoted artifacts.
 
-## Public serving release
-
-`contracts/schemas/release-manifest.schema.json` fixes serving artifacts by exact artifact ID, content hash, immutable schema version, role and public path. Mutable aliases such as `latest`, `current` or `HEAD` are schema-invalid in exact version fields.
-
-Access/license and publication-permission gates are unchanged.
-
-## Hash semantics
-
-`manifest_hash` remains the SHA-256 of the payload excluding `manifest_hash`, serialized as UTF-8 JSON with lexicographically sorted object keys, no insignificant whitespace, separators `,` and `:`, and declared array order preserved.
-
-The executable repository validator will continue to own hash/count reconciliation and referential integrity; this defect-fix changes only version-reference shape constraints.
+The validator intentionally does not require quality_report.status = pass until 02 — Technical Architecture makes that exact promotion semantic explicit.

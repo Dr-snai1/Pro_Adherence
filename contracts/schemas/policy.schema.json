@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "policy.schema.json",
+  "title": "Pro_Adherence Stage 0 policy documents",
+  "$defs": {
+    "corpus_selection_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policy_version", "policy_type", "rules"],
+      "properties": {
+        "policy_version": {"$ref": "ids.schema.json#/$defs/immutable_version_ref"},
+        "policy_type": {"enum": ["inclusion", "exclusion"]},
+        "rules": {"type": "array", "items": {"type": "object"}}
+      }
+    },
+    "access_class_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["public_bundle_candidate", "description"],
+      "properties": {
+        "public_bundle_candidate": {"type": "boolean"},
+        "description": {"type": "string", "minLength": 1}
+      }
+    },
+    "access_license_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policy_version", "architecture_basis", "access_classes", "defaults", "rule"],
+      "properties": {
+        "policy_version": {"$ref": "ids.schema.json#/$defs/immutable_version_ref"},
+        "architecture_basis": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "access_classes": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["public", "project-internal", "restricted-license", "secret"],
+          "properties": {
+            "public": {"$ref": "#/$defs/access_class_policy"},
+            "project-internal": {"$ref": "#/$defs/access_class_policy"},
+            "restricted-license": {"$ref": "#/$defs/access_class_policy"},
+            "secret": {"$ref": "#/$defs/access_class_policy"}
+          }
+        },
+        "defaults": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "unknown_license_status",
+            "unknown_publication_permission",
+            "promotion_requires_access_class"
+          ],
+          "properties": {
+            "unknown_license_status": {"type": "string", "minLength": 1},
+            "unknown_publication_permission": {"const": "deny"},
+            "promotion_requires_access_class": {"const": "public"}
+          }
+        },
+        "rule": {"type": "string", "minLength": 1}
+      }
+    }
+  },
+  "oneOf": [
+    {"$ref": "#/$defs/corpus_selection_policy"},
+    {"$ref": "#/$defs/access_license_policy"}
+  ]
+}
