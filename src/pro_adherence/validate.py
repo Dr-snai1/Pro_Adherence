@@ -561,7 +561,10 @@ def validate_contracts(root: Path = ROOT, ctx: SchemaContext | None = None) -> l
 def validate_public_paths(paths: Iterable[str]) -> list[str]:
     errors = []
     for raw in paths:
-        path = raw.replace("\\", "/").lstrip("./")
+        path = raw.replace("\\", "/")
+        while path.startswith("./"):
+            path = path[2:]
+        path = path.lstrip("/")
         if any(path.startswith(prefix) for prefix in FORBIDDEN_PREFIXES):
             errors.append(f"repository boundary: forbidden tracked path {raw}")
             continue

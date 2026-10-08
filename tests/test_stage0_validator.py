@@ -273,5 +273,10 @@ class Stage0ValidatorTests(unittest.TestCase):
         self.assertIn("research/output.json", errors[0])
 
 
+    def test_forbidden_secret_path_fails(self):
+        errors = v.validate_public_paths([".env", "./.env.local", ".env.example"])
+        self.assertEqual(len(errors), 2)
+        self.assertTrue(all(".env" in e for e in errors))
+
 if __name__ == "__main__":
     unittest.main()
