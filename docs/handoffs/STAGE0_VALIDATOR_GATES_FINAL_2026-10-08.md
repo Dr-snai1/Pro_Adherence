@@ -1,3 +1,5 @@
+> **STATUS: SUPERSEDED — 2026-10-08.** This handoff remains valid as history for the initial validator/gates implementation, but its promotion-quality architecture question and documentation-consistency claims are superseded. The authoritative architecture now defines fail-closed PASS-only promotion semantics, implemented at `bcd6ad1b2ca7f1a2f97aabde36326edf2374c1a2`. Independent QA later identified QA-S0-006-DOC-01 in `docs/STAGE0_MANIFESTS.md`; current documentation and QA routing supersede the unresolved-quality text retained below.
+
 # Stage 0 validator/gates implementation handoff — FINAL — 2026-10-08
 
 ОТ КОГО: **временный чат реализации Stage 0**  
