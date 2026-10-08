@@ -1,3 +1,5 @@
+> **SUPERSEDED** — this intermediate handoff predates complete-lineage promotion hardening and expanded CLI/reference regression coverage. Current handoff: `docs/handoffs/STAGE0_VALIDATOR_GATES_FINAL_2026-10-08.md`.
+
 # Stage 0 validator/gates implementation handoff — 2026-10-08
 
 ОТ КОГО: **временный чат реализации Stage 0**  

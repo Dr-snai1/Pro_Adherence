@@ -16,3 +16,15 @@ Add --json before the subcommand for a machine-readable result. Any blocking val
 The validator resolves JSON Schema references from contracts/schemas only; it does not fetch schema references from the network. Corpus validation reconciles article count, IDs, input artifact hashes, policy file bytes/hashes and manifest hash. Release validation reconciles exact artifact metadata, publication permission, corpus compatibility, promotion evidence and validated complete-lineage coverage for each promoted artifact. Lineage validation enforces cross-record references, unique producing runs and a root-relevant direct-input/source-fetch/corpus chain, and exposes deterministic output-artifact lineage reconstruction.
 
 Promotion quality-report semantics: the validator requires referenced quality reports to exist, but does not currently require quality_report.status = pass because the authoritative contract does not state that exact rule unambiguously. This is an architecture question for 02, not an implementation default.
+
+For a promoted release, supply the exact corpus, a semantically valid lineage bundle for every promoted root artifact, and referenced promotion/quality evidence, for example:
+
+```bash
+PYTHONPATH=src python -m pro_adherence.validate release release.json \
+  --corpus corpus.json \
+  --lineage lineage.json \
+  --evidence quality-report.json \
+  --evidence promotion-event.json
+```
+
+`--lineage` inputs are validated as complete lineage bundles, not accepted as mere record catalogs. A promoted artifact must be the root output of a validated bundle. Non-empty corpus manifests reconcile their declared input artifacts against the supplied evidence artifact catalog.

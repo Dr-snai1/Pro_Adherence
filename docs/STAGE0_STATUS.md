@@ -37,7 +37,7 @@ Independent QA of this workstream is still pending. Remaining Stage 0 acceptance
 
 ## Developer verification — validator/gates
 
-On implementation state after the public-boundary hardening, GitHub Actions checked out the exact committed state and ran the full unit suite, aggregate validator and independent semantic mutation audit. The suite passed 37 tests on Python 3.13.16 with jsonschema 4.26.0; aggregate Stage 0 validation passed; all 11 injected semantic defects failed as expected and the exact minimal-lineage chain matched.
+On implementation commit `293ef214cddb132e32b339d2baf0a4938a6e531c`, GitHub Actions run `37803936823` checked out the exact committed state and ran the full unit suite, all focused validator CLI modes, the aggregate validator and the independent semantic mutation audit. The suite passed 43 tests on Python 3.13.16 with jsonschema 4.26.0; `contracts/corpus/release/lineage/boundary/stage0` all passed; all 11 injected semantic defects failed as expected and the exact minimal-lineage chain matched.
 
 ## Open architecture question
 
@@ -45,6 +45,6 @@ Promotion requires referenced QA evidence, but current authoritative contracts d
 
 ## Historical records
 
-Historical migration and handoff records are retained unchanged, including superseded records. They remain audit history and are not the current status source.
+Historical migration and handoff records are retained; obsolete handoffs are explicitly marked `SUPERSEDED` rather than deleted. They remain audit history and are not the current status source.
 
 Current status is this document plus the latest QA source of truth on Google Drive.
