@@ -325,7 +325,11 @@
       "required": [
         "record_type",
         "model_ref_id",
-        "model_name"
+        "model_name",
+        "digest",
+        "immutable_revision",
+        "identity_namespace",
+        "identity_key"
       ],
       "properties": {
         "record_type": {
@@ -357,26 +361,63 @@
               "type": "null"
             }
           ]
+        },
+        "identity_namespace": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "identity_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
         }
       },
       "anyOf": [
         {
+          "properties": {
+            "digest": {
+              "$ref": "#/$defs/sha256"
+            }
+          },
           "required": [
-            "immutable_revision"
-          ],
+            "digest"
+          ]
+        },
+        {
           "properties": {
             "immutable_revision": {
               "$ref": "ids.schema.json#/$defs/immutable_version_ref"
             }
-          }
-        },
-        {
+          },
           "required": [
-            "digest"
-          ],
-          "properties": {
-            "digest": {
-              "$ref": "#/$defs/sha256"
+            "immutable_revision"
+          ]
+        }
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "immutable_revision": {
+                "type": "string"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "identity_namespace": {
+                "type": "string",
+                "minLength": 1
+              },
+              "identity_key": {
+                "type": "string",
+                "minLength": 1
+              }
             }
           }
         }
@@ -697,7 +738,8 @@
         "input_artifact_hashes",
         "code_ref_id",
         "config_hash",
-        "schema_version"
+        "schema_version",
+        "model_identity_hash"
       ],
       "properties": {
         "digest": {
@@ -716,7 +758,10 @@
         "config_hash": {
           "$ref": "#/$defs/sha256"
         },
-        "model_digest": {
+        "schema_version": {
+          "$ref": "ids.schema.json#/$defs/immutable_version_ref"
+        },
+        "model_identity_hash": {
           "anyOf": [
             {
               "$ref": "#/$defs/sha256"
@@ -725,9 +770,6 @@
               "type": "null"
             }
           ]
-        },
-        "schema_version": {
-          "$ref": "ids.schema.json#/$defs/immutable_version_ref"
         }
       }
     },
@@ -749,7 +791,8 @@
         "quality_report_id",
         "status",
         "created_at",
-        "computation_signature"
+        "computation_signature",
+        "model_ref_id"
       ],
       "properties": {
         "record_type": {
@@ -816,7 +859,43 @@
         "computation_signature": {
           "$ref": "#/$defs/computation_signature"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "model_ref_id": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "model_ref_id"
+            ]
+          },
+          "then": {
+            "properties": {
+              "computation_signature": {
+                "properties": {
+                  "model_identity_hash": {
+                    "type": "null"
+                  }
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "computation_signature": {
+                "properties": {
+                  "model_identity_hash": {
+                    "$ref": "#/$defs/sha256"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
     },
     "lineage_query_result": {
       "type": "object",

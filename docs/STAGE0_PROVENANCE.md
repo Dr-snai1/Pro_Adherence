@@ -1,6 +1,6 @@
 # Stage 0 provenance contract
 
-Status: QA-S0-001 and QA-S0-002 independently verified and CLOSED. QA-S0-005 remains OPEN / BLOCKING pending architecture decision.
+Status: QA-S0-001 and QA-S0-002 independently verified and CLOSED. QA-S0-005 remains OPEN / BLOCKING pending independent targeted QA.
 
 ## Root record discriminator
 
@@ -26,6 +26,10 @@ Schema, adapter and model revision fields that are immutable references use the 
 
 Cross-record uniqueness/referential-integrity checks beyond JSON Schema remain a later repository-validator responsibility.
 
-## Explicitly unchanged
+## QA-S0-005 model identity (implemented; awaiting independent QA)
 
-QA-S0-005 is not addressed here. The rule that connects model identity to `compute_asset.computation_signature` still requires the separate architecture decision and must not be inferred from this defect-fix.
+`model_identity_hash` is SHA-256 of compact UTF-8 JSON, ordered keys: `identity_schema`, `content_digest`, `identity_namespace`, `identity_key`, `immutable_revision`. Explicit nulls are required. Model display name and model ref ID are excluded. Immutable revision requires namespace and key. At least digest or revision is non-null; both included when available.
+
+Computation digest is SHA-256 of compact UTF-8 JSON in key order `input_artifact_hashes`, `code_ref_id`, `config_hash`, `model_identity_hash`, `schema_version`. Model-backed/non-model nullability is enforced in schema and executable helper; cross-record resolution uses `src/pro_adherence/computation_signature.py`.
+
+**Superseded / migration:** former optional `computation_signature.model_digest` is superseded by required nullable `model_identity_hash`; existing records need explicit migration and digest recomputation. QA-S0-001–004 remain CLOSED; QA-S0-005 remains OPEN/BLOCKING until targeted independent QA.

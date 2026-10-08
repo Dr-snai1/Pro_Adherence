@@ -1,0 +1,32 @@
+{
+  "record_type": "compute_asset",
+  "asset_type": "synthetic_compute",
+  "asset_id": "018f0c50-7b1d-7cc3-8a5b-0123456789ab",
+  "input_artifact_ids": [
+    "018f0c50-7b1d-7cc3-8a5b-1123456789ab"
+  ],
+  "corpus_release_id": "018f0c50-7b1d-7cc3-9a5b-3123456789ab",
+  "code_ref_id": "018f0c50-7b1d-7cc3-ba5b-5123456789ab",
+  "config_ref_id": "018f0c50-7b1d-7cc3-8a5b-6123456789ab",
+  "model_ref_id": "018f0c50-7b1d-7cc3-9a5b-7123456789ab",
+  "environment_ref_id": "018f0c50-7b1d-7cc3-aa5b-8123456789ab",
+  "seed_policy": {
+    "mode": "fixed",
+    "seed": 42
+  },
+  "output_uri": "derived/synthetic/example.json",
+  "output_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "quality_report_id": "018f0c50-7b1d-7cc3-8a5b-9123456789ab",
+  "status": "validated",
+  "created_at": "2026-10-08T00:00:03Z",
+  "computation_signature": {
+    "digest": "956ff79188aef5492698f12d75ccfe70e0e910b9fefb3fc41fc09e98e13a365b",
+    "input_artifact_hashes": [
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ],
+    "code_ref_id": "018f0c50-7b1d-7cc3-ba5b-5123456789ab",
+    "config_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "model_identity_hash": "2e75c08ef87dbe230d94964dbaa8117bb44c9269ecc4bc1b1f82712e75f2cdaf",
+    "schema_version": "1.0.0"
+  }
+}

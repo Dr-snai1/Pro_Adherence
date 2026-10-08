@@ -138,7 +138,9 @@
       "model_ref_id": "018f0c50-7b1d-7cc3-9a5b-7123456789ab",
       "model_name": "synthetic-model",
       "immutable_revision": "model-revision-2026-10-08",
-      "digest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      "digest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "identity_namespace": "fixture",
+      "identity_key": "synthetic-model"
     }
   ],
   "environment_refs": [

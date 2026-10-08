@@ -18,11 +18,11 @@ These defects are closed and must not be reopened without a new regression.
 
 ## Open blocker
 
-`QA-S0-005` — **OPEN / BLOCKING / ARCHITECTURE DECISION REQUIRED**.
+`QA-S0-005` — **OPEN / BLOCKING / IMPLEMENTATION PENDING INDEPENDENT QA**.
 
 Scope: immutable model identity in `compute_asset.computation_signature`.
 
-Development must not choose the missing architectural rule unilaterally. Resolution belongs to `02 — Техническая архитектура`, followed by implementation and a separate targeted QA rerun.
+Architecture has resolved the model identity rule. Targeted implementation is present, but independent QA has not closed the blocker.
 
 ## Remaining Stage 0 work
 
