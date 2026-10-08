@@ -270,6 +270,32 @@ class PromotionQualityTests(unittest.TestCase):
         r = report("inconsistent", artifact_id=w["artifact_a"]["artifact_id"], status="warn", checks=("pass", "pass"))
         self.assertTrue(any("does not match effective status" in x for x in v.validate_quality_report(r)))
 
+    def test_declared_fail_without_fail_check_invalid(self):
+        w = make_world()
+        r = report("inconsistent", artifact_id=w["artifact_a"]["artifact_id"], status="fail", checks=("pass", "warn"))
+        self.assertTrue(any("does not match effective status" in x for x in v.validate_quality_report(r)))
+
+    def test_rejected_unrelated_report_is_invalid_provenance(self):
+        w = make_world()
+        r = report("unrelated", artifact_id=w["artifact_b"]["artifact_id"], status="warn", checks=("warn",))
+        e = event("primary", [w["artifact_a"]["artifact_id"]], [r["quality_report_id"]], decision="rejected")
+        errors, qualifies = v.validate_promotion_event_quality(
+            e,
+            quality_reports={r["quality_report_id"]: r},
+            run_outputs=w["lineage"]["run_outputs"],
+        )
+        self.assertTrue(any("no applicable artifacts" in x for x in errors))
+        self.assertFalse(qualifies)
+
+    def test_two_valid_events_union_fully_covers_release(self):
+        w = make_world()
+        a = report("artifact_pass", artifact_id=w["artifact_a"]["artifact_id"])
+        b = report("artifact_pass_b", artifact_id=w["artifact_b"]["artifact_id"])
+        e1 = event("primary", [w["artifact_a"]["artifact_id"]], [a["quality_report_id"]], target_release_id=IDS["release"])
+        e2 = event("secondary", [w["artifact_b"]["artifact_id"]], [b["quality_report_id"]], target_release_id=IDS["release"])
+        rel = make_release(w, [w["artifact_a"], w["artifact_b"]], [e1["promotion_event_id"], e2["promotion_event_id"]])
+        self.assertEqual(validate_release(w, rel, [e1, e2], [a, b]), [])
+
     def test_unrelated_artifact_scoped_pass_invalid(self):
         w = make_world()
         r = report("unrelated", artifact_id=w["artifact_b"]["artifact_id"])

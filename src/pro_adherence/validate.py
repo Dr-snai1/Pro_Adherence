@@ -738,6 +738,85 @@ def aggregate_stage0(root: Path = ROOT) -> list[str]:
             run_outputs=[],
         )
     )
+
+    # Aggregate Stage 0 also exercises the promoted-release quality predicate
+    # with a deterministic committed smoke fixture rather than only a draft release.
+    smoke_ids = load_json(root / "tests/fixtures/promotion_quality_cases.json")
+    promoted_lineage = copy.deepcopy(lineage)
+    promoted_artifact = promoted_lineage["artifacts"][-1]
+    promoted_artifact["access_license"] = {
+        "access_class": "public",
+        "license_class": "fixture",
+        "license_status": "confirmed",
+        "license_evidence_ref": "fixture",
+        "publication_permissions": {
+            "metadata": "allow",
+            "raw_text": "deny",
+            "derived": "allow",
+        },
+    }
+    promoted_catalog = catalog_from_bundle(promoted_lineage)
+
+    promoted_corpus = copy.deepcopy(corpus)
+    promoted_corpus["corpus_release_id"] = promoted_lineage["corpus_release_ids"][0]
+    promoted_corpus["manifest_hash"] = recompute_manifest_hash(promoted_corpus)
+
+    report_id = smoke_ids["reports"]["artifact_pass"]
+    event_id = smoke_ids["events"]["primary"]
+    release_id = smoke_ids["release"]
+    report = {
+        "record_type": "quality_report",
+        "quality_report_id": report_id,
+        "subject_artifact_id": promoted_artifact["artifact_id"],
+        "status": "pass",
+        "checks": [{"check_id": "stage0_smoke", "status": "pass"}],
+        "created_at": "2026-10-08T00:19:00Z",
+    }
+    event = {
+        "record_type": "promotion_event",
+        "promotion_event_id": event_id,
+        "artifact_ids": [promoted_artifact["artifact_id"]],
+        "quality_report_ids": [report_id],
+        "decision": "promoted",
+        "target_release_id": release_id,
+        "created_at": "2026-10-08T00:20:00Z",
+    }
+    promoted_release = {
+        "manifest_version": "1.0.0",
+        "release_id": release_id,
+        "status": "promoted",
+        "corpus_release_id": promoted_lineage["corpus_release_ids"][0],
+        "artifacts": [{
+            "artifact_id": promoted_artifact["artifact_id"],
+            "artifact_type": promoted_artifact["artifact_type"],
+            "content_hash": promoted_artifact["content_hash"],
+            "schema_version": promoted_artifact["schema_version"],
+            "role": "stage0_smoke",
+            "public_path": "data/stage0-smoke.json",
+            "publication_permission_basis": "derived",
+            "access_license": copy.deepcopy(promoted_artifact["access_license"]),
+        }],
+        "promotion_event_ids": [event_id],
+        "manifest_hash": "",
+        "created_at": "2026-10-08T00:20:00Z",
+        "superseded_by": None,
+    }
+    promoted_release["manifest_hash"] = recompute_manifest_hash(promoted_release)
+    errors.extend(
+        validate_release_manifest(
+            promoted_release,
+            ctx=ctx,
+            artifacts=promoted_catalog.artifacts,
+            corpus_manifests={
+                promoted_corpus["corpus_release_id"]: promoted_corpus
+            },
+            promotion_events={event_id: event},
+            quality_reports={report_id: report},
+            run_outputs=promoted_catalog.run_outputs,
+            lineage_artifact_ids={promoted_artifact["artifact_id"]},
+        )
+    )
+
     errors.extend(validate_repository_boundary(root))
     return errors
 

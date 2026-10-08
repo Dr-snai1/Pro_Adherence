@@ -28,5 +28,14 @@
     "missing artifact coverage",
     "rejected event",
     "promoted release fully covered by events"
-  ]
+  ],
+  "stage0_smoke": {
+    "purpose": "Aggregate stage0 must execute a valid promoted release through the pass-only quality predicate.",
+    "scope": "artifact",
+    "report_status": "pass",
+    "check_statuses": [
+      "pass"
+    ],
+    "expected": "VALID"
+  }
 }
