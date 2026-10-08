@@ -43,7 +43,9 @@ On implementation commit `293ef214cddb132e32b339d2baf0a4938a6e531c`, GitHub Acti
 
 The former architecture ambiguity is resolved in the authoritative TECHNICAL_ARCHITECTURE. Development now implements fail-closed PASS-only promotion evidence: report status must match checks; scope is direct artifact or direct run output only; each promoted artifact needs qualifying coverage; exact evidence aggregation is AND; WARN/FAIL have no waiver; rejected events never qualify for release promotion.
 
-This implementation delta is awaiting its exact-commit CI run and then targeted independent QA. Stage 0 remains **OPEN / NOT RELEASE-READY**.
+Developer verification is complete on final implementation commit `bcd6ad1b2ca7f1a2f97aabde36326edf2374c1a2`: GitHub Actions run `37813141576` / job `113434865098` succeeded on Python 3.13.16 with jsonschema 4.26.0; 68 tests passed; focused CLI and aggregate `stage0` passed; mutation audit rejected 21/21 injected defects and the separate semantic decision matrix matched 12/12 expected outcomes. The aggregate `stage0` path now includes a deterministic promoted-release smoke that executes the pass-only predicate.
+
+Intermediate implementation commit `1a8ee69606d6640e44ff390e106ecb1d4c949a9d` is superseded by `bcd6ad1b2ca7f1a2f97aabde36326edf2374c1a2` because final readback identified and closed an aggregate-acceptance coverage gap. Targeted independent QA is still pending. Stage 0 remains **OPEN / NOT RELEASE-READY**.
 
 ## Historical records
 

@@ -11,7 +11,7 @@ Local commands (from repository root):
 - PYTHONPATH=src python -m pro_adherence.validate boundary
 - PYTHONPATH=src python -m pro_adherence.validate stage0
 
-Add --json before the subcommand for a machine-readable result. Any blocking validation error returns a non-zero exit code.
+Add --json before the subcommand for a machine-readable result. Any blocking validation error returns a non-zero exit code. The aggregate `stage0` command also runs a deterministic promoted-release smoke fixture through the same pass-only promotion-quality predicate, so aggregate validation exercises the promotion gate rather than validating only a draft release.
 
 The validator resolves JSON Schema references from contracts/schemas only; it does not fetch schema references from the network. Corpus validation reconciles article count, IDs, input artifact hashes, policy file bytes/hashes and manifest hash. Release validation reconciles exact artifact metadata, publication permission, corpus compatibility, promotion evidence and validated complete-lineage coverage for each promoted artifact. Lineage validation enforces cross-record references, unique producing runs and a root-relevant direct-input/source-fetch/corpus chain, and exposes deterministic output-artifact lineage reconstruction.
 
