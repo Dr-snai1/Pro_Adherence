@@ -60,6 +60,12 @@ The final promotion-quality diff does not add cycle detection, packaging/install
 QA-S0-006-DOC-01 affected stale current text in `docs/STAGE0_MANIFESTS.md`. Development corrected the current promotion-quality boundary to the authoritative PASS-only contract and preserved the former unresolved wording only as explicit SUPERSEDED history. No promotion-quality code, schema, fixture, test, mutation-audit, or workflow semantics were changed by this documentation repair.
 
 
+## Workflow rule v0.2 compliance
+
+Current workflow authority is `01_PROJECT_RULES v0.2`. Rule 13 requires every substantive QA submission to be one verified change on one exact commit. The QA-S0-006 documentation closure is therefore routed as a single atomic candidate commit containing the unchanged executable implementation, its tests, repaired documentation, requirement/architecture references and self-check evidence. Earlier component commits remain audit history only and are not separate QA targets.
+
+QA-S0-007–009 remain blocking criteria in the current Stage 0. No next Stage may begin until the current Stage has no blocking criteria.
+
 ## Historical records
 
 Historical migration and handoff records are retained; obsolete handoffs are explicitly marked `SUPERSEDED` rather than deleted. They remain audit history and are not the current status source.

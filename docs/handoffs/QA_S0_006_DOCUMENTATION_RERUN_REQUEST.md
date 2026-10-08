@@ -7,6 +7,11 @@
 
 ## КОНТЕКСТ
 
+Workflow authority: `01_PROJECT_RULES v0.2`, rule 13 (atomic change before QA).
+
+The earlier multi-commit repair history remains audit provenance, but under v0.2 it is **not** the QA target. QA must inspect one exact atomic candidate commit containing the complete repository state: unchanged executable implementation + tests + repaired current documentation + supersession records + this self-check/routing record. The exact candidate SHA cannot be embedded in the file that creates that SHA; it is supplied in the chat handoff from 03 to 04 and QA must check that exact commit only.
+
+
 Independent targeted QA confirmed that executable QA-S0-006 promotion-quality semantics PASS on implementation commit:
 
 `bcd6ad1b2ca7f1a2f97aabde36326edf2374c1a2`
@@ -19,15 +24,15 @@ QA requested a documentation-only repair without changing promotion-quality code
 
 The stale current documentation has been repaired.
 
-Primary documentation repair commit:
+Historical component commits (audit provenance only, **not separate QA targets**):
 
-`600b435e17543374e54d8ed284b1551a1bc822f4`
+- documentation repair: `600b435e17543374e54d8ed284b1551a1bc822f4`;
+- historical supersession/readback cleanup: `116742ced6c72e12e9db7b8435faa6153bca0b82`;
+- earlier routing record: `d1f3a426d66b3568588a684acf54d3b4c2298f8e`.
 
-Additional historical supersession/readback cleanup commit:
+Under `01_PROJECT_RULES v0.2 §13`, the QA target is the single exact atomic candidate commit supplied by 03 in the chat handoff. That commit contains the cumulative state of these changes and the unchanged executable implementation.
 
-`116742ced6c72e12e9db7b8435faa6153bca0b82`
-
-Please perform the narrow QA rerun requested by QA-S0-006-DOC-01:
+Please perform the narrow QA rerun requested by QA-S0-006-DOC-01 on that one exact commit:
 
 1. confirm code/schema/fixtures/tests/workflow semantics are unchanged from `bcd6ad1...`;
 2. read back corrected `docs/STAGE0_MANIFESTS.md`;
@@ -82,9 +87,15 @@ No promotion-quality implementation code, schema, fixture, test, mutation-audit 
 
 ## ПРОВЕРКА
 
-Developer/readback verification:
+Developer/readback verification for the atomic candidate tree:
 
-Source → Git comparison from executable implementation `bcd6ad1b2ca7f1a2f97aabde36326edf2374c1a2` to documentation-repair head `116742ced6c72e12e9db7b8435faa6153bca0b82`.
+Requirements/architecture links:
+- `01_PROJECT_RULES v0.2 §13`;
+- current `TECHNICAL_ARCHITECTURE §§2.6, 6.2, 6.5, 9.1, 9.5–9.6, Appendix B`.
+
+Self-check evidence:
+
+Source → Git comparison from executable implementation `bcd6ad1b2ca7f1a2f97aabde36326edf2374c1a2` to the atomic QA candidate tree.
 
 Method → exact GitHub compare + direct readback/search of current docs.
 
@@ -140,6 +151,6 @@ Separate blockers remain QA-S0-007–009 plus broader environment/lockfile, buil
 
 ## СЛЕДУЮЩЕЕ ДЕЙСТВИЕ
 
-04 performs the narrow documentation/current-main rerun. If documentation consistency and supersession checks pass while implementation identity remains unchanged, close QA-S0-006 and return the verdict to 03.
+04 checks only the exact atomic candidate commit supplied in the chat handoff. If documentation consistency and supersession checks pass while implementation identity remains unchanged, close QA-S0-006 and return the verdict to 03. Because QA-S0-007–009 remain blocking in Stage 0, no later Stage may begin.
 
 Stage 0 remains **OPEN / NOT RELEASE-READY**.
