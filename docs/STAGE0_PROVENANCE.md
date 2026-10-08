@@ -46,3 +46,9 @@ Promotion evidence and serving compatibility are checked against exact release-m
 For promotion, a release artifact must be the root output of a semantically valid `lineage_bundle`; a standalone `run_output`/producer reference is not sufficient evidence of complete lineage.
 
 A semantically valid root lineage must reconstruct at least one direct input artifact, one relevant source fetch and one relevant corpus release; unrelated records elsewhere in the bundle do not satisfy those requirements.
+
+## Promotion-quality evidence
+
+The promotion-quality contract is now executable. `quality_report.status` must equal the `fail > warn > pass` aggregate of checks. `promotion_event.quality_report_ids` is the exact evidence set: promoted events require every referenced report to be internally consistent PASS evidence and applicable by direct artifact scope or direct `subject_run_id -> run_output -> artifact_id` scope. Every promoted artifact requires at least one qualifying report; unrelated reports, WARN, FAIL, PASS+WARN, PASS+FAIL, transitive descendants and implicit `compute_asset.quality_report_id` coverage fail closed.
+
+Rejected events remain provenance-only: internally consistent PASS/WARN/FAIL evidence is allowed, each referenced report must be relevant to at least one event artifact, complete per-artifact coverage is not required, and the event never satisfies a promoted release gate.

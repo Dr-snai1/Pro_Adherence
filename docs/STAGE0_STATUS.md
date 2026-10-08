@@ -39,9 +39,11 @@ Independent QA of this workstream is still pending. Remaining Stage 0 acceptance
 
 On implementation commit `293ef214cddb132e32b339d2baf0a4938a6e531c`, GitHub Actions run `37803936823` checked out the exact committed state and ran the full unit suite, all focused validator CLI modes, the aggregate validator and the independent semantic mutation audit. The suite passed 43 tests on Python 3.13.16 with jsonschema 4.26.0; `contracts/corpus/release/lineage/boundary/stage0` all passed; all 11 injected semantic defects failed as expected and the exact minimal-lineage chain matched.
 
-## Open architecture question
+## Promotion-quality predicate
 
-Promotion requires referenced QA evidence, but current authoritative contracts do not unambiguously say that every referenced `quality_report.status` must be `pass`. The validator checks evidence existence/decision/target/coverage but does not invent that rule. Route the exact semantic question to `02 — Техническая архитектура`.
+The former architecture ambiguity is resolved in the authoritative TECHNICAL_ARCHITECTURE. Development now implements fail-closed PASS-only promotion evidence: report status must match checks; scope is direct artifact or direct run output only; each promoted artifact needs qualifying coverage; exact evidence aggregation is AND; WARN/FAIL have no waiver; rejected events never qualify for release promotion.
+
+This implementation delta is awaiting its exact-commit CI run and then targeted independent QA. Stage 0 remains **OPEN / NOT RELEASE-READY**.
 
 ## Historical records
 

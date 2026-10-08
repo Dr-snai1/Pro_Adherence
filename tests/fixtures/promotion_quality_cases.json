@@ -1,0 +1,32 @@
+{
+  "artifact_b": "018f0c50-7b1d-7cc3-8a5b-000000000920",
+  "artifact_c": "018f0c50-7b1d-7cc3-8a5b-000000000921",
+  "run_descendant": "018f0c50-7b1d-7cc3-8a5b-000000000922",
+  "release": "018f0c50-7b1d-7cc3-8a5b-000000000923",
+  "other_release": "018f0c50-7b1d-7cc3-8a5b-000000000924",
+  "reports": {
+    "artifact_pass": "018f0c50-7b1d-7cc3-8a5b-000000000930",
+    "artifact_pass_b": "018f0c50-7b1d-7cc3-8a5b-000000000931",
+    "run_pass": "018f0c50-7b1d-7cc3-8a5b-000000000932",
+    "warn": "018f0c50-7b1d-7cc3-8a5b-000000000933",
+    "fail": "018f0c50-7b1d-7cc3-8a5b-000000000934",
+    "inconsistent": "018f0c50-7b1d-7cc3-8a5b-000000000935",
+    "unrelated": "018f0c50-7b1d-7cc3-8a5b-000000000936"
+  },
+  "events": {
+    "primary": "018f0c50-7b1d-7cc3-8a5b-000000000940",
+    "secondary": "018f0c50-7b1d-7cc3-8a5b-000000000941"
+  },
+  "coverage": [
+    "artifact-scoped PASS promotion",
+    "run-scoped PASS promotion",
+    "multi-artifact direct-output coverage",
+    "WARN",
+    "FAIL",
+    "inconsistent report-level status",
+    "unrelated report",
+    "missing artifact coverage",
+    "rejected event",
+    "promoted release fully covered by events"
+  ]
+}

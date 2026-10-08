@@ -69,16 +69,46 @@ def promoted_fixture():
     return lineage, release, corpus, report, event
 
 
-def release_errors(lineage, release, corpus, report, event, events=None):
+def release_errors(
+    lineage, release, corpus, report, event, events=None, reports=None,
+    lineage_artifact_ids=None,
+):
     catalog = v.catalog_from_bundle(lineage)
     return v.validate_release_manifest(
         release, ctx=CTX, artifacts=catalog.artifacts,
         corpus_manifests={corpus["corpus_release_id"]: corpus},
         promotion_events=events if events is not None else {event["promotion_event_id"]: event},
-        quality_reports={report["quality_report_id"]: report},
+        quality_reports=reports if reports is not None else {report["quality_report_id"]: report},
         run_outputs=catalog.run_outputs,
-        lineage_artifact_ids={release["artifacts"][0]["artifact_id"]},
+        lineage_artifact_ids=(
+            set(lineage_artifact_ids)
+            if lineage_artifact_ids is not None
+            else {item["artifact_id"] for item in release.get("artifacts", [])}
+        ),
     )
+
+
+def add_second_direct_output(lineage, release, event):
+    artifact = copy.deepcopy(lineage["artifacts"][-1])
+    artifact["artifact_id"] = uid(970)
+    artifact["uri"] = "derived/synthetic/second-output.json"
+    artifact["content_hash"] = "9" * 64
+    artifact["access_license"] = public_access()
+    lineage["artifacts"].append(artifact)
+
+    binding = copy.deepcopy(lineage["run_outputs"][0])
+    binding["artifact_id"] = artifact["artifact_id"]
+    binding["role"] = "result_b"
+    lineage["run_outputs"].append(binding)
+
+    item = copy.deepcopy(release["artifacts"][0])
+    item["artifact_id"] = artifact["artifact_id"]
+    item["content_hash"] = artifact["content_hash"]
+    item["public_path"] = "data/result-b.json"
+    release["artifacts"].append(item)
+    event["artifact_ids"].append(artifact["artifact_id"])
+    set_hash(release)
+    return artifact["artifact_id"]
 
 
 checks = []
@@ -130,6 +160,56 @@ mismatch = copy.deepcopy(lineage)
 mismatch["artifacts"][-1]["corpus_release_id"] = uid(963)
 checks.append(("corpus mismatch", release_errors(mismatch, release, rel_corpus, report, event)))
 
+lineage, release, rel_corpus, report, event = promoted_fixture()
+report["status"] = "warn"; report["checks"][0]["status"] = "warn"
+checks.append(("PASS -> WARN", release_errors(lineage, release, rel_corpus, report, event)))
+
+lineage, release, rel_corpus, report, event = promoted_fixture()
+report["status"] = "fail"; report["checks"][0]["status"] = "fail"
+checks.append(("PASS -> FAIL", release_errors(lineage, release, rel_corpus, report, event)))
+
+lineage, release, rel_corpus, report, event = promoted_fixture()
+report["checks"][0]["status"] = "warn"
+checks.append(("declared PASS + WARN check", release_errors(lineage, release, rel_corpus, report, event)))
+
+lineage, release, rel_corpus, report, event = promoted_fixture()
+report["checks"][0]["status"] = "fail"
+checks.append(("declared PASS + FAIL check", release_errors(lineage, release, rel_corpus, report, event)))
+
+lineage, release, rel_corpus, report, event = promoted_fixture()
+report["subject_artifact_id"] = uid(964)
+checks.append(("unrelated quality report", release_errors(lineage, release, rel_corpus, report, event)))
+
+lineage, release, rel_corpus, report, event = promoted_fixture()
+report.pop("subject_artifact_id")
+report["subject_run_id"] = lineage["runs"][0]["run_id"]
+lineage["run_outputs"] = []
+checks.append(("remove direct run_output relation", release_errors(lineage, release, rel_corpus, report, event)))
+
+lineage, release, rel_corpus, report, event = promoted_fixture()
+add_second_direct_output(lineage, release, event)
+checks.append(("remove one artifact coverage", release_errors(lineage, release, rel_corpus, report, event)))
+
+lineage, release, rel_corpus, report, event = promoted_fixture()
+extra_report = copy.deepcopy(report)
+extra_report["quality_report_id"] = uid(965)
+extra_report["subject_artifact_id"] = uid(966)
+event["quality_report_ids"].append(extra_report["quality_report_id"])
+checks.append(("add unrelated PASS to evidence set", release_errors(
+    lineage, release, rel_corpus, report, event,
+    reports={report["quality_report_id"]: report, extra_report["quality_report_id"]: extra_report},
+)))
+
+lineage, release, rel_corpus, report, event = promoted_fixture()
+event["decision"] = "rejected"
+checks.append(("replace promoted event with rejected", release_errors(lineage, release, rel_corpus, report, event)))
+
+lineage, release, rel_corpus, report, event = promoted_fixture()
+release["promotion_event_ids"] = []
+set_hash(release)
+checks.append(("remove release-level event coverage", release_errors(lineage, release, rel_corpus, report, event)))
+
+
 failed = []
 for name, errors in checks:
     if not errors:
@@ -162,4 +242,90 @@ else:
 if failed:
     print("AUDIT FAIL:", ", ".join(failed))
     raise SystemExit(1)
-print(f"AUDIT PASS: {len(checks)} expected failures + exact lineage chain")
+
+decision_failures = []
+
+
+def record_decision(name, expected_valid, errors):
+    actual_valid = not errors
+    print(
+        f"DECISION {name}: expected={'VALID' if expected_valid else 'INVALID'} "
+        f"actual={'VALID' if actual_valid else 'INVALID'}"
+    )
+    if actual_valid != expected_valid:
+        decision_failures.append(name)
+
+
+lineage, release, rel_corpus, report, event = promoted_fixture()
+record_decision("applicable PASS", True, release_errors(lineage, release, rel_corpus, report, event))
+
+lineage, release, rel_corpus, report, event = promoted_fixture()
+report["status"] = "warn"; report["checks"][0]["status"] = "warn"
+record_decision("WARN", False, release_errors(lineage, release, rel_corpus, report, event))
+
+lineage, release, rel_corpus, report, event = promoted_fixture()
+report["status"] = "fail"; report["checks"][0]["status"] = "fail"
+record_decision("FAIL", False, release_errors(lineage, release, rel_corpus, report, event))
+
+lineage, release, rel_corpus, report, event = promoted_fixture()
+warn = copy.deepcopy(report); warn["quality_report_id"] = uid(980); warn["status"] = "warn"; warn["checks"][0]["status"] = "warn"
+event["quality_report_ids"].append(warn["quality_report_id"])
+record_decision("PASS + WARN", False, release_errors(
+    lineage, release, rel_corpus, report, event,
+    reports={report["quality_report_id"]: report, warn["quality_report_id"]: warn},
+))
+
+lineage, release, rel_corpus, report, event = promoted_fixture()
+fail = copy.deepcopy(report); fail["quality_report_id"] = uid(981); fail["status"] = "fail"; fail["checks"][0]["status"] = "fail"
+event["quality_report_ids"].append(fail["quality_report_id"])
+record_decision("PASS + FAIL", False, release_errors(
+    lineage, release, rel_corpus, report, event,
+    reports={report["quality_report_id"]: report, fail["quality_report_id"]: fail},
+))
+
+lineage, release, rel_corpus, report, event = promoted_fixture()
+report["subject_artifact_id"] = uid(982)
+record_decision("unrelated PASS", False, release_errors(lineage, release, rel_corpus, report, event))
+
+lineage, release, rel_corpus, report, event = promoted_fixture()
+report.pop("subject_artifact_id"); report["subject_run_id"] = lineage["runs"][0]["run_id"]
+record_decision("run PASS -> direct output", True, release_errors(lineage, release, rel_corpus, report, event))
+
+lineage, release, rel_corpus, report, event = promoted_fixture()
+root_artifact = lineage["artifacts"][-1]
+child = copy.deepcopy(root_artifact)
+child["artifact_id"] = uid(983); child["content_hash"] = "7" * 64; child["uri"] = "derived/synthetic/descendant.json"
+lineage["artifacts"].append(child)
+child_run = copy.deepcopy(lineage["runs"][0]); child_run["run_id"] = uid(984)
+lineage["runs"].append(child_run)
+lineage["run_inputs"].append({"record_type": "run_input", "run_id": child_run["run_id"], "artifact_id": root_artifact["artifact_id"], "role": "input"})
+lineage["run_outputs"].append({"record_type": "run_output", "run_id": child_run["run_id"], "artifact_id": child["artifact_id"], "role": "result"})
+release["artifacts"][0]["artifact_id"] = child["artifact_id"]
+release["artifacts"][0]["content_hash"] = child["content_hash"]
+release["artifacts"][0]["public_path"] = "data/descendant.json"
+event["artifact_ids"] = [child["artifact_id"]]
+report.pop("subject_artifact_id"); report["subject_run_id"] = lineage["runs"][0]["run_id"]
+set_hash(release)
+record_decision("run PASS -> descendant only", False, release_errors(lineage, release, rel_corpus, report, event))
+
+lineage, release, rel_corpus, report, event = promoted_fixture()
+add_second_direct_output(lineage, release, event)
+record_decision("artifact without coverage", False, release_errors(lineage, release, rel_corpus, report, event))
+
+lineage, release, rel_corpus, report, event = promoted_fixture()
+event["decision"] = "rejected"
+record_decision("rejected event", False, release_errors(lineage, release, rel_corpus, report, event))
+
+lineage, release, rel_corpus, report, event = promoted_fixture()
+report["checks"][0]["status"] = "warn"
+record_decision("inconsistent report status", False, release_errors(lineage, release, rel_corpus, report, event))
+
+lineage, release, rel_corpus, report, event = promoted_fixture()
+add_second_direct_output(lineage, release, event)
+event["artifact_ids"] = [release["artifacts"][0]["artifact_id"]]
+record_decision("release union coverage", False, release_errors(lineage, release, rel_corpus, report, event))
+
+if decision_failures:
+    print("DECISION AUDIT FAIL:", ", ".join(decision_failures))
+    raise SystemExit(1)
+print(f"AUDIT PASS: {len(checks)} expected failures + exact lineage chain; decision matrix 12/12")

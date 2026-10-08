@@ -184,6 +184,9 @@ def validate_lineage(bundle: dict, ctx: SchemaContext | None = None) -> list[str
     errors = _schema_errors(ctx, "provenance.schema.json", bundle, "lineage")
     catalog = catalog_from_bundle(bundle, errors)
 
+    for report in catalog.quality_reports.values():
+        errors.extend(validate_quality_report(report))
+
     if bundle.get("root_output_artifact_id") not in catalog.artifacts:
         errors.append("lineage: root output artifact does not exist")
 
@@ -435,6 +438,101 @@ def _publication_allowed(access: dict, basis: str) -> bool:
     )
 
 
+def effective_quality_report_status(report: Mapping) -> str | None:
+    """Return fail > warn > pass aggregate from checks, or None if not computable."""
+    statuses = [check.get("status") for check in report.get("checks", [])]
+    if not statuses or any(status not in {"pass", "warn", "fail"} for status in statuses):
+        return None
+    if "fail" in statuses:
+        return "fail"
+    if "warn" in statuses:
+        return "warn"
+    return "pass"
+
+
+def validate_quality_report(report: Mapping) -> list[str]:
+    """Validate executable report-level status consistency."""
+    report_id = report.get("quality_report_id")
+    effective = effective_quality_report_status(report)
+    if effective is None:
+        return [f"quality_report {report_id}: unable to compute effective status from checks"]
+    declared = report.get("status")
+    if declared != effective:
+        return [
+            f"quality_report {report_id}: declared status {declared!r} "
+            f"does not match effective status {effective!r}"
+        ]
+    return []
+
+
+def quality_report_applicable_artifacts(
+    report: Mapping,
+    event_artifact_ids: Iterable[str],
+    run_outputs: Sequence[dict],
+) -> set[str]:
+    """Return only explicitly covered event artifacts; run scope is direct-output only."""
+    event_ids = set(event_artifact_ids)
+    subject_artifact_id = report.get("subject_artifact_id")
+    if subject_artifact_id is not None:
+        return {subject_artifact_id} & event_ids
+    subject_run_id = report.get("subject_run_id")
+    if subject_run_id is None:
+        return set()
+    direct_outputs = {
+        item.get("artifact_id")
+        for item in run_outputs
+        if item.get("run_id") == subject_run_id
+    }
+    return direct_outputs & event_ids
+
+
+def validate_promotion_event_quality(
+    event: Mapping,
+    *,
+    quality_reports: Mapping[str, dict],
+    run_outputs: Sequence[dict],
+) -> tuple[list[str], bool]:
+    """Validate exact evidence semantics; bool means the event qualifies as promotion."""
+    errors: list[str] = []
+    event_id = event.get("promotion_event_id")
+    decision = event.get("decision")
+    artifact_ids = set(event.get("artifact_ids", []))
+    covered: set[str] = set()
+
+    for report_id in event.get("quality_report_ids", []):
+        report = quality_reports.get(report_id)
+        if report is None:
+            errors.append(f"promotion_event {event_id}: missing quality_report {report_id}")
+            continue
+
+        report_errors = validate_quality_report(report)
+        errors.extend(report_errors)
+        applicable = quality_report_applicable_artifacts(report, artifact_ids, run_outputs)
+        if not applicable:
+            errors.append(
+                f"promotion_event {event_id}: quality_report {report_id} "
+                "has no applicable artifacts in this event"
+            )
+
+        if decision == "promoted":
+            if report.get("status") != "pass":
+                errors.append(
+                    f"promotion_event {event_id}: quality_report {report_id} "
+                    f"status {report.get('status')!r} is not qualifying PASS evidence"
+                )
+            if not report_errors and report.get("status") == "pass":
+                covered.update(applicable)
+
+    if decision == "promoted":
+        for artifact_id in sorted(artifact_ids - covered):
+            errors.append(
+                f"promotion_event {event_id}: artifact {artifact_id} "
+                "lacks qualifying PASS quality coverage"
+            )
+        return errors, not errors
+    return errors, False
+
+
 def validate_release_manifest(
     manifest: dict,
     *,
@@ -498,16 +596,24 @@ def validate_release_manifest(
             if event is None:
                 errors.append(f"release manifest: missing promotion_event {event_id}")
                 continue
+
+            event_qualifies = True
             if event.get("decision") != "promoted":
                 errors.append(f"release manifest: promotion_event {event_id} decision is not promoted")
+                event_qualifies = False
             if event.get("target_release_id") != manifest.get("release_id"):
                 errors.append(f"release manifest: promotion_event {event_id} wrong target_release_id")
-            covered.update(event.get("artifact_ids", []))
-            for report_id in event.get("quality_report_ids", []):
-                if report_id not in quality_reports:
-                    errors.append(
-                        f"release manifest: promotion_event {event_id} missing quality_report {report_id}"
-                    )
+                event_qualifies = False
+
+            quality_errors, quality_qualifies = validate_promotion_event_quality(
+                event, quality_reports=quality_reports, run_outputs=run_outputs
+            )
+            errors.extend(f"release manifest: {error}" for error in quality_errors)
+            if not quality_qualifies:
+                event_qualifies = False
+            if event_qualifies:
+                covered.update(event.get("artifact_ids", []))
+
         for artifact_id in release_artifact_ids:
             if artifact_id not in covered:
                 errors.append(f"release manifest: artifact {artifact_id} lacks promotion coverage")
@@ -659,6 +765,8 @@ def _load_evidence(
                     validated_lineage_artifact_ids.add(record["root_output_artifact_id"])
         else:
             errors.extend(_schema_errors(ctx, "provenance.schema.json", record, str(path)))
+            if record.get("record_type") == "quality_report":
+                errors.extend(validate_quality_report(record))
         add_evidence_record(catalog, record, errors)
     return catalog, errors, validated_lineage_artifact_ids
 

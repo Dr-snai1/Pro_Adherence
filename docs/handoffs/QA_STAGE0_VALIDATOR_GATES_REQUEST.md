@@ -1,3 +1,5 @@
+> **SUPERSEDED — 2026-10-08.** This QA request describes the pre-decision validator behavior and must not be used for current promotion-quality verification. The architecture ambiguity was subsequently resolved; a new QA handoff will target the final promotion-quality implementation commit. Historical content is retained below unchanged.
+
 # Handoff — Stage 0 validator/gates independent QA request
 
 **ОТ КОГО:** 03 — Разработка  

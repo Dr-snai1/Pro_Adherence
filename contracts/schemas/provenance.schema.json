@@ -567,10 +567,12 @@
           "$ref": "ids.schema.json#/$defs/quality_report_id"
         },
         "subject_artifact_id": {
-          "$ref": "ids.schema.json#/$defs/artifact_id"
+          "$ref": "ids.schema.json#/$defs/artifact_id",
+          "description": "Artifact-scoped QA evidence. For promotion it covers only the identical artifact_id."
         },
         "subject_run_id": {
-          "$ref": "ids.schema.json#/$defs/run_id"
+          "$ref": "ids.schema.json#/$defs/run_id",
+          "description": "Run-scoped QA evidence. For promotion it covers only direct run_output artifacts of this run; descendants or inferred relations do not count."
         },
         "status": {
           "type": "string",
@@ -578,7 +580,8 @@
             "pass",
             "warn",
             "fail"
-          ]
+          ],
+          "description": "Declared aggregate status. It must equal the executable severity aggregate of checks: fail > warn > pass."
         },
         "checks": {
           "type": "array",
@@ -647,14 +650,16 @@
           "uniqueItems": true,
           "items": {
             "$ref": "ids.schema.json#/$defs/quality_report_id"
-          }
+          },
+          "description": "Exact evidence set for this decision. For decision=promoted every referenced report must be internally consistent, status=pass, applicable to at least one event artifact, and together provide per-artifact coverage. No implicit compute_asset coverage or waiver exists."
         },
         "decision": {
           "type": "string",
           "enum": [
             "promoted",
             "rejected"
-          ]
+          ],
+          "description": "promoted may qualify for a release only under the pass-only promotion-quality predicate; rejected is provenance only and never release promotion evidence."
         },
         "target_release_id": {
           "anyOf": [

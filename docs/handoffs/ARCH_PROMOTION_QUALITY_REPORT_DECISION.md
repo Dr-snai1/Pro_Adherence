@@ -1,3 +1,5 @@
+> **SUPERSEDED — 2026-10-08.** The requested architecture decision has been made in the authoritative TECHNICAL_ARCHITECTURE: promotion is fail-closed PASS-only with exact evidence, direct scope, mandatory per-artifact coverage, AND aggregation, no WARN/FAIL waiver, and rejected events excluded from release promotion. Historical request retained below.
+
 # Handoff — promotion quality-report semantics architecture decision
 
 **ОТ КОГО:** 03 — Разработка  
