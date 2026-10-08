@@ -1,6 +1,6 @@
 # Stage 0 provenance contract
 
-Status: QA-S0-001 and QA-S0-002 fixed in implementation; independent QA rerun pending.
+Status: QA-S0-001 and QA-S0-002 independently verified and CLOSED. QA-S0-005 remains OPEN / BLOCKING pending architecture decision.
 
 ## Root record discriminator
 
