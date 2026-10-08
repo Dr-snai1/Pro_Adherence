@@ -2,10 +2,43 @@
 
 Status: QA-S0-001, QA-S0-002 and QA-S0-005 independently verified and CLOSED. Stage 0 overall remains OPEN / NOT RELEASE-READY.
 
-Root provenance records retain required record_type discriminators. lineage_bundle remains the validating container for artifacts, runs, bindings, code/config/model/environment refs and source fetches.
+## Root record discriminator
 
-src/pro_adherence/validate.py now enforces cross-record references, declared corpus references, source-fetch/raw-artifact linkage and the invariant that an immutable output has at most one producing run. It also reconstructs a deterministic chain from output artifact ID to producing run, exact inputs, source artifacts/fetches, corpus IDs and code/config/model/environment refs, with parent/child artifact results.
+Every root provenance record has required `record_type` with a schema-level `const`. This makes record types machine-unique under the root `oneOf`; specifically, a valid `run_input` no longer also validates as `run_output`, and vice versa.
 
-QA-S0-005 model identity remains model_identity_hash over the canonical immutable descriptor. The direct helper is additionally hardened to reject mutable revision aliases even when called without prior JSON Schema validation.
+## Complete lineage bundle
 
-Promotion evidence and release compatibility are executable validator concerns; no research run is promoted merely because it exists. Serving selection is controlled by an explicit release manifest.
+`lineage_bundle` is a first-class root contract. It requires:
+
+- root output artifact ID and corpus release ID(s);
+- input/output artifacts;
+- producing run(s);
+- `run_input` and `run_output`;
+- code/config/environment refs;
+- an explicit model-ref collection (empty only when no model applies);
+- source-fetch linkage.
+
+`contracts/manifests/minimal_lineage.example.json` is a model-backed example containing a raw source artifact, canonical input artifact, output artifact, producing run, both run bindings, code/config/model/environment refs, source fetch and corpus linkage.
+
+## Reproducibility boundaries
+
+Schema, adapter and model revision fields that are immutable references use the shared immutable-version contract. Code refs remain Git commit SHAs; configs and lockfiles remain content-addressed.
+
+Cross-record uniqueness/referential-integrity checks beyond JSON Schema are enforced by `src/pro_adherence/validate.py`, including run/artifact/ref/source-fetch/corpus resolution and the invariant that an immutable output has at most one producing run.
+
+## QA-S0-005 model identity (implemented and independently verified)
+
+`model_identity_hash` is SHA-256 of compact UTF-8 JSON, ordered keys: `identity_schema`, `content_digest`, `identity_namespace`, `identity_key`, `immutable_revision`. Explicit nulls are required. Model display name and model ref ID are excluded. Immutable revision requires namespace and key. At least digest or revision is non-null; both included when available.
+
+Computation digest is SHA-256 of compact UTF-8 JSON in key order `input_artifact_hashes`, `code_ref_id`, `config_hash`, `model_identity_hash`, `schema_version`. Model-backed/non-model nullability is enforced in schema and executable helper; cross-record resolution uses `src/pro_adherence/computation_signature.py`.
+
+**Superseded / migration:** former optional `computation_signature.model_digest` is superseded by required nullable `model_identity_hash`; existing records need explicit migration and digest recomputation. QA-S0-001–005 are independently CLOSED. Stage 0 remains OPEN because validator/build/E2E acceptance work is still incomplete.
+
+
+Migration details: `docs/STAGE0_MODEL_IDENTITY_MIGRATION_2026-10-08.md`.
+
+## Executable lineage and hardening
+
+The validator reconstructs deterministic lineage from an output artifact ID to its unique producing run, exact input/ancestor artifacts, source fetches, corpus release IDs, code/config/model/environment refs and parent/child artifact results. The direct `model_descriptor()` helper now also rejects the mutable revision aliases forbidden by `immutable_version_ref`, even when helper callers bypass JSON Schema validation.
+
+Promotion evidence and serving compatibility are checked against exact release-manifest references; existence of a research run alone is never promotion evidence.
