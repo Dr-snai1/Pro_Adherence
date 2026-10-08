@@ -1,6 +1,6 @@
 # Stage 0 contract migration — 2026-10-08
 
-Status: current migration note for QA-S0-001–004.
+> **HISTORICAL / SUPERSEDED as live status.** Migration evidence retained for QA-S0-001–004. Operational Stage/readiness/QA status is maintained only in project `07_STAGE_STATUS`.
 
 ## Provenance root records
 

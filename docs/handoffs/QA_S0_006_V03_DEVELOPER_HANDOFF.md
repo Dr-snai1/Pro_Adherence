@@ -1,3 +1,5 @@
+> **SUPERSEDED / HISTORICAL ADMISSION RECORD.** Replaced by `PRE_QA_STAGE0_ENVIRONMENT_2026-10-08.md` for the descendant PRE_QA candidate. Retained for audit only; it is not a current QA admission or Stage-status source. Current operational status → project `07_STAGE_STATUS`.
+
 # QA-S0-006 — v0.3 developer package / admission record
 
 **ОТ КОГО:** 03 — Разработка (исключительное исполнение в QA temporary chat)

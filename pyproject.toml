@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools==80.9.0", "wheel==0.45.1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pro-adherence"
+version = "0.1.0"
+description = "Local validation package for Pro_Adherence Stage 0 contracts."
+readme = "README.md"
+requires-python = "==3.13.16"
+dependencies = [
+  "jsonschema==4.26.0",
+]
+
+[project.scripts]
+pro-adherence-validate = "pro_adherence.validate:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["pro_adherence*"]

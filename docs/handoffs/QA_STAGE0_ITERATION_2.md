@@ -1,3 +1,5 @@
+> **HISTORICAL / SUPERSEDED ROUTING RECORD.** Retained for audit only; it is not a current QA admission or Stage-status source. Current operational status → project `07_STAGE_STATUS`; current admission is governed by `08_PRE_QA_GATE`.
+
 # Handoff — Stage 0 iteration 2: IDs, entities, access/license
 
 **ОТ КОГО:** 03 — Разработка  

@@ -1,6 +1,6 @@
 # Stage 0 model identity migration — 2026-10-08
 
-Status: current migration note; QA-S0-005 independently verified and CLOSED.
+> **HISTORICAL / SUPERSEDED as live status.** Migration evidence retained for QA-S0-005. Operational Stage/readiness/QA status is maintained only in project `07_STAGE_STATUS`.
 
 ## Superseded contract
 

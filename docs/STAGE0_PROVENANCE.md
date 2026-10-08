@@ -1,6 +1,6 @@
 # Stage 0 provenance contract
 
-Status: QA-S0-001, QA-S0-002 and QA-S0-005 independently verified and CLOSED. Stage 0 overall remains OPEN / NOT RELEASE-READY.
+> **Operational status:** see project `07_STAGE_STATUS` (00 — Штаб). Historical QA outcomes below are retained as immutable evidence; this document defines provenance contracts, not live Stage/QA status.
 
 ## Root record discriminator
 
@@ -32,7 +32,7 @@ Cross-record uniqueness/referential-integrity checks beyond JSON Schema are enfo
 
 Computation digest is SHA-256 of compact UTF-8 JSON in key order `input_artifact_hashes`, `code_ref_id`, `config_hash`, `model_identity_hash`, `schema_version`. Model-backed/non-model nullability is enforced in schema and executable helper; cross-record resolution uses `src/pro_adherence/computation_signature.py`.
 
-**Superseded / migration:** former optional `computation_signature.model_digest` is superseded by required nullable `model_identity_hash`; existing records need explicit migration and digest recomputation. QA-S0-001–005 are independently CLOSED. Stage 0 remains OPEN because validator/build/E2E acceptance work is still incomplete.
+**SUPERSEDED / historical migration snapshot:** former optional `computation_signature.model_digest` is superseded by required nullable `model_identity_hash`; existing records need explicit migration and digest recomputation. At the time of this snapshot QA-S0-001–005 had been independently closed; current Stage/readiness/blockers are maintained only in `07_STAGE_STATUS`.
 
 
 Migration details: `docs/STAGE0_MODEL_IDENTITY_MIGRATION_2026-10-08.md`.

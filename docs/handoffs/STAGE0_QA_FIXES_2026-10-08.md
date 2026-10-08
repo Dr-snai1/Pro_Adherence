@@ -1,3 +1,5 @@
+> **HISTORICAL / SUPERSEDED ROUTING RECORD.** Retained for audit only; it is not a current QA admission or Stage-status source. Current operational status → project `07_STAGE_STATUS`; current admission is governed by `08_PRE_QA_GATE`.
+
 # Handoff — Stage 0 QA-S0-001–004 implementation, 2026-10-08
 
 > **Current revision.** Supersedes the pre-execution handoff wording in commit `b8d5c0dd29cb06d46cb49b2b743e0a623c7f27a1`, which correctly recorded that executable validation had not yet been run. Git history preserves that earlier state.
