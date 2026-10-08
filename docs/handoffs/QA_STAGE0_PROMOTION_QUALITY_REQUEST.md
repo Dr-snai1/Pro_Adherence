@@ -2,7 +2,7 @@
 
 ОТ КОГО: **03 — Разработка (prepared for routing by temporary implementation chat)**  
 КОМУ: **04 — Тестирование / QA**  
-ТЕМА: **Pro_Adherence — promotion-quality predicate targeted verification**  
+ТЕМА: **Pro_Adherence — QA-S0-006 promotion-quality targeted verification**  
 ТИП: **independent QA acceptance request**
 
 ## КОНТЕКСТ
@@ -12,7 +12,7 @@ Baseline before this workstream: `7723cd83792d5cc4de332ad9add2ea0e5120dfeb`.
 
 The previous `QA_STAGE0_VALIDATOR_GATES_REQUEST.md` is **SUPERSEDED** because it explicitly described the pre-architecture behavior in which PASS-only semantics were unresolved. The architecture question is now closed and the executable validator has changed.
 
-QA-S0-001–005 remain previously CLOSED. Overall Stage 0 remains **OPEN / NOT RELEASE-READY**.
+QA-S0-001–005 remain previously CLOSED. QA-S0-006 is implemented and pending this targeted rerun. QA-S0-007, QA-S0-008 and QA-S0-009 remain OPEN / BLOCKING and are explicitly outside this implementation scope. Overall Stage 0 remains **OPEN / NOT RELEASE-READY**.
 
 ## РЕЗУЛЬТАТ / ЗАПРОС
 
@@ -56,12 +56,12 @@ Promotion semantics are no longer architecture-blocked. The validator now enforc
 
 ## ЧТО ОБНОВИТЬ
 
-04 should update the Stage 0 QA matrix and return a targeted verdict to 03. If any semantic conflict is found against the authoritative architecture, escalate the conflict rather than weakening the gate.
+04 should update the Stage 0 QA matrix and return a targeted verdict specifically for QA-S0-006. Do not infer closure of QA-S0-007–009 from this rerun. If any semantic conflict is found against the authoritative architecture, escalate the conflict rather than weakening the gate.
 
 ## ОТКРЫТЫЕ ВОПРОСЫ
 
-None for the normative promotion-quality predicate. Environment/lockfile, materialization/rebuild and final E2E remain separate Stage 0 acceptance areas.
+None for the normative promotion-quality predicate. QA-S0-007 (lineage cycle detection), QA-S0-008 (fail-closed public/research boundary), and QA-S0-009 (clean-checkout bare CLI/install contract) remain OPEN / BLOCKING and require separate implementation. Environment/lockfile, materialization/rebuild and final E2E remain separate Stage 0 acceptance areas.
 
 ## СЛЕДУЮЩЕЕ ДЕЙСТВИЕ
 
-04 independently verifies `bcd6ad1b2ca7f1a2f97aabde36326edf2374c1a2` and returns evidence-backed PASS/FAIL/BLOCKED to 03. **Do not declare overall Stage 0 PASS from this targeted workstream alone.**
+04 independently verifies QA-S0-006 at `bcd6ad1b2ca7f1a2f97aabde36326edf2374c1a2` and returns evidence-backed PASS/FAIL/BLOCKED to 03. QA-S0-007–009 remain outside this rerun and stay OPEN / BLOCKING until separately fixed and independently verified. **Do not declare overall Stage 0 PASS from this targeted workstream alone.**
