@@ -1,6 +1,6 @@
 # Stage 0 contracts — IDs, entities, access/license
 
-Status: QA-S0-001–005 independently verified and CLOSED. Stage 0 remains OPEN; executable validator/gates are implemented developer-side and await independent QA.
+Status: QA-S0-001–005 independently verified and CLOSED. Independent validator/gates QA has already run and returned FAIL with blocking defects QA-S0-006–009. QA-S0-006 executable semantics passed; documentation closure is still in targeted reacceptance. QA-S0-007–009 remain OPEN / BLOCKING. Stage 0 remains OPEN / NOT RELEASE-READY.
 
 ## Internal IDs and immutable versions
 

@@ -26,13 +26,21 @@ All known blocking defects QA-S0-001–005 are CLOSED and must not be reopened w
 
 ## Remaining Stage 0 work
 
-The validator/gates workstream is implemented developer-side: cross-record referential integrity and unique producers; manifest reconciliation; promotion evidence/compatibility with complete-lineage coverage; lineage reconstruction; public-boundary checks; CLI; tests; mutation audit; CI.
+The validator/gates workstream has already undergone independent QA. That QA returned **FAIL / NOT ACCEPTED** and registered blocking defects QA-S0-006–009.
 
-Independent QA of this workstream is still pending. Remaining Stage 0 acceptance areas include:
+Current reacceptance state:
+- QA-S0-006 executable semantics = PASS;
+- QA-S0-006-DOC-01 = CLOSED;
+- QA-S0-006-DOC-02 = fixed in development and pending one atomic documentation/current-state rerun;
+- QA-S0-007 = OPEN / BLOCKING;
+- QA-S0-008 = OPEN / BLOCKING;
+- QA-S0-009 = OPEN / BLOCKING.
 
+Pending QA activity is therefore only targeted regression/reacceptance after fixes, not the initial independent validator/gates QA.
+
+Other remaining Stage 0 acceptance areas include:
 - environment / lockfile and reproducible runtime policy;
 - minimal local build/materialization flow beyond validation;
-- independent QA of validator/gates;
 - final end-to-end Stage 0 build/validate/test acceptance.
 
 ## Developer verification — validator/gates
@@ -45,19 +53,19 @@ The former architecture ambiguity is resolved in the authoritative TECHNICAL_ARC
 
 Developer verification is complete on final implementation commit `bcd6ad1b2ca7f1a2f97aabde36326edf2374c1a2`: GitHub Actions run `37813141576` / job `113434865098` succeeded on Python 3.13.16 with jsonschema 4.26.0; 68 tests passed; focused CLI and aggregate `stage0` passed; mutation audit rejected 21/21 injected defects and the separate semantic decision matrix matched 12/12 expected outcomes. The aggregate `stage0` path now includes a deterministic promoted-release smoke that executes the pass-only predicate.
 
-Intermediate implementation commit `1a8ee69606d6640e44ff390e106ecb1d4c949a9d` is superseded by `bcd6ad1b2ca7f1a2f97aabde36326edf2374c1a2` because final readback identified and closed an aggregate-acceptance coverage gap. Targeted independent QA is still pending. Stage 0 remains **OPEN / NOT RELEASE-READY**.
+Intermediate implementation commit `1a8ee69606d6640e44ff390e106ecb1d4c949a9d` is superseded by `bcd6ad1b2ca7f1a2f97aabde36326edf2374c1a2` because final readback identified and closed an aggregate-acceptance coverage gap. Independent targeted executable QA for QA-S0-006 has already completed with PASS. Closure remains blocked only by documentation-current-state consistency until the new atomic documentation candidate passes reacceptance. Stage 0 remains **OPEN / NOT RELEASE-READY**.
 
 ## Current blocking QA defects
 
 Independent validator/gates QA registered four new defects after the earlier QA-S0-001–005 closures:
 
-- `QA-S0-006` — promotion-quality contract: **EXECUTABLE QA PASS / DOCUMENTATION DEFECT QA-S0-006-DOC-01 FIXED IN DEVELOPMENT / NARROW QA RERUN PENDING**. Executable implementation source: `bcd6ad1b2ca7f1a2f97aabde36326edf2374c1a2`. Independent QA confirmed executable semantics PASS; closure remains pending documentation consistency verification.
+- `QA-S0-006` — promotion-quality contract: **OPEN / BLOCKING**. Executable semantics = PASS. `QA-S0-006-DOC-01 = CLOSED`. `QA-S0-006-DOC-02` (stale validator/gates QA-status documentation) is fixed in development and pending one atomic documentation/current-state rerun. Executable implementation source: `bcd6ad1b2ca7f1a2f97aabde36326edf2374c1a2`.
 - `QA-S0-007` — lineage DAG cycle detection: **OPEN / BLOCKING / NOT FIXED BY THE PROMOTION-QUALITY WORKSTREAM**.
 - `QA-S0-008` — public/research boundary fail-closed: **OPEN / BLOCKING / NOT FIXED BY THE PROMOTION-QUALITY WORKSTREAM**.
 - `QA-S0-009` — clean-checkout bare CLI/install contract: **OPEN / BLOCKING / NOT FIXED BY THE PROMOTION-QUALITY WORKSTREAM**.
 
 The final promotion-quality diff does not add cycle detection, packaging/install metadata, or the missing `data/research` / `data/restricted` ignore rules. Therefore QA-S0-007–009 remain separate implementation work and must not be inferred closed from the 68-test promotion-quality suite.
-QA-S0-006-DOC-01 affected stale current text in `docs/STAGE0_MANIFESTS.md`. Development corrected the current promotion-quality boundary to the authoritative PASS-only contract and preserved the former unresolved wording only as explicit SUPERSEDED history. No promotion-quality code, schema, fixture, test, mutation-audit, or workflow semantics were changed by this documentation repair.
+QA-S0-006-DOC-01 affected stale promotion-quality text in `docs/STAGE0_MANIFESTS.md` and is independently CLOSED. QA-S0-006-DOC-02 identified a separate stale current-status problem: several current docs incorrectly described validator/gates independent QA as pending even though that QA had already run and registered QA-S0-006–009. Development corrected those current-status statements. No promotion-quality code, schema, fixture, test, mutation-audit, or workflow semantics were changed by either documentation repair.
 
 
 ## Workflow rule v0.2 compliance
