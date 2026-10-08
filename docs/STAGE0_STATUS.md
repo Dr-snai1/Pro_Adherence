@@ -18,11 +18,11 @@ These defects are closed and must not be reopened without a new regression.
 
 ## Open blocker
 
-`QA-S0-005` — **OPEN / BLOCKING / IMPLEMENTATION PENDING INDEPENDENT QA**.
+`QA-S0-005` — **OPEN / BLOCKING / IMPLEMENTED AND DEVELOPER-VERIFIED; INDEPENDENT QA PENDING**.
 
 Scope: immutable model identity in `compute_asset.computation_signature`.
 
-Architecture has resolved the model identity rule. Targeted implementation is present, but independent QA has not closed the blocker.
+Architecture has resolved the model identity rule. Targeted implementation is present and developer verification passed: GitHub Actions run 37764391921 completed successfully with 15/15 tests passing on Python 3.13.15 and jsonschema 4.26.0; a separate helper-independent SHA-256 recomputation matched the committed model and non-model fixtures. Independent QA has not closed the blocker.
 
 ## Remaining Stage 0 work
 
@@ -33,7 +33,6 @@ The following acceptance areas remain open because the executable repository val
 - promotion-evidence resolution and compatibility checks;
 - executable lineage reconstruction checks;
 - environment / lockfile and minimal local commands;
-- minimal CI skeleton;
 - final end-to-end Stage 0 build/validate/test acceptance.
 
 ## Historical records
