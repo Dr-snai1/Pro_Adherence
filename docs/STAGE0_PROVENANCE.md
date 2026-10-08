@@ -33,3 +33,6 @@ Cross-record uniqueness/referential-integrity checks beyond JSON Schema remain a
 Computation digest is SHA-256 of compact UTF-8 JSON in key order `input_artifact_hashes`, `code_ref_id`, `config_hash`, `model_identity_hash`, `schema_version`. Model-backed/non-model nullability is enforced in schema and executable helper; cross-record resolution uses `src/pro_adherence/computation_signature.py`.
 
 **Superseded / migration:** former optional `computation_signature.model_digest` is superseded by required nullable `model_identity_hash`; existing records need explicit migration and digest recomputation. QA-S0-001–004 remain CLOSED; QA-S0-005 remains OPEN/BLOCKING until targeted independent QA.
+
+
+Migration details: `docs/STAGE0_MODEL_IDENTITY_MIGRATION_2026-10-08.md`.
