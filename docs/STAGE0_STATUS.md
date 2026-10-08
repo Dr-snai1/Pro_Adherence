@@ -5,24 +5,24 @@ Overall Stage 0 status: **OPEN / NOT RELEASE-READY**
 
 ## Independently closed QA defects
 
-Independent QA rerun on `main@c6e8d9d394fb23630b85a51691e4975d8ad46d6d` closed:
+Independent QA has now closed all five known blocking defects:
 
 - `QA-S0-001` — provenance root `oneOf` discrimination;
 - `QA-S0-002` — validating complete `lineage_bundle` fixture;
 - `QA-S0-003` — versioned alias/merge/split/supersession identity history;
-- `QA-S0-004` — immutable version references reject mutable aliases.
+- `QA-S0-004` — immutable version references reject mutable aliases;
+- `QA-S0-005` — immutable model identity in `compute_asset.computation_signature`.
 
-QA evidence included the committed Python regression suite (`7/7 PASS`, exit code 0) plus an independent schema/graph traversal/semantic mutation audit.
+`QA-S0-001–004` were independently closed on the earlier regression rerun. `QA-S0-005` was independently closed on `main@3b0bcf77eea6274b82c98f3ab8011f58569d67d6`.
 
-These defects are closed and must not be reopened without a new regression.
+For QA-S0-005, independent QA executed the committed full suite on Python 3.13.16 with jsonschema 4.26.0: 15 tests, OK, 0 failures/errors. Independent helper-free SHA-256 recomputation matched the committed model identity and model/non-model computation digests, and the 33-file tree restoration was verified blob-for-blob.
 
-## Open blocker
+All known blocking defects QA-S0-001–005 are CLOSED and must not be reopened without a new regression.
 
-`QA-S0-005` — **OPEN / BLOCKING / IMPLEMENTED AND DEVELOPER-VERIFIED; INDEPENDENT QA PENDING**.
+## Non-blocking hardening
 
-Scope: immutable model identity in `compute_asset.computation_signature`.
-
-Architecture has resolved the model identity rule. Targeted implementation is present and developer verification passed: GitHub Actions run 37764391921 completed successfully with 15/15 tests passing on Python 3.13.15 and jsonschema 4.26.0; a separate helper-independent SHA-256 recomputation matched the committed model and non-model fixtures. Independent QA has not closed the blocker.
+- `model_descriptor()` currently assumes schema-valid `model_ref`; direct helper use should also reject mutable revision aliases. This is a future validator hardening item and does not reopen QA-S0-005.
+- CI currently uses `python-version: "3.13"`; patch-level drift has already occurred (3.13.15 → 3.13.16). Environment/lockfile work must pin the intended reproducible runtime policy.
 
 ## Remaining Stage 0 work
 
