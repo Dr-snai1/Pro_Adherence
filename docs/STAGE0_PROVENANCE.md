@@ -44,3 +44,5 @@ The validator reconstructs deterministic lineage from an output artifact ID to i
 Promotion evidence and serving compatibility are checked against exact release-manifest references; existence of a research run alone is never promotion evidence.
 
 For promotion, a release artifact must be the root output of a semantically valid `lineage_bundle`; a standalone `run_output`/producer reference is not sufficient evidence of complete lineage.
+
+A semantically valid root lineage must reconstruct at least one direct input artifact, one relevant source fetch and one relevant corpus release; unrelated records elsewhere in the bundle do not satisfy those requirements.

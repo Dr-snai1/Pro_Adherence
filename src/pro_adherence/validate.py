@@ -237,7 +237,13 @@ def validate_lineage(bundle: dict, ctx: SchemaContext | None = None) -> list[str
 
     if not errors:
         try:
-            reconstruct_lineage(bundle, bundle["root_output_artifact_id"])
+            result = reconstruct_lineage(bundle, bundle["root_output_artifact_id"])
+            if not result["direct_input_artifact_ids"]:
+                errors.append("lineage reconstruction: root producing run has no input artifacts")
+            if not result["source_fetch_ids"]:
+                errors.append("lineage reconstruction: root lineage has no relevant source fetch")
+            if not result["corpus_release_ids"]:
+                errors.append("lineage reconstruction: root lineage has no relevant corpus release")
         except ValidationFailure as exc:
             errors.append(f"lineage reconstruction: {exc}")
     return errors

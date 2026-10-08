@@ -104,6 +104,40 @@ class Stage0ValidatorTests(unittest.TestCase):
         bundle["run_inputs"][0]["artifact_id"] = uid(999)
         self.assertTrue(any("missing artifact" in e for e in v.validate_lineage(bundle, self.ctx)))
 
+    def test_missing_lineage_reference_classes_fail(self):
+        base = load("contracts/manifests/minimal_lineage.example.json")
+        cases = [
+            ("run", lambda b: b["runs"].clear(), "missing run"),
+            ("input artifact", lambda b: b["artifacts"].pop(1), "missing artifact"),
+            ("code", lambda b: b["code_refs"].clear(), "missing code_ref_id"),
+            ("config", lambda b: b["config_refs"].clear(), "missing config_ref_id"),
+            ("environment", lambda b: b["environment_refs"].clear(), "missing environment_ref_id"),
+            ("model", lambda b: b["model_refs"].clear(), "missing model_ref_id"),
+        ]
+        for name, mutate, expected in cases:
+            with self.subTest(name=name):
+                bundle = copy.deepcopy(base)
+                mutate(bundle)
+                self.assertTrue(any(expected in e for e in v.validate_lineage(bundle, self.ctx)))
+
+    def test_root_lineage_requires_relevant_source_and_corpus(self):
+        base = load("contracts/manifests/minimal_lineage.example.json")
+
+        no_source = copy.deepcopy(base)
+        no_source["artifacts"][1]["source_fetch_id"] = None
+        self.assertTrue(any(
+            "no relevant source fetch" in e for e in v.validate_lineage(no_source, self.ctx)
+        ))
+
+        no_corpus = copy.deepcopy(base)
+        for artifact in no_corpus["artifacts"]:
+            artifact["corpus_release_id"] = None
+        for run in no_corpus["runs"]:
+            run["corpus_release_id"] = None
+        self.assertTrue(any(
+            "no relevant corpus release" in e for e in v.validate_lineage(no_corpus, self.ctx)
+        ))
+
     def test_duplicate_producing_run_fails(self):
         bundle = load("contracts/manifests/minimal_lineage.example.json")
         new_run = copy.deepcopy(bundle["runs"][0])
@@ -143,6 +177,36 @@ class Stage0ValidatorTests(unittest.TestCase):
         corpus["article_count"] = 1
         set_hash(corpus)
         self.assertTrue(any("article_count" in e for e in v.validate_corpus_manifest(corpus, root=ROOT, ctx=self.ctx, artifacts={})))
+
+    def test_corpus_input_artifact_reconciliation(self):
+        corpus = load("contracts/manifests/empty_corpus.manifest.json")
+        lineage = load("contracts/manifests/minimal_lineage.example.json")
+        catalog = v.catalog_from_bundle(lineage).artifacts
+        artifact = lineage["artifacts"][0]
+        corpus["input_artifacts"] = [{
+            "artifact_id": artifact["artifact_id"],
+            "content_hash": artifact["content_hash"],
+        }]
+        set_hash(corpus)
+        self.assertEqual(
+            v.validate_corpus_manifest(corpus, root=ROOT, ctx=self.ctx, artifacts=catalog), []
+        )
+
+        bad_hash = copy.deepcopy(corpus)
+        bad_hash["input_artifacts"][0]["content_hash"] = "0" * 64
+        set_hash(bad_hash)
+        self.assertTrue(any(
+            "input artifact hash mismatch" in e
+            for e in v.validate_corpus_manifest(bad_hash, root=ROOT, ctx=self.ctx, artifacts=catalog)
+        ))
+
+        dangling = copy.deepcopy(corpus)
+        dangling["input_artifacts"][0]["artifact_id"] = uid(996)
+        set_hash(dangling)
+        self.assertTrue(any(
+            "missing input artifact" in e
+            for e in v.validate_corpus_manifest(dangling, root=ROOT, ctx=self.ctx, artifacts=catalog)
+        ))
 
     def test_policy_hash_mismatch_fails(self):
         corpus = load("contracts/manifests/empty_corpus.manifest.json")
@@ -204,6 +268,19 @@ class Stage0ValidatorTests(unittest.TestCase):
             lineage_artifact_ids={release["artifacts"][0]["artifact_id"]},
         )
         self.assertTrue(any("missing promotion_event" in e for e in errors))
+
+    def test_missing_quality_report_fails(self):
+        lineage, release, corpus, report, event = promoted_fixture()
+        catalog = v.catalog_from_bundle(lineage)
+        errors = v.validate_release_manifest(
+            release, ctx=self.ctx, artifacts=catalog.artifacts,
+            corpus_manifests={corpus["corpus_release_id"]: corpus},
+            promotion_events={event["promotion_event_id"]: event},
+            quality_reports={},
+            run_outputs=catalog.run_outputs,
+            lineage_artifact_ids={release["artifacts"][0]["artifact_id"]},
+        )
+        self.assertTrue(any("missing quality_report" in e for e in errors))
 
     def test_wrong_target_release_fails(self):
         lineage, release, corpus, report, event = promoted_fixture()
