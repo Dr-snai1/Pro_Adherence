@@ -176,8 +176,22 @@ class Stage0ValidatorTests(unittest.TestCase):
             promotion_events={event["promotion_event_id"]: event},
             quality_reports={report["quality_report_id"]: report},
             run_outputs=catalog.run_outputs,
+            lineage_artifact_ids={release["artifacts"][0]["artifact_id"]},
         )
         self.assertEqual(errors, [])
+
+    def test_promoted_release_without_validated_lineage_fails(self):
+        lineage, release, corpus, report, event = promoted_fixture()
+        catalog = v.catalog_from_bundle(lineage)
+        errors = v.validate_release_manifest(
+            release, ctx=self.ctx, artifacts=catalog.artifacts,
+            corpus_manifests={corpus["corpus_release_id"]: corpus},
+            promotion_events={event["promotion_event_id"]: event},
+            quality_reports={report["quality_report_id"]: report},
+            run_outputs=catalog.run_outputs,
+            lineage_artifact_ids=set(),
+        )
+        self.assertTrue(any("lacks validated complete lineage" in e for e in errors))
 
     def test_missing_promotion_event_fails(self):
         lineage, release, corpus, report, event = promoted_fixture()
@@ -187,6 +201,7 @@ class Stage0ValidatorTests(unittest.TestCase):
             corpus_manifests={corpus["corpus_release_id"]: corpus},
             promotion_events={}, quality_reports={report["quality_report_id"]: report},
             run_outputs=catalog.run_outputs,
+            lineage_artifact_ids={release["artifacts"][0]["artifact_id"]},
         )
         self.assertTrue(any("missing promotion_event" in e for e in errors))
 
@@ -200,6 +215,7 @@ class Stage0ValidatorTests(unittest.TestCase):
             promotion_events={event["promotion_event_id"]: event},
             quality_reports={report["quality_report_id"]: report},
             run_outputs=catalog.run_outputs,
+            lineage_artifact_ids={release["artifacts"][0]["artifact_id"]},
         )
         self.assertTrue(any("wrong target_release_id" in e for e in errors))
 
@@ -213,6 +229,7 @@ class Stage0ValidatorTests(unittest.TestCase):
             promotion_events={event["promotion_event_id"]: event},
             quality_reports={report["quality_report_id"]: report},
             run_outputs=catalog.run_outputs,
+            lineage_artifact_ids={release["artifacts"][0]["artifact_id"]},
         )
         self.assertTrue(any("lacks promotion coverage" in e for e in errors))
 
@@ -226,6 +243,7 @@ class Stage0ValidatorTests(unittest.TestCase):
             promotion_events={event["promotion_event_id"]: event},
             quality_reports={report["quality_report_id"]: report},
             run_outputs=catalog.run_outputs,
+            lineage_artifact_ids={release["artifacts"][0]["artifact_id"]},
         )
         self.assertTrue(any("not publishable" in e for e in errors))
 
@@ -240,6 +258,7 @@ class Stage0ValidatorTests(unittest.TestCase):
             promotion_events={event["promotion_event_id"]: event},
             quality_reports={report["quality_report_id"]: report},
             run_outputs=catalog.run_outputs,
+            lineage_artifact_ids={release["artifacts"][0]["artifact_id"]},
         )
         self.assertTrue(any("content_hash mismatch" in e for e in errors))
 
@@ -253,6 +272,7 @@ class Stage0ValidatorTests(unittest.TestCase):
             promotion_events={event["promotion_event_id"]: event},
             quality_reports={report["quality_report_id"]: report},
             run_outputs=catalog.run_outputs,
+            lineage_artifact_ids={release["artifacts"][0]["artifact_id"]},
         )
         self.assertTrue(any("corpus mismatch" in e for e in errors))
 

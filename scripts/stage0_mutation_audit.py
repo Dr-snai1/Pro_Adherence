@@ -77,6 +77,7 @@ def release_errors(lineage, release, corpus, report, event, events=None):
         promotion_events=events if events is not None else {event["promotion_event_id"]: event},
         quality_reports={report["quality_report_id"]: report},
         run_outputs=catalog.run_outputs,
+        lineage_artifact_ids={release["artifacts"][0]["artifact_id"]},
     )
 
 
@@ -107,6 +108,16 @@ x = copy.deepcopy(release); x["artifacts"][0]["content_hash"] = "1" * 64; set_ha
 checks.append(("wrong artifact hash", release_errors(lineage, x, rel_corpus, report, event)))
 
 checks.append(("promotion without evidence", release_errors(lineage, release, rel_corpus, report, event, events={})))
+
+catalog = v.catalog_from_bundle(lineage)
+checks.append(("promotion without complete lineage", v.validate_release_manifest(
+    release, ctx=CTX, artifacts=catalog.artifacts,
+    corpus_manifests={rel_corpus["corpus_release_id"]: rel_corpus},
+    promotion_events={event["promotion_event_id"]: event},
+    quality_reports={report["quality_report_id"]: report},
+    run_outputs=catalog.run_outputs,
+    lineage_artifact_ids=set(),
+)))
 
 bad_event = copy.deepcopy(event); bad_event["target_release_id"] = uid(962)
 checks.append(("wrong promotion target", release_errors(lineage, release, rel_corpus, report, bad_event)))

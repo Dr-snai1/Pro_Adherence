@@ -26,7 +26,7 @@ All known blocking defects QA-S0-001–005 are CLOSED and must not be reopened w
 
 ## Remaining Stage 0 work
 
-The validator/gates workstream is implemented developer-side: cross-record referential integrity and unique producers; manifest reconciliation; promotion evidence/compatibility; lineage reconstruction; public-boundary checks; CLI; tests; mutation audit; CI.
+The validator/gates workstream is implemented developer-side: cross-record referential integrity and unique producers; manifest reconciliation; promotion evidence/compatibility with complete-lineage coverage; lineage reconstruction; public-boundary checks; CLI; tests; mutation audit; CI.
 
 Independent QA of this workstream is still pending. Remaining Stage 0 acceptance areas include:
 
@@ -37,7 +37,7 @@ Independent QA of this workstream is still pending. Remaining Stage 0 acceptance
 
 ## Developer verification — validator/gates
 
-On implementation state after the public-boundary hardening, GitHub Actions checked out the exact committed state and ran the full unit suite, aggregate validator and independent semantic mutation audit. The suite passed 37 tests on Python 3.13.16 with jsonschema 4.26.0; aggregate Stage 0 validation passed; all 10 injected semantic defects failed as expected and the exact minimal-lineage chain matched.
+On implementation state after the public-boundary hardening, GitHub Actions checked out the exact committed state and ran the full unit suite, aggregate validator and independent semantic mutation audit. The suite passed 37 tests on Python 3.13.16 with jsonschema 4.26.0; aggregate Stage 0 validation passed; all 11 injected semantic defects failed as expected and the exact minimal-lineage chain matched.
 
 ## Open architecture question
 

@@ -42,3 +42,5 @@ Migration details: `docs/STAGE0_MODEL_IDENTITY_MIGRATION_2026-10-08.md`.
 The validator reconstructs deterministic lineage from an output artifact ID to its unique producing run, exact input/ancestor artifacts, source fetches, corpus release IDs, code/config/model/environment refs and parent/child artifact results. The direct `model_descriptor()` helper now also rejects the mutable revision aliases forbidden by `immutable_version_ref`, even when helper callers bypass JSON Schema validation.
 
 Promotion evidence and serving compatibility are checked against exact release-manifest references; existence of a research run alone is never promotion evidence.
+
+For promotion, a release artifact must be the root output of a semantically valid `lineage_bundle`; a standalone `run_output`/producer reference is not sufficient evidence of complete lineage.

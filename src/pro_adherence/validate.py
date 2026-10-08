@@ -438,6 +438,7 @@ def validate_release_manifest(
     promotion_events: Mapping[str, dict] | None = None,
     quality_reports: Mapping[str, dict] | None = None,
     run_outputs: Sequence[dict] | None = None,
+    lineage_artifact_ids: set[str] | None = None,
 ) -> list[str]:
     ctx = ctx or SchemaContext.from_repo()
     errors = _schema_errors(ctx, "release-manifest.schema.json", manifest, "release manifest")
@@ -446,6 +447,7 @@ def validate_release_manifest(
     promotion_events = promotion_events or {}
     quality_reports = quality_reports or {}
     run_outputs = list(run_outputs or [])
+    lineage_artifact_ids = set(lineage_artifact_ids or set())
 
     expected = recompute_manifest_hash(manifest)
     if manifest.get("manifest_hash") != expected:
@@ -510,6 +512,10 @@ def validate_release_manifest(
             if len(producer_counts.get(artifact_id, set())) != 1:
                 errors.append(
                     f"release manifest: promoted artifact {artifact_id} lacks unique producing-run lineage"
+                )
+            if artifact_id not in lineage_artifact_ids:
+                errors.append(
+                    f"release manifest: promoted artifact {artifact_id} lacks validated complete lineage"
                 )
     return errors
 
@@ -624,24 +630,45 @@ def aggregate_stage0(root: Path = ROOT) -> list[str]:
     return errors
 
 
-def _load_evidence(paths: Sequence[str], ctx: SchemaContext) -> tuple[EvidenceCatalog, list[str]]:
+def _load_evidence(
+    paths: Sequence[str],
+    ctx: SchemaContext,
+    *,
+    lineage_paths: set[str] | None = None,
+) -> tuple[EvidenceCatalog, list[str], set[str]]:
     errors: list[str] = []
     catalog = EvidenceCatalog()
+    lineage_paths = set(lineage_paths or set())
+    validated_lineage_artifact_ids: set[str] = set()
     for raw_path in paths:
         path = Path(raw_path)
         record = load_json(path)
-        errors.extend(_schema_errors(ctx, "provenance.schema.json", record, str(path)))
+        if raw_path in lineage_paths:
+            if record.get("record_type") != "lineage_bundle":
+                errors.append(f"{path}: --lineage input must be a lineage_bundle")
+            else:
+                lineage_errors = validate_lineage(record, ctx)
+                errors.extend(f"{path}: {error}" for error in lineage_errors)
+                if not lineage_errors:
+                    validated_lineage_artifact_ids.add(record["root_output_artifact_id"])
+        else:
+            errors.extend(_schema_errors(ctx, "provenance.schema.json", record, str(path)))
         add_evidence_record(catalog, record, errors)
-    return catalog, errors
+    return catalog, errors, validated_lineage_artifact_ids
 
 
-def _load_corpora(paths: Sequence[str], ctx: SchemaContext, root: Path) -> tuple[dict, list[str]]:
+def _load_corpora(
+    paths: Sequence[str],
+    ctx: SchemaContext,
+    root: Path,
+    artifacts: Mapping[str, dict] | None = None,
+) -> tuple[dict, list[str]]:
     corpora = {}
     errors = []
     for raw_path in paths:
         path = Path(raw_path)
         value = load_json(path)
-        errors.extend(validate_corpus_manifest(value, root=root, ctx=ctx))
+        errors.extend(validate_corpus_manifest(value, root=root, ctx=ctx, artifacts=artifacts))
         corpus_id = value.get("corpus_release_id")
         if corpus_id in corpora:
             errors.append(f"corpus catalog: duplicate corpus_release_id {corpus_id}")
@@ -721,8 +748,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "release":
             manifest = load_json(Path(args.manifest))
             evidence_paths = list(args.lineage) + list(args.evidence)
-            catalog, evidence_errors = _load_evidence(evidence_paths, ctx)
-            corpora, corpus_errors = _load_corpora(args.corpus, ctx, root)
+            catalog, evidence_errors, lineage_artifact_ids = _load_evidence(
+                evidence_paths, ctx, lineage_paths=set(args.lineage)
+            )
+            corpora, corpus_errors = _load_corpora(
+                args.corpus, ctx, root, artifacts=catalog.artifacts
+            )
             errors = evidence_errors + corpus_errors
             errors.extend(
                 validate_release_manifest(
@@ -733,6 +764,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     promotion_events=catalog.promotion_events,
                     quality_reports=catalog.quality_reports,
                     run_outputs=catalog.run_outputs,
+                    lineage_artifact_ids=lineage_artifact_ids,
                 )
             )
             return _emit("release", errors, json_mode=args.json)
