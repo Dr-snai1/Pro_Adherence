@@ -1,4 +1,7 @@
-# Stage 0 development status
+# Stage 0 development evidence — historical snapshot
+
+> **SUPERSEDED as current-status authority (PROJECT_RULES v0.3 §14).** This document is retained for historical development and QA evidence only. The *sole* current Stage/readiness/blocker/QA-status authority is project Google Drive `07_STAGE_STATUS`, owned by `00 — Штаб`. Every status claim below is a snapshot from 2026-10-08, not a live assertion. See `08_PRE_QA_GATE` for admission and architecture-baseline rules.
+
 
 Status date: 2026-10-08  
 Overall Stage 0 status: **OPEN / NOT RELEASE-READY**
@@ -70,7 +73,7 @@ QA-S0-006-DOC-01 affected stale promotion-quality text in `docs/STAGE0_MANIFESTS
 
 ## Workflow rule v0.2 compliance
 
-Current workflow authority is `01_PROJECT_RULES v0.2`. Rule 13 requires every substantive QA submission to be one verified change on one exact commit. The QA-S0-006 documentation closure is therefore routed as a single atomic candidate commit containing the unchanged executable implementation, its tests, repaired documentation, requirement/architecture references and self-check evidence. Earlier component commits remain audit history only and are not separate QA targets.
+Historical workflow authority for the documented candidate was `01_PROJECT_RULES v0.2`. Rule 13 requires every substantive QA submission to be one verified change on one exact commit. The QA-S0-006 documentation closure is therefore routed as a single atomic candidate commit containing the unchanged executable implementation, its tests, repaired documentation, requirement/architecture references and self-check evidence. Earlier component commits remain audit history only and are not separate QA targets.
 
 QA-S0-007–009 remain blocking criteria in the current Stage 0. No next Stage may begin until the current Stage has no blocking criteria.
 
@@ -78,4 +81,4 @@ QA-S0-007–009 remain blocking criteria in the current Stage 0. No next Stage m
 
 Historical migration and handoff records are retained; obsolete handoffs are explicitly marked `SUPERSEDED` rather than deleted. They remain audit history and are not the current status source.
 
-Current status is this document plus the latest QA source of truth on Google Drive.
+Current operating status is maintained only in project `07_STAGE_STATUS`; historical evidence here cannot override it.

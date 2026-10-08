@@ -1,6 +1,6 @@
 # Stage 0 corpus and serving release manifests
 
-Status: QA-S0-004 independently verified and CLOSED. Independent validator/gates QA has already run and returned FAIL with blocking defects QA-S0-006–009. Manifest reconciliation checks themselves passed that QA; QA-S0-006 executable promotion-quality semantics also passed, but QA-S0-006 documentation closure remains in targeted reacceptance. QA-S0-007–009 remain OPEN / BLOCKING. Stage 0 remains OPEN / NOT RELEASE-READY.
+> **Operational status:** see project `07_STAGE_STATUS` (00 — Штаб). Prior QA outcomes below are historical evidence, not live Stage/QA status.
 
 ## Corpus release
 

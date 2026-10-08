@@ -1,6 +1,6 @@
 # Stage 0 executable validation
 
-Status: validator/gates independent QA has already been executed. Overall validator/gates verdict remains FAIL / NOT ACCEPTED because QA-S0-006–009 were registered as blocking defects. QA-S0-006 executable semantics passed; only its documentation-consistency closure is in targeted reacceptance. QA-S0-007–009 remain OPEN / BLOCKING.
+> **Operational status:** see project `07_STAGE_STATUS` (00 — Штаб). Historical QA evidence is retained in the handoff records; this page defines executable validation semantics.
 
 Local commands (from repository root):
 

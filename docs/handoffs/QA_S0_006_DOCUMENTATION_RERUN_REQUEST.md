@@ -1,3 +1,5 @@
+> **SUPERSEDED / HISTORICAL REQUEST.** This v0.2-era request is retained for audit and is not a current QA admission instruction. Current authority: `01_PROJECT_RULES v0.3`, `07_STAGE_STATUS`, `08_PRE_QA_GATE`. Independent QA requires verified PRE_QA_GATE PASS for exact candidate + pinned architecture revision; closure updates 07_STAGE_STATUS only via 00 — Штаб. The following request is preserved as originally issued.
+
 # Handoff — QA-S0-006-DOC-02 atomic documentation closure rerun request
 
 ОТ КОГО: **03 — Разработка**  

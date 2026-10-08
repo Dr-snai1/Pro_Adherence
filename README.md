@@ -2,7 +2,7 @@
 
 Public code repository for the Pro_Adherence project.
 
-Current implementation status: **Stage 0 — contracts + local skeleton (OPEN / NOT RELEASE-READY)**.
+Operational Stage/readiness/QA status is maintained exclusively in the project Google Drive document `07_STAGE_STATUS` (owned by `00 — Штаб`). This repository README is not a current-status source.
 
 This repository is intentionally split from scientific working data. Raw, normalized, canonical, derived, restricted, and other research-only artifacts are local/off-repository by default. Only code, contracts, small manifests/configuration, tests, documentation, and explicitly promoted public serving artifacts belong here.
 
