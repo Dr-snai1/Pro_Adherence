@@ -29,6 +29,10 @@ class IdentityTests(unittest.TestCase):
         a["computation_signature"]["digest"]=c.computation_digest(a["computation_signature"])
         self.assertTrue(v.is_valid(a))
         self.assertTrue(c.validate_compute_asset(a,[]))
+    def test_committed_nonmodel_fixture(self):
+        a=load("contracts/examples/nonmodel_compute_asset.example.json")
+        self.assertTrue(v.is_valid(a))
+        self.assertTrue(c.validate_compute_asset(a,[]))
     def test_digest_only_revision_only(self):
         for changes in (dict(immutable_revision=None,identity_namespace=None,identity_key=None),dict(digest=None)):
             m=dict(model,**changes)
