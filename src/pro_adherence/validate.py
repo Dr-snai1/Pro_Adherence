@@ -38,9 +38,15 @@ FORBIDDEN_PREFIXES = (
     "data/normalized/",
     "data/canonical/",
     "data/derived/",
+    "data/research/",
+    "data/restricted/",
     "research/",
     "restricted/",
 )
+SERVING_RELEASE_PREFIX = "serving/data/releases/"
+SERVING_INFRASTRUCTURE_PLACEHOLDERS = {"serving/data/releases/.gitkeep"}
+SECRET_KEY_NAMES = {"id_rsa", "id_ed25519"}
+SECRET_SUFFIXES = (".pem", ".key", ".p12", ".pfx")
 
 
 class ValidationFailure(ValueError):
@@ -252,8 +258,57 @@ def validate_lineage(bundle: dict, ctx: SchemaContext | None = None) -> list[str
     return errors
 
 
+
+def _artifact_adjacency(catalog: EvidenceCatalog) -> dict[str, set[str]]:
+    inputs_by_run: dict[str, set[str]] = {}
+    outputs_by_run: dict[str, set[str]] = {}
+    adjacency: dict[str, set[str]] = {artifact_id: set() for artifact_id in catalog.artifacts}
+    for item in catalog.run_inputs:
+        inputs_by_run.setdefault(item.get("run_id"), set()).add(item.get("artifact_id"))
+    for item in catalog.run_outputs:
+        outputs_by_run.setdefault(item.get("run_id"), set()).add(item.get("artifact_id"))
+    for run_id in sorted(set(inputs_by_run) | set(outputs_by_run)):
+        for input_id in sorted(inputs_by_run.get(run_id, set())):
+            for output_id in sorted(outputs_by_run.get(run_id, set())):
+                adjacency.setdefault(input_id, set()).add(output_id)
+                adjacency.setdefault(output_id, set())
+    for artifact_id, artifact in catalog.artifacts.items():
+        fetch_id = artifact.get("source_fetch_id")
+        fetch = catalog.source_fetches.get(fetch_id) if fetch_id is not None else None
+        raw_id = fetch.get("raw_artifact_id") if fetch is not None else None
+        if raw_id is not None and raw_id != artifact_id:
+            adjacency.setdefault(raw_id, set()).add(artifact_id)
+            adjacency.setdefault(artifact_id, set())
+    return adjacency
+
+
+def _assert_artifact_dag(catalog: EvidenceCatalog) -> None:
+    adjacency = _artifact_adjacency(catalog)
+    state: dict[str, int] = {}
+    stack: list[str] = []
+
+    def visit(node: str) -> None:
+        state[node] = 1
+        stack.append(node)
+        for child in sorted(adjacency.get(node, set())):
+            child_state = state.get(child, 0)
+            if child_state == 1:
+                start = stack.index(child)
+                cycle = stack[start:] + [child]
+                raise ValidationFailure("lineage cycle detected: " + " -> ".join(cycle))
+            if child_state == 0:
+                visit(child)
+        stack.pop()
+        state[node] = 2
+
+    for node in sorted(adjacency):
+        if state.get(node, 0) == 0:
+            visit(node)
+
+
 def reconstruct_lineage(bundle: dict, output_artifact_id: str) -> dict:
     catalog = catalog_from_bundle(bundle)
+    _assert_artifact_dag(catalog)
     if output_artifact_id not in catalog.artifacts:
         raise ValidationFailure(f"unknown output artifact {output_artifact_id}")
 
@@ -676,22 +731,61 @@ def validate_contracts(root: Path = ROOT, ctx: SchemaContext | None = None) -> l
     return errors
 
 
-def validate_public_paths(paths: Iterable[str]) -> list[str]:
+def normalize_repo_path(raw: str) -> tuple[str | None, str | None]:
+    if not isinstance(raw, str) or not raw:
+        return None, "empty path"
+    path = raw.replace("\\", "/")
+    if path.startswith("/") or (len(path) >= 3 and path[1:3] == ":/"):
+        return None, "absolute path"
+    parts: list[str] = []
+    for part in path.split("/"):
+        if part in ("", "."):
+            continue
+        if part == "..":
+            return None, "parent traversal"
+        parts.append(part)
+    return "/".join(parts), None
+
+
+def _forbidden_prefix(path: str) -> bool:
+    return any(path == prefix.rstrip("/") or path.startswith(prefix) for prefix in FORBIDDEN_PREFIXES)
+
+
+def _secret_path(path: str) -> bool:
+    for part in path.split("/"):
+        lower = part.lower()
+        if lower == ".env.example":
+            continue
+        if lower == ".env" or lower.startswith(".env."):
+            return True
+        if lower == "secrets" or lower.startswith("secrets."):
+            return True
+        if lower in SECRET_KEY_NAMES or lower.endswith(SECRET_SUFFIXES):
+            return True
+    return False
+
+
+def validate_public_paths(
+    paths: Iterable[str], *, allow_serving_placeholder: bool = True
+) -> list[str]:
     errors = []
     for raw in paths:
-        path = raw.replace("\\", "/")
-        while path.startswith("./"):
-            path = path[2:]
-        path = path.lstrip("/")
-        if any(path.startswith(prefix) for prefix in FORBIDDEN_PREFIXES):
+        path, path_error = normalize_repo_path(raw)
+        if path_error is not None or path is None:
+            errors.append(f"repository boundary: unsafe tracked path {raw}: {path_error}")
+            continue
+        if _forbidden_prefix(path):
             errors.append(f"repository boundary: forbidden tracked path {raw}")
             continue
-        name = Path(path).name
-        lower = name.lower()
-        if lower == ".env" or (lower.startswith(".env.") and lower != ".env.example"):
+        if _secret_path(path):
             errors.append(f"repository boundary: forbidden secret path {raw}")
-        elif lower.startswith("secrets.") or lower.endswith((".pem", ".key", ".p12", ".pfx")):
-            errors.append(f"repository boundary: forbidden secret path {raw}")
+            continue
+        if path.startswith(SERVING_RELEASE_PREFIX):
+            if allow_serving_placeholder and path in SERVING_INFRASTRUCTURE_PLACEHOLDERS:
+                continue
+            errors.append(
+                f"repository boundary: serving payload is not release-selected materialization {raw}"
+            )
     return errors
 
 
@@ -711,7 +805,6 @@ def validate_repository_boundary(root: Path = ROOT) -> list[str]:
         return validate_public_paths(tracked_paths(root))
     except Exception as exc:
         return [f"repository boundary: unable to inspect git index: {exc}"]
-
 
 def aggregate_stage0(root: Path = ROOT) -> list[str]:
     ctx = SchemaContext.from_repo(root)

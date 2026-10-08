@@ -1,6 +1,7 @@
 # Pro_Adherence Stage 0 reproducible environment lock.
 # Python runtime is pinned separately to 3.13.16 in .python-version and docs/ENVIRONMENT.md.
 # Direct + transitive runtime dependencies and build tooling are exact-pinned.
+# Install with --no-deps; artifact hashes are intentionally deferred with rationale in docs/ENVIRONMENT.md.
 attrs==25.4.0
 jsonschema==4.26.0
 jsonschema-specifications==2025.9.1

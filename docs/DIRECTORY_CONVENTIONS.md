@@ -31,3 +31,8 @@ These paths are intentionally ignored by Git:
 The scientific layers RAW → NORMALIZED → CANONICAL → DERIVED are not publication layers. Public serving data must be produced only through an explicit promotion step into `serving/`.
 
 Secrets are never committed. Access/license rules are defined by Stage 0 contracts and policy; validation must enforce them rather than relying on directory names alone. PRE_QA additionally audits the tracked tree and candidate changed paths so packaging, lock, CI and documentation changes cannot carry research/restricted payloads or secret-like files.
+
+
+## Stage 0 serving materialization rule
+
+For the Stage 0 tracked tree, `serving/data/releases/.gitkeep` is the only infrastructure placeholder admitted without release evidence. Any other payload placed under `serving/data/releases/**` is rejected by the tracked-tree boundary gate. Public serving bundles are generated outputs of `pro_adherence.materialize`: every payload must be selected by a validated promoted release manifest and reconcile exact artifact identity/hash/schema/type plus access/publication permission. Extra or unselected files fail closed. This is an implementation guard for the Stage 0 skeleton, not a parallel publication contract.

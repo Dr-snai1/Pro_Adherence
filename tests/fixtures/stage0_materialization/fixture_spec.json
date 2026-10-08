@@ -1,0 +1,12 @@
+{
+  "fixture_version": "stage0-materialization/v1",
+  "payload_path": "tests/fixtures/stage0_materialization/public-artifact.json",
+  "payload_sha256": "641bea9f2fc864df7d2ca0850a79cd02885fd8f5b6f1d20fe841dde7c49bd8ff",
+  "public_path": "data/stage0-public.json",
+  "expected_bundle_tree_hash": "ba0a496175848be39f1dcd41f377dda824b47726933867f2e87b3c3e259130ef",
+  "ids": {
+    "release": "018f0c50-7b1d-7cc3-8a5b-000000001500",
+    "quality_report": "018f0c50-7b1d-7cc3-8a5b-000000001501",
+    "promotion_event": "018f0c50-7b1d-7cc3-8a5b-000000001502"
+  }
+}

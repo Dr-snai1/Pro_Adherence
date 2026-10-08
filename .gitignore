@@ -3,6 +3,8 @@
 /data/normalized/
 /data/canonical/
 /data/derived/
+/data/research/
+/data/restricted/
 /research/
 /artifacts/
 /backups/
@@ -18,6 +20,9 @@
 *.p12
 *.pfx
 secrets.*
+secrets/
+id_rsa
+id_ed25519
 
 # Python
 __pycache__/
