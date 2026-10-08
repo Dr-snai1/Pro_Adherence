@@ -1,3 +1,5 @@
+> **STATUS: SUPERSEDED.** Independent QA completed this targeted executable rerun: promotion-quality semantics passed, but QA-S0-006 remained open because `docs/STAGE0_MANIFESTS.md` contained stale current documentation. Use the subsequent QA-S0-006 documentation-rerun request for final closure. Preserve this request as audit history.
+
 # Handoff — Stage 0 promotion-quality targeted independent QA request
 
 ОТ КОГО: **03 — Разработка (prepared for routing by temporary implementation chat)**  

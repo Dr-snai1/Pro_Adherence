@@ -51,12 +51,14 @@ Intermediate implementation commit `1a8ee69606d6640e44ff390e106ecb1d4c949a9d` is
 
 Independent validator/gates QA registered four new defects after the earlier QA-S0-001–005 closures:
 
-- `QA-S0-006` — promotion-quality contract: **IMPLEMENTED / TARGETED INDEPENDENT QA PENDING**. Current implementation source: `bcd6ad1b2ca7f1a2f97aabde36326edf2374c1a2`; final handoff commit: `37dfc2d52b37fd68a4dad7d28fb7e791d8615f96`.
+- `QA-S0-006` — promotion-quality contract: **EXECUTABLE QA PASS / DOCUMENTATION DEFECT QA-S0-006-DOC-01 FIXED IN DEVELOPMENT / NARROW QA RERUN PENDING**. Executable implementation source: `bcd6ad1b2ca7f1a2f97aabde36326edf2374c1a2`. Independent QA confirmed executable semantics PASS; closure remains pending documentation consistency verification.
 - `QA-S0-007` — lineage DAG cycle detection: **OPEN / BLOCKING / NOT FIXED BY THE PROMOTION-QUALITY WORKSTREAM**.
 - `QA-S0-008` — public/research boundary fail-closed: **OPEN / BLOCKING / NOT FIXED BY THE PROMOTION-QUALITY WORKSTREAM**.
 - `QA-S0-009` — clean-checkout bare CLI/install contract: **OPEN / BLOCKING / NOT FIXED BY THE PROMOTION-QUALITY WORKSTREAM**.
 
 The final promotion-quality diff does not add cycle detection, packaging/install metadata, or the missing `data/research` / `data/restricted` ignore rules. Therefore QA-S0-007–009 remain separate implementation work and must not be inferred closed from the 68-test promotion-quality suite.
+QA-S0-006-DOC-01 affected stale current text in `docs/STAGE0_MANIFESTS.md`. Development corrected the current promotion-quality boundary to the authoritative PASS-only contract and preserved the former unresolved wording only as explicit SUPERSEDED history. No promotion-quality code, schema, fixture, test, mutation-audit, or workflow semantics were changed by this documentation repair.
+
 
 ## Historical records
 

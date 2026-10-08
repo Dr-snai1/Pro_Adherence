@@ -1,3 +1,5 @@
+> **CORRECTION / PARTIAL SUPERSESSION (QA-S0-006-DOC-01):** the implementation and executable verification recorded below remain valid, but the claim that all affected current documentation was already consistent is superseded. Independent QA found stale unresolved-quality text in `docs/STAGE0_MANIFESTS.md`. That documentation defect was repaired later by 03; preserve the handoff below as implementation history and use the subsequent QA-S0-006 documentation-rerun request for closure evidence.
+
 # Stage 0 promotion-quality implementation handoff — FINAL — 2026-10-08
 
 ОТ КОГО: **временный чат реализации Stage 0**  
