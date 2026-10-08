@@ -1,6 +1,6 @@
 # Stage 0 contracts — IDs, entities, access/license
 
-Status: QA blocking defects QA-S0-001–004 fixed in implementation; independent QA rerun pending.
+Status: QA-S0-001–004 independently verified and CLOSED. Stage 0 remains OPEN; QA-S0-005 is still blocking and separate validator/build/E2E gates remain pending.
 
 ## Internal IDs and immutable versions
 
