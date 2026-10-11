@@ -1,0 +1,13 @@
+{
+  "schema": "pubmed-run-spec/v1",
+  "task_id": "TASK-0004",
+  "query_artifact": "infra-smoke-v1",
+  "queries": {
+    "SMOKE": "\"transcranial magnetic stimulation\"[ti] AND 2025[dp]"
+  },
+  "operation": "esearch-pmids",
+  "partition_policy": "pubdate-bisect/v1",
+  "date_start": "1800-01-01",
+  "date_end": "2100-12-31",
+  "ncbi_config_refs": ["NCBI_TOOL", "NCBI_EMAIL", "NCBI_API_KEY(optional)"]
+}
