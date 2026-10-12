@@ -19,6 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
 
       - uses: actions/setup-python@v5
@@ -51,6 +52,12 @@ jobs:
       - name: Run Stage 0 tests
         run: env -u PYTHONPATH python -m unittest discover -s tests -p 'test_*.py'
 
+      - name: Execute P2-001 role namespace collision and resume regressions
+        run: env -u PYTHONPATH python -m unittest discover -s tests -p 'test_pubmed_paths.py' -v
+
+      - name: Execute ADM-001 durable checkpoint and raw-versus-derived regressions
+        run: env -u PYTHONPATH python -m unittest discover -s tests -p 'test_pubmed_adm001.py' -v
+
       - name: Run focused validator commands bare
         run: |
           env -u PYTHONPATH python -m pro_adherence.validate contracts
@@ -73,12 +80,22 @@ jobs:
 
       - name: Run reusable PRE_QA static preflight
         run: |
+          EXPECTED_SHA="$(git rev-parse HEAD)"
           EXPECTED_PARENT="$(git rev-parse HEAD^)"
           env -u PYTHONPATH python scripts/pre_qa_gate.py \
-            --expected-sha "${GITHUB_SHA}" \
+            --expected-sha "${EXPECTED_SHA}" \
             --expected-parent "${EXPECTED_PARENT}" \
             --architecture-revision 22 \
             --static-only
+
+      - name: TASK-0004 implementation candidate PRE_QA rev23
+        run: |
+          EXPECTED_SHA="$(git rev-parse HEAD)"
+          EXPECTED_PARENT="$(git rev-parse HEAD^)"
+          env -u PYTHONPATH python scripts/pre_qa_task0004.py \
+            --expected-sha "${EXPECTED_SHA}" \
+            --expected-parent "${EXPECTED_PARENT}" \
+            --architecture-revision 23 --static-only
 
   portable-qa-runtime:
     runs-on: ubuntu-latest
@@ -86,12 +103,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
 
       - name: Execute pinned OCI QA envelope
         run: |
+          EXPECTED_SHA="$(git rev-parse HEAD)"
           EXPECTED_PARENT="$(git rev-parse HEAD^)"
           bash scripts/run_pre_qa_exact_runtime.sh \
-            --expected-sha "${GITHUB_SHA}" \
+            --expected-sha "${EXPECTED_SHA}" \
             --expected-parent "${EXPECTED_PARENT}" \
-            --architecture-revision 22
+            --architecture-revision 22 \
+            --task0004-revision 23
