@@ -11,6 +11,8 @@ from pathlib import Path
 
 R = Path(__file__).resolve().parents[1]
 A = "docs/handoffs/STAGE0_CLOSURE_TASK_0001_2026-10-08.md"
+# TASK-0001 document is historical; later candidates have their own exact Git parent.
+HISTORICAL_STAGE0_PARENT = "6d81685431b11bbf8fa4d4410fa5945921c1b49a"
 EXPECTED_PYTHON = (3, 13, 16)
 L = {
     "attrs": "25.4.0",
@@ -247,7 +249,7 @@ def checks(sha, parent, architecture_revision):
 
     t = (R / A).read_text()
     for s in (
-        "TASK-0001", parent, f"TECHNICAL_ARCHITECTURE revision {architecture_revision}",
+        "TASK-0001", HISTORICAL_STAGE0_PARENT, f"TECHNICAL_ARCHITECTURE revision {architecture_revision}",
         "01_PROJECT_RULES v0.3", "07_STAGE_STATUS", "PRE_QA_GATE",
         "QA-S0-007", "QA-S0-008", "QA-S0-009", "impact matrix",
     ):
