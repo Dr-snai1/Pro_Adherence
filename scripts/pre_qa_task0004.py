@@ -13,7 +13,7 @@ import sys
 import tomllib
 
 R = Path(__file__).resolve().parents[1]
-PARENT = "c0917885d565348df47417ba34516e79d2e049c9"
+PARENT = "c12135e06429b159fe0704eb13ef693a8cb92b37"
 REPO = "Dr-snai1/Pro_Adherence-research-evidence"
 REQUIRED = (
     "src/pro_adherence/pubmed_evidence.py",
@@ -28,7 +28,13 @@ REQUIRED = (
     "tests/test_pre_qa_task0004.py", ".github/workflows/stage0-tests.yml",
     "scripts/run_pre_qa_exact_runtime.sh", "scripts/run_pre_qa_source_fallback.sh",
 )
-AFFECTED = REQUIRED[:9] + REQUIRED[11:14] + ("tests/test_pubmed_esearch_state.py", "tests/test_pubmed_terminal_failures.py")
+# Scoped atomic security replacement from integrated rev23 main; historical Stage 0 pin unchanged.
+AFFECTED = (
+    ".github/workflows/pubmed-evidence-manual.yml",
+    "scripts/pre_qa_task0004.py",
+    "tests/test_pre_qa_task0004.py",
+    "docs/PUBMED_EVIDENCE_RUNNER.md",
+)
 LOCK = {
     "attrs": "25.4.0", "jsonschema": "4.26.0",
     "jsonschema-specifications": "2025.9.1", "pip": "25.2",
@@ -94,6 +100,289 @@ def block(text, name):
     end = re.search(r"(?m)^[A-Za-z][A-Za-z0-9_-]*:", tail)
     return tail[:end.start()] if end else tail
 
+def _named_step(job, name):
+    m = re.search(r"(?m)^      - name: " + re.escape(name) + r"\s*$", job)
+    if m is None:
+        return ""
+    tail = job[m.end():]
+    nxt = re.search(r"(?m)^      - (?:name:|uses:)", tail)
+    return tail[:nxt.start()] if nxt else tail
+
+def extract_workflow_run_blocks(text):
+    """Extract every literal YAML run scalar, including complete multiline bodies."""
+    lines = text.splitlines()
+    blocks, errors = [], []
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        found = re.match(r"^([ ]{8})run\s*:\s*(.*)$", line)
+        if not found:
+            index += 1
+            continue
+        indent, scalar = len(found.group(1)), found.group(2)
+        if not re.fullmatch(r"\|[+-]?(?:\s*#.*)?", scalar):
+            errors.append("unsupported workflow run scalar: fail closed")
+            index += 1
+            continue
+        body, index = [], index + 1
+        while index < len(lines):
+            current = lines[index]
+            if current.strip() and len(current) - len(current.lstrip(" ")) <= indent:
+                break
+            if current.strip() and not current.startswith(" " * (indent + 2)):
+                errors.append("malformed workflow run indentation: fail closed")
+            body.append(current[indent + 2:] if current.startswith(" " * (indent + 2)) else "")
+            index += 1
+        blocks.append("\n".join(body))
+    if not blocks:
+        errors.append("no workflow run blocks found")
+    return blocks, errors
+
+
+def extract_python_snippets(run_block):
+    """Return Python payloads and heredoc lines excluded from shell command parsing."""
+    import shlex
+    lines = run_block.splitlines()
+    snippets, masked, errors = [], set(), []
+    i = 0
+    interpreter = r"(?<![\w./-])python(?:3(?:\.\d+)?)?"
+    while i < len(lines):
+        line = lines[i]
+        hd = re.search(interpreter + r"\s+(?:-\s*)?<<-?\s*(['\"]?)([A-Za-z_]\w*)\1", line)
+        if hd:
+            terminator = hd.group(2)
+            j = i + 1
+            while j < len(lines) and lines[j].strip() != terminator:
+                j += 1
+            if j == len(lines):
+                errors.append("unterminated Python heredoc: fail closed")
+                masked.update(range(i + 1, len(lines)))
+                break
+            snippets.append("\n".join(lines[i + 1:j]))
+            masked.update(range(i + 1, j + 1))
+            i = j + 1
+            continue
+        inline = re.search(interpreter + r"\s+-c(?:\s|$)", line)
+        if inline:
+            # A shell-quoted -c argument may itself contain physical newlines.
+            # Accumulate until shlex sees a complete shell word; never accept
+            # an unfinished quote or silently scan only its first line.
+            candidate = line[inline.start():]
+            j = i
+            while True:
+                try:
+                    argv = shlex.split(candidate, posix=True)
+                    if len(argv) < 3 or argv[1] != "-c":
+                        raise ValueError("no complete -c payload")
+                    snippets.append(argv[2])
+                    masked.update(range(i + 1, j + 1))
+                    i = j
+                    break
+                except ValueError as exc:
+                    if "No closing quotation" in str(exc) and j + 1 < len(lines):
+                        j += 1
+                        candidate += "\n" + lines[j]
+                        continue
+                    errors.append("unparseable Python -c command: fail closed")
+                    masked.update(range(i + 1, j + 1))
+                    i = j
+                    break
+        i += 1
+    return snippets, masked, errors
+
+
+def python_environment_dump_errors(source):
+    """AST policy: allow selected keys, reject whole environ mapping use."""
+    import ast
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        if re.search(r"\benviron\b|\bgetattr\s*\(", source):
+            return ["unparseable Python environment access: fail closed"]
+        return []
+    os_names, environ_names = set(), set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == "os" or alias.name.startswith("os."):
+                    os_names.add(alias.asname or "os")
+        elif isinstance(node, ast.ImportFrom) and node.module == "os":
+            for alias in node.names:
+                if alias.name == "environ":
+                    environ_names.add(alias.asname or "environ")
+    parents = {child: parent for parent in ast.walk(tree)
+               for child in ast.iter_child_nodes(parent)}
+
+    def is_mapping(node):
+        if isinstance(node, ast.Name) and node.id in environ_names:
+            return True
+        if (isinstance(node, ast.Attribute) and node.attr == "environ"
+                and isinstance(node.value, ast.Name) and node.value.id in os_names):
+            return True
+        return (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                and node.func.id == "getattr" and len(node.args) >= 2
+                and isinstance(node.args[0], ast.Name) and node.args[0].id in os_names
+                and isinstance(node.args[1], ast.Constant)
+                and node.args[1].value == "environ")
+
+    errors = []
+    for node in ast.walk(tree):
+        if not is_mapping(node):
+            continue
+        parent = parents.get(node)
+        if isinstance(parent, ast.Subscript) and parent.value is node:
+            # Reading a specific environment variable is not dumping the mapping.
+            continue
+        if (isinstance(parent, ast.Attribute) and parent.value is node
+                and parent.attr == "get"
+                and isinstance(parents.get(parent), ast.Call)
+                and parents[parent].func is parent):
+            continue
+        errors.append("Python whole-environment mapping exposure/enumeration forbidden")
+        break
+
+    def is_output_call(node):
+        if not isinstance(node, ast.Call):
+            return False
+        fn = node.func
+        return ((isinstance(fn, ast.Name) and fn.id in ("print", "pprint"))
+                or (isinstance(fn, ast.Attribute) and fn.attr in
+                    ("print", "pprint", "dump", "dumps", "write")))
+
+    for node in ast.walk(tree):
+        if not is_output_call(node):
+            continue
+        for descendant in ast.walk(node):
+            # A whole mapping is already rejected above. Specific NCBI_EMAIL
+            # access must not be logged either.
+            if (isinstance(descendant, ast.Constant)
+                    and descendant.value == "NCBI_EMAIL"
+                    and any(is_mapping(x) for x in ast.walk(node))):
+                errors.append("explicit NCBI_EMAIL Python output forbidden")
+                return errors
+            if (isinstance(descendant, ast.Call)
+                    and isinstance(descendant.func, ast.Attribute)
+                    and descendant.func.attr == "getenv"
+                    and isinstance(descendant.func.value, ast.Name)
+                    and descendant.func.value.id in os_names
+                    and descendant.args and isinstance(descendant.args[0], ast.Constant)
+                    and descendant.args[0].value == "NCBI_EMAIL"):
+                errors.append("explicit NCBI_EMAIL Python output forbidden")
+                return errors
+    return errors
+
+
+def shell_environment_dump_errors(run_block, masked=()):
+    """Shell command boundary scanner; ignore quoted data and Python heredoc bodies."""
+    import shlex
+    errors = []
+    lines = run_block.splitlines()
+    i = 0
+    while i < len(lines):
+        if i in masked:
+            i += 1
+            continue
+        line = lines[i]
+        while line.rstrip().endswith("\\") and i + 1 < len(lines) and i + 1 not in masked:
+            i += 1
+            line = line.rstrip()[:-1] + " " + lines[i].strip()
+        i += 1
+        try:
+            lexer = shlex.shlex(line, posix=True, punctuation_chars=";&|()")
+            lexer.whitespace_split = True
+            lexer.commenters = "#"
+            tokens = list(lexer)
+        except ValueError:
+            if re.search(r"\b(?:env|printenv|NCBI_EMAIL|xtrace)\b|(?:set|bash|sh)\s+-\w*x", line):
+                errors.append("unparseable security-sensitive shell command: fail closed")
+            continue
+        command = []
+        def check_command(tokens):
+            words = list(tokens)
+            while words and (words[0] in ("if", "then", "do", "!", "$")
+                             or re.fullmatch(r"[A-Za-z_]\w*=.*", words[0])):
+                words.pop(0)
+            if not words:
+                return
+            name = words[0].rsplit("/", 1)[-1]
+            args = words[1:]
+            if name in ("env", "printenv"):
+                errors.append("shell whole-environment dump forbidden")
+            if name == "set" and (any(re.fullmatch(r"-[A-Za-z]*x[A-Za-z]*", x) for x in args)
+                                  or any(a == "-o" and b == "xtrace"
+                                         for a, b in zip(args, args[1:]))):
+                errors.append("shell tracing forbidden")
+            if name in ("bash", "sh") and any(re.fullmatch(r"-[A-Za-z]*x[A-Za-z]*", x) for x in args):
+                errors.append("shell tracing forbidden")
+            if name in ("bash", "sh") and "-c" in args:
+                pos = args.index("-c")
+                if pos + 1 < len(args):
+                    errors.extend(shell_environment_dump_errors(args[pos + 1]))
+                else:
+                    errors.append("unparseable nested shell command: fail closed")
+            if name == "set" and not args:
+                errors.append("shell whole-environment dump forbidden")
+            if name == "export" and "-p" in args:
+                errors.append("shell whole-environment dump forbidden")
+            if name in ("echo", "printf", "printenv") and any("NCBI_EMAIL" in x for x in args):
+                errors.append("explicit NCBI_EMAIL shell output forbidden")
+            if "GITHUB_OUTPUT" in " ".join(words) and "NCBI_EMAIL" in " ".join(words):
+                errors.append("NCBI_EMAIL GitHub output export forbidden")
+        for tok in tokens:
+            if tok and all(ch in ";&|()" for ch in tok):
+                check_command(command)
+                command = []
+            else:
+                command.append(tok)
+        check_command(command)
+    return errors
+
+
+def security_workflow_errors(text, writer, verifier):
+    """Fail-closed structural security contract; no reliance on physical line layout."""
+    errors = []
+    retrieve = _named_step(writer, "Retrieve to isolated runner temporary storage")
+    if (text.count("secrets.NCBI_EMAIL") != 1 or "vars.NCBI_EMAIL" in text
+            or not re.search(r"(?m)^          NCBI_EMAIL: [$][{][{] secrets[.]NCBI_EMAIL [}][}]\s*$", retrieve)):
+        errors.append("NCBI_EMAIL must be sourced exactly from research-pubmed Environment secret")
+    if (not re.search(r"(?m)^          NCBI_TOOL: [$][{][{] vars[.]NCBI_TOOL [}][}]\s*$", retrieve)
+            or not re.search(r"(?m)^          NCBI_API_KEY: [$][{][{] secrets[.]NCBI_API_KEY [}][}]\s*$", retrieve)):
+        errors.append("NCBI_TOOL and optional NCBI_API_KEY configuration contract missing")
+
+    run_blocks, run_errors = extract_workflow_run_blocks(text)
+    errors += run_errors
+    for run_block in run_blocks:
+        snippets, masked, snippet_errors = extract_python_snippets(run_block)
+        errors += snippet_errors
+        errors += shell_environment_dump_errors(run_block, masked)
+        for source in snippets:
+            errors += python_environment_dump_errors(source)
+        # Unknown Python-invocation formats must not hide environment mappings.
+        if re.search(r"\bpython(?:3(?:\.\d+)?)?\b", run_block) and "environ" in run_block:
+            if not snippets and not re.search(r"\b(?:python|python3)\s+-m\b", run_block):
+                errors.append("unanalysed Python environment mapping: fail closed")
+
+    # An active control-flow sequence, not a bag of keywords.
+    probe = (
+        '          git clone --quiet "git@github.com:$REPOSITORY.git" "$RUNNER_TEMP/pubmed-permission-probe" >/dev/null 2>&1\n'
+        '          git -C "$RUNNER_TEMP/pubmed-permission-probe" checkout --quiet --detach "$EVIDENCE_COMMIT"\n'
+        '          if git -C "$RUNNER_TEMP/pubmed-permission-probe" push --dry-run "git@github.com:$REPOSITORY.git" HEAD:refs/heads/__readback_permission_probe__ >/dev/null 2>&1; then\n'
+        "            echo 'read-only evidence credential unexpectedly has write capability' >&2\n"
+        '            exit 1\n'
+        '          fi\n'
+    )
+    position = verifier.find(probe)
+    readback = _named_step(verifier, "Independent read-only clone of exact evidence commit")
+    if (position < 0 or verifier.count('git -C "$RUNNER_TEMP/pubmed-permission-probe" push') != 1
+            or not (verifier.find("export GIT_SSH_COMMAND=") < position < verifier.find('result='))
+            or probe not in readback):
+        errors.append("fail-closed non-mutating READ-key dry-run probe before exact readback is mandatory")
+    for line in verifier.splitlines():
+        if re.search(r"\bgit\b[^\n]*\bpush\b", line) and line.strip() != probe.splitlines()[2].strip():
+            errors.append("unexpected verifier git push")
+            break
+    return errors
+
 def workflow_errors(text):
     errors = []
     trigger = block(text, "on")
@@ -141,6 +430,7 @@ def workflow_errors(text):
             or verifier.index("readback_flag") > verifier.index("Durable terminal failure evidence verified")
             or "Fail if source retrieval remained incomplete" in writer):
         errors.append("D1 post-write independent readback and truthful failure messaging absent")
+    errors += security_workflow_errors(text, writer, verifier)
     return errors
 
 def status_errors(path, content):
@@ -240,6 +530,13 @@ def runner_errors(root=R):
                  "test_rejected_ids_raw_checkpoint_resume_and_tampered_prefix"):
         if "def " + name + "(" not in esearch:
             errors.append("missing P2-002 executable test: " + name)
+    security_tests = (root / "tests/test_pre_qa_task0004.py").read_text()
+    for name in ("test_sec001_multiline_python_c", "test_sec001_nested_shell",
+                 "test_sec001_multiline_heredoc", "test_sec001_import_alias",
+                 "test_sec001_from_import_alias", "test_sec001_environment_forms",
+                 "test_sec001_safe_specific_key", "test_sec001_all_secret_bearing_steps"):
+        if "def " + name + "(" not in security_tests:
+            errors.append("SEC-001 real-validator regression absent: " + name)
     if "esearch_expected_trace" not in src:
         errors.append("missing deterministic ESearch state machine")
     terminal = (root / "tests/test_pubmed_terminal_failures.py").read_text()
