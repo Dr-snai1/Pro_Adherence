@@ -6,6 +6,7 @@ PLATFORM='linux/amd64'
 EXPECTED_SHA=''
 EXPECTED_PARENT=''
 ARCHITECTURE_REVISION=''
+TASK0004_REVISION=''
 
 usage() {
   cat <<'EOF'
@@ -21,6 +22,7 @@ while [[ $# -gt 0 ]]; do
     --expected-sha) EXPECTED_SHA="${2:-}"; shift 2 ;;
     --expected-parent) EXPECTED_PARENT="${2:-}"; shift 2 ;;
     --architecture-revision) ARCHITECTURE_REVISION="${2:-}"; shift 2 ;;
+    --task0004-revision) TASK0004_REVISION="${2:-}"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
@@ -56,6 +58,7 @@ exec "$ENGINE" run --rm --pull=never --platform "$PLATFORM" \
   --env EXPECTED_SHA="$EXPECTED_SHA" \
   --env EXPECTED_PARENT="$EXPECTED_PARENT" \
   --env ARCHITECTURE_REVISION="$ARCHITECTURE_REVISION" \
+  --env TASK0004_REVISION="$TASK0004_REVISION" \
   --env PIP_DISABLE_PIP_VERSION_CHECK=1 \
   --env PIP_NO_INPUT=1 \
   --env PYTHONDONTWRITEBYTECODE=1 \
@@ -110,4 +113,10 @@ exec "$ENGINE" run --rm --pull=never --platform "$PLATFORM" \
       --expected-sha "$EXPECTED_SHA" \
       --expected-parent "$EXPECTED_PARENT" \
       --architecture-revision "$ARCHITECTURE_REVISION"
+    if [ -n "$TASK0004_REVISION" ]; then
+      env -u PYTHONPATH python scripts/pre_qa_task0004.py \
+        --expected-sha "$EXPECTED_SHA" \
+        --expected-parent "$EXPECTED_PARENT" \
+        --architecture-revision "$TASK0004_REVISION"
+    fi
   '

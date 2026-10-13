@@ -1,0 +1,242 @@
+name: Manual PubMed evidence retrieval
+
+# Scoped network-bound exception per TECHNICAL_ARCHITECTURE revision 23.
+on:
+  workflow_dispatch:
+    inputs:
+      task_id:
+        description: 'Task ID; must match versioned spec'
+        type: string
+        required: true
+        default: TASK-0004
+      run_spec:
+        description: 'Pinned repository path under configs/pubmed/'
+        type: string
+        required: true
+        default: configs/pubmed/smoke.v1.json
+      resume_id:
+        description: 'Optional existing incomplete run ID; must match deterministic identity'
+        type: string
+        required: false
+        default: ''
+      mode:
+        description: 'Full requires explicit authorization and frozen input'
+        type: choice
+        required: true
+        options: [smoke, full]
+        default: smoke
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pubmed-evidence-${{ inputs.task_id }}-${{ inputs.run_spec }}-${{ inputs.mode }}
+  cancel-in-progress: false
+
+jobs:
+  evidence-writer:
+    runs-on: ubuntu-latest
+    environment: research-pubmed
+    outputs:
+      commit: ${{ steps.persist.outputs.commit }}
+      path: ${{ steps.persist.outputs.path }}
+      root: ${{ steps.persist.outputs.root }}
+      task: ${{ steps.persist.outputs.task }}
+      run: ${{ steps.persist.outputs.run }}
+      status: ${{ steps.persist.outputs.status }}
+      disposition: ${{ steps.persist.outputs.disposition }}
+      reason_code: ${{ steps.persist.outputs.reason_code }}
+      retrieval_exit: ${{ steps.retrieve.outputs.exit_code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13.16'
+      - name: Install pinned project
+        run: |
+          python -m pip install --disable-pip-version-check --no-deps -r requirements.lock
+          python -m pip install --disable-pip-version-check --no-deps --no-build-isolation -e .
+      - name: Validate pinned run inputs
+        env:
+          INPUT_SPEC: ${{ inputs.run_spec }}
+          INPUT_TASK: ${{ inputs.task_id }}
+          INPUT_MODE: ${{ inputs.mode }}
+        run: |
+          python - <<'PY'
+          import json, os, pathlib, re
+          spec = os.environ['INPUT_SPEC']
+          if not re.fullmatch(r'configs/pubmed/[A-Za-z0-9_./-]+\.json', spec) or '..' in pathlib.PurePosixPath(spec).parts:
+              raise SystemExit('unsafe run-spec path')
+          data = json.loads(pathlib.Path(spec).read_text())
+          if data.get('task_id') != os.environ['INPUT_TASK']:
+              raise SystemExit('task mismatch')
+          if os.environ['INPUT_MODE'] not in ('smoke','full'):
+              raise SystemExit('mode mismatch')
+          if os.environ['INPUT_MODE']=='smoke' and spec != 'configs/pubmed/smoke.v1.json':
+              raise SystemExit('smoke must use neutral query')
+          if os.environ['INPUT_MODE']=='full' and spec == 'configs/pubmed/smoke.v1.json':
+              raise SystemExit('full requires frozen scientific spec')
+          PY
+      - name: Prepare optional hash-verified private checkpoint
+        if: ${{ inputs.resume_id != '' }}
+        env:
+          RESUME_ID: ${{ inputs.resume_id }}
+          INPUT_SPEC: ${{ inputs.run_spec }}
+          INPUT_MODE: ${{ inputs.mode }}
+          INPUT_TASK: ${{ inputs.task_id }}
+          REPOSITORY: ${{ vars.RESEARCH_EVIDENCE_REPOSITORY }}
+          SSH_KEY: ${{ secrets.RESEARCH_EVIDENCE_WRITE_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          test "$REPOSITORY" = 'Dr-snai1/Pro_Adherence-research-evidence'
+          test -n "$SSH_KEY"
+          expected="$(INPUT_SPEC="$INPUT_SPEC" INPUT_MODE="$INPUT_MODE" python - <<'PYCODE'
+          import os
+          from pro_adherence.pubmed_evidence import read_spec
+          _, rid=read_spec(os.environ['INPUT_SPEC'],mode=os.environ['INPUT_MODE'],
+              code_commit=os.environ['GITHUB_SHA'],runtime='python-3.13.16/ubuntu-latest')
+          print(rid)
+          PYCODE
+          )"
+          test "$RESUME_ID" = "$expected"
+          key="$RUNNER_TEMP/pubmed-resume-key"
+          printf '%s\n' "$SSH_KEY" > "$key"
+          chmod 600 "$key"
+          mkdir -p "$RUNNER_TEMP/ssh"
+          printf '%s\n' 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' > "$RUNNER_TEMP/ssh/known_hosts"
+          export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts"
+          python -m pro_adherence.pubmed_evidence prepare-resume \
+            --repository "$REPOSITORY" --task-id "$INPUT_TASK" --run-id "$RESUME_ID" \
+            --target "$RUNNER_TEMP/pubmed/pubmed/$INPUT_TASK/$RESUME_ID"
+          rm -f "$key"
+      - name: Retrieve to isolated runner temporary storage
+        id: retrieve
+        env:
+          NCBI_TOOL: ${{ vars.NCBI_TOOL }}
+          NCBI_EMAIL: ${{ vars.NCBI_EMAIL }}
+          NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}
+          INPUT_SPEC: ${{ inputs.run_spec }}
+          INPUT_MODE: ${{ inputs.mode }}
+          RESUME_ID: ${{ inputs.resume_id }}
+        run: |
+          set -uo pipefail
+          resume_flag=()
+          if [ -n "$RESUME_ID" ]; then resume_flag+=(--resume); fi
+          python -m pro_adherence.pubmed_evidence collect \
+            --spec "$INPUT_SPEC" --out "$RUNNER_TEMP/pubmed" --mode "$INPUT_MODE" \
+            --code-commit "$GITHUB_SHA" --runtime "python-3.13.16/ubuntu-latest" \
+            "${resume_flag[@]}"
+          result=$?
+          echo "exit_code=$result" >> "$GITHUB_OUTPUT"
+          exit 0  # persist incomplete package before marking this workflow run unsuccessful
+      - name: Write only approved private evidence path
+        id: persist
+        env:
+          SSH_KEY: ${{ secrets.RESEARCH_EVIDENCE_WRITE_SSH_KEY }}
+          REPOSITORY: ${{ vars.RESEARCH_EVIDENCE_REPOSITORY }}
+        run: |
+          set -euo pipefail
+          test "$REPOSITORY" = 'Dr-snai1/Pro_Adherence-research-evidence'
+          test -n "$SSH_KEY"
+          key="$RUNNER_TEMP/pubmed-write-key"
+          printf '%s\n' "$SSH_KEY" > "$key"
+          chmod 600 "$key"
+          mkdir -p "$RUNNER_TEMP/ssh"
+          printf '%s\n' 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' > "$RUNNER_TEMP/ssh/known_hosts"
+          export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts"
+          package="$(find "$RUNNER_TEMP/pubmed/pubmed" -name manifest.json -print -quit)"
+          test -n "$package"
+          result="$(python -m pro_adherence.pubmed_evidence write "$(dirname "$package")" --repository "$REPOSITORY")"
+          export RESULT_JSON="$result"
+          python - <<'PY'
+          import json, os
+          data=json.loads(os.environ['RESULT_JSON'])
+          values={'commit':data['evidence_commit'],'path':data['evidence_path'],
+                  'root':data['root_hash'],'task':data['task_id'],'run':data['run_id'],
+                  'status':data['status'],
+                  'disposition':data.get('failure_disposition') or 'none',
+                  'reason_code':data.get('failure_reason_code') or 'none'}
+          with open(os.environ['GITHUB_OUTPUT'],'a') as out:
+              for key,value in values.items():out.write(f'{key}={value}\n')
+          print('Evidence write commit:',values['commit'],'package root:',values['root'])
+          PY
+          rm -f "$key"
+
+  independent-readback:
+    needs: evidence-writer
+    runs-on: ubuntu-latest
+    environment: research-pubmed
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13.16'
+      - name: Install pinned project
+        run: |
+          python -m pip install --disable-pip-version-check --no-deps -r requirements.lock
+          python -m pip install --disable-pip-version-check --no-deps --no-build-isolation -e .
+      - name: Independent read-only clone of exact evidence commit
+        env:
+          SSH_KEY: ${{ secrets.RESEARCH_EVIDENCE_READ_SSH_KEY }}
+          REPOSITORY: ${{ vars.RESEARCH_EVIDENCE_REPOSITORY }}
+          EVIDENCE_COMMIT: ${{ needs.evidence-writer.outputs.commit }}
+          EVIDENCE_TASK: ${{ needs.evidence-writer.outputs.task }}
+          EVIDENCE_RUN: ${{ needs.evidence-writer.outputs.run }}
+          EXPECTED_ROOT: ${{ needs.evidence-writer.outputs.root }}
+          EXPECTED_STATUS: ${{ needs.evidence-writer.outputs.status }}
+          EXPECTED_DISPOSITION: ${{ needs.evidence-writer.outputs.disposition }}
+          EXPECTED_REASON_CODE: ${{ needs.evidence-writer.outputs.reason_code }}
+          RETRIEVAL_EXIT: ${{ needs.evidence-writer.outputs.retrieval_exit }}
+        run: |
+          set -euo pipefail
+          test "$REPOSITORY" = 'Dr-snai1/Pro_Adherence-research-evidence'
+          test -n "$SSH_KEY"
+          key="$RUNNER_TEMP/pubmed-read-key"
+          printf '%s\n' "$SSH_KEY" > "$key"
+          chmod 600 "$key"
+          mkdir -p "$RUNNER_TEMP/ssh"
+          printf '%s\n' 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' > "$RUNNER_TEMP/ssh/known_hosts"
+          export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts"
+          readback_flag=()
+          if [ "$EXPECTED_STATUS" = "incomplete" ]; then readback_flag+=(--allow-incomplete); fi
+          result="$(python -m pro_adherence.pubmed_evidence readback \
+            --repository "$REPOSITORY" --commit "$EVIDENCE_COMMIT" \
+            --task-id "$EVIDENCE_TASK" --run-id "$EVIDENCE_RUN" "${readback_flag[@]}")"
+          RESULT_JSON="$result" python - <<'PY'
+          import json,os
+          result=json.loads(os.environ['RESULT_JSON'])
+          if result['root_hash'] != os.environ['EXPECTED_ROOT']:
+              raise SystemExit('independent root mismatch')
+          if (result['status'] != os.environ['EXPECTED_STATUS']
+                  or (result.get('failure_disposition') or 'none') != os.environ['EXPECTED_DISPOSITION']
+                  or (result.get('failure_reason_code') or 'none') != os.environ['EXPECTED_REASON_CODE']):
+              raise SystemExit('independent failure disposition/status mismatch')
+          if (result['status'] == 'final') != (os.environ['RETRIEVAL_EXIT'] == '0'):
+              raise SystemExit('retrieval exit/status inconsistency')
+          print('Fresh-runner PASS:',result['root_hash'],'status:',result['status'],
+                'disposition:',result.get('failure_disposition'),'reason:',result.get('failure_reason_code'))
+          PY
+          rm -f "$key"
+      - name: Report retrieval outcome after fresh readback
+        env:
+          EVIDENCE_STATUS: ${{ needs.evidence-writer.outputs.status }}
+          DISPOSITION: ${{ needs.evidence-writer.outputs.disposition }}
+        run: |
+          set -euo pipefail
+          if [ "$EVIDENCE_STATUS" = "incomplete" ]; then
+            if [ "$DISPOSITION" = "resumable" ]; then
+              echo 'Durable resumable incomplete checkpoint verified; re-run with matching resume_id.'
+            elif [ "$DISPOSITION" = "terminal" ]; then
+              echo 'Durable terminal failure evidence verified; this run is not resumable.'
+            else
+              echo 'Invalid incomplete disposition' >&2
+            fi
+            exit 1
+          fi
+          test "$EVIDENCE_STATUS" = "final"
