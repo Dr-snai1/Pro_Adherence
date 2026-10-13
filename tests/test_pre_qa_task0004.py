@@ -92,5 +92,47 @@ class WorkflowMutationTests(unittest.TestCase):
     def test_public_artifact_rejected(self):
         self.assertTrue(g.workflow_errors(YAML+"\nactions/upload-artifact"))
 
+
+    def test_ncbi_email_variable_regression(self):
+        self.assertTrue(g.workflow_errors(YAML.replace("secrets.NCBI_EMAIL", "vars.NCBI_EMAIL", 1)))
+
+    def test_missing_email_secret_regression(self):
+        self.assertTrue(g.workflow_errors(YAML.replace("secrets.NCBI_EMAIL", "vars.BAD_SLOT", 1)))
+
+    def test_email_shell_echo_regression(self):
+        self.assertTrue(g.workflow_errors(YAML.replace("          resume_flag=()", '          echo "$NCBI_EMAIL"\n          resume_flag=()', 1)))
+
+    def test_email_python_print_regression(self):
+        mutation = "          python -c 'import os; print(os.environ)'\\n          resume_flag=()"
+        self.assertTrue(g.workflow_errors(YAML.replace("          resume_flag=()", mutation, 1)))
+
+    def test_email_github_output_regression(self):
+        self.assertTrue(g.workflow_errors(YAML.replace("          resume_flag=()", '          echo "NCBI_EMAIL=$NCBI_EMAIL" >> "$GITHUB_OUTPUT"\n          resume_flag=()', 1)))
+
+    def test_read_probe_absent_regression(self):
+        start = YAML.index('          git clone --quiet "git@github.com:$REPOSITORY.git" "$RUNNER_TEMP/pubmed-permission-probe"')
+        end = YAML.index("          readback_flag=()", start)
+        self.assertTrue(g.workflow_errors(YAML[:start] + YAML[end:]))
+
+    def test_read_probe_inverted_regression(self):
+        self.assertTrue(g.workflow_errors(YAML.replace(
+            'if git -C "$RUNNER_TEMP/pubmed-permission-probe" push --dry-run',
+            'if ! git -C "$RUNNER_TEMP/pubmed-permission-probe" push --dry-run', 1)))
+
+    def test_read_probe_success_allowed_regression(self):
+        self.assertTrue(g.workflow_errors(YAML.replace(
+            "            exit 1\n          fi\n          readback_flag=()",
+            "            exit 0\n          fi\n          readback_flag=()", 1)))
+
+    def test_read_probe_real_push_regression(self):
+        self.assertTrue(g.workflow_errors(YAML.replace(
+            'push --dry-run "git@github.com:$REPOSITORY.git"',
+            'push "git@github.com:$REPOSITORY.git"', 1)))
+
+    def test_verifier_write_key_regression(self):
+        self.assertTrue(g.workflow_errors(YAML.replace(
+            "secrets.RESEARCH_EVIDENCE_READ_SSH_KEY",
+            "secrets.RESEARCH_EVIDENCE_WRITE_SSH_KEY", 1)))
+
 if __name__ == "__main__":
     unittest.main()
