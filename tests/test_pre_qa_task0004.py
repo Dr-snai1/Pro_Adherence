@@ -92,5 +92,169 @@ class WorkflowMutationTests(unittest.TestCase):
     def test_public_artifact_rejected(self):
         self.assertTrue(g.workflow_errors(YAML+"\nactions/upload-artifact"))
 
+
+    def test_ncbi_email_variable_regression(self):
+        self.assertTrue(g.workflow_errors(YAML.replace("secrets.NCBI_EMAIL", "vars.NCBI_EMAIL", 1)))
+
+    def test_missing_email_secret_regression(self):
+        self.assertTrue(g.workflow_errors(YAML.replace("secrets.NCBI_EMAIL", "vars.BAD_SLOT", 1)))
+
+    def test_email_shell_echo_regression(self):
+        self.assertTrue(g.workflow_errors(YAML.replace("          resume_flag=()", '          echo "$NCBI_EMAIL"\n          resume_flag=()', 1)))
+
+    def test_email_python_print_regression(self):
+        mutation = "          python -c 'import os; print(os.environ)'\\n          resume_flag=()"
+        self.assertTrue(g.workflow_errors(YAML.replace("          resume_flag=()", mutation, 1)))
+
+    def test_email_github_output_regression(self):
+        self.assertTrue(g.workflow_errors(YAML.replace("          resume_flag=()", '          echo "NCBI_EMAIL=$NCBI_EMAIL" >> "$GITHUB_OUTPUT"\n          resume_flag=()', 1)))
+
+    def test_read_probe_absent_regression(self):
+        start = YAML.index('          git clone --quiet "git@github.com:$REPOSITORY.git" "$RUNNER_TEMP/pubmed-permission-probe"')
+        end = YAML.index("          readback_flag=()", start)
+        self.assertTrue(g.workflow_errors(YAML[:start] + YAML[end:]))
+
+    def test_read_probe_inverted_regression(self):
+        self.assertTrue(g.workflow_errors(YAML.replace(
+            'if git -C "$RUNNER_TEMP/pubmed-permission-probe" push --dry-run',
+            'if ! git -C "$RUNNER_TEMP/pubmed-permission-probe" push --dry-run', 1)))
+
+    def test_read_probe_success_allowed_regression(self):
+        self.assertTrue(g.workflow_errors(YAML.replace(
+            "            exit 1\n          fi\n          readback_flag=()",
+            "            exit 0\n          fi\n          readback_flag=()", 1)))
+
+    def test_read_probe_real_push_regression(self):
+        self.assertTrue(g.workflow_errors(YAML.replace(
+            'push --dry-run "git@github.com:$REPOSITORY.git"',
+            'push "git@github.com:$REPOSITORY.git"', 1)))
+
+    def test_verifier_write_key_regression(self):
+        self.assertTrue(g.workflow_errors(YAML.replace(
+            "secrets.RESEARCH_EVIDENCE_READ_SSH_KEY",
+            "secrets.RESEARCH_EVIDENCE_WRITE_SSH_KEY", 1)))
+
+
+class SecuritySec001RealValidatorTests(unittest.TestCase):
+    """All mutations run through the real production workflow_errors entrypoint."""
+
+    @staticmethod
+    def injected(script, step="          resume_flag=()"):
+        assert step in YAML, "test must mutate a real executable run block"
+        return YAML.replace(step, script + "\n" + step, 1)
+
+    def rejected(self, script, reason, step="          resume_flag=()"):
+        failures = g.workflow_errors(self.injected(script, step))
+        self.assertTrue(any(reason in x for x in failures), failures)
+
+    def test_sec001_baseline_exact_secure_workflow(self):
+        self.assertEqual(g.workflow_errors(YAML), [])
+
+    def test_sec001_one_line_control(self):
+        self.rejected("          python -c 'import os; print(os.environ)'",
+                      "whole-environment")
+
+    def test_sec001_multiline_heredoc(self):
+        self.rejected("          python - <<'PY'\n"
+                      "          import os\n"
+                      "          print(os.environ)\n"
+                      "          PY", "whole-environment")
+
+    def test_sec001_import_alias(self):
+        self.rejected("          python3 - <<'PY'\n"
+                      "          import os as o\n"
+                      "          print(o.environ)\n"
+                      "          PY", "whole-environment")
+
+    def test_sec001_from_import_alias(self):
+        self.rejected("          python - <<'PY'\n"
+                      "          from os import environ as e\n"
+                      "          print(e)\n"
+                      "          PY", "whole-environment")
+
+    def test_sec001_environment_forms(self):
+        forms = (
+            "import os\nprint(dict(os.environ))",
+            "import os,json\nprint(json.dumps(dict(os.environ)))",
+            "import os\nos.environ.copy()",
+            "import os\nfor key in os.environ.items():\n    print(key)",
+            "import os\npprint = print\npprint(os.environ)",
+            "import os\nlist(os.environ)",
+            "import os\nprint(getattr(os, 'environ'))",
+        )
+        for src in forms:
+            with self.subTest(src=src):
+                command = ("          python - <<'PY'\n" +
+                           "\n".join("          " + x for x in src.splitlines()) +
+                           "\n          PY")
+                self.rejected(command, "whole-environment")
+
+    def test_sec001_safe_specific_key(self):
+        for src in ("import os\nprint(os.environ['RESULT_JSON'])",
+                    "import os\nprint(os.environ.get('EXPECTED_ROOT'))",
+                    "from os import environ as e\nprint(e.get('RESULT_JSON'))"):
+            with self.subTest(src=src):
+                command = ("          python - <<'PY'\n" +
+                           "\n".join("          " + x for x in src.splitlines()) +
+                           "\n          PY")
+                self.assertEqual(g.workflow_errors(self.injected(command)), [])
+
+    def test_sec001_shell_env_and_printenv(self):
+        for cmd in ("env", "printenv", "env | sort", "printenv > dump.txt",
+                    "X=safe env", "if env; then"):
+            with self.subTest(cmd=cmd):
+                self.rejected("          " + cmd, "whole-environment")
+
+    def test_sec001_shell_trace(self):
+        for cmd in ("set -x", "set -o xtrace", "bash -x test.sh", "sh -x test.sh"):
+            with self.subTest(cmd=cmd):
+                self.rejected("          " + cmd, "shell tracing")
+
+    def test_sec001_explicit_ncbi_email_shell(self):
+        for cmd in ('echo "$NCBI_EMAIL"', 'printf "%s" "$NCBI_EMAIL"',
+                    'echo "NCBI_EMAIL=$NCBI_EMAIL" >> "$GITHUB_OUTPUT"'):
+            with self.subTest(cmd=cmd):
+                self.rejected("          " + cmd, "NCBI_EMAIL")
+
+    def test_sec001_ncbi_email_github_output(self):
+        self.rejected('          printf "NCBI_EMAIL=%s\\n" "$NCBI_EMAIL" >> "$GITHUB_OUTPUT"',
+                      "NCBI_EMAIL")
+
+    def test_sec001_public_variable(self):
+        self.assertIn("Environment secret", " ".join(g.workflow_errors(
+            YAML.replace("secrets.NCBI_EMAIL", "vars.NCBI_EMAIL", 1))))
+
+    def test_sec001_read_probe_mandatory(self):
+        self.assertEqual(g.workflow_errors(YAML), [])
+        self.assertTrue(g.workflow_errors(YAML.replace("push --dry-run", "push", 1)))
+
+    def test_sec001_all_secret_bearing_steps(self):
+        # The same predicate must protect each actual secret-bearing step.
+        blocks = (
+            "          resume_flag=()",  # NCBI_EMAIL / NCBI_API_KEY
+            "          test -n \"$SSH_KEY\"",  # writer SSH in resume step
+            "          package=\"$(find",  # writer SSH in persist step
+            "          readback_flag=()",  # read verifier SSH
+        )
+        for step in blocks:
+            with self.subTest(step=step):
+                self.rejected("          python - <<'PY'\n"
+                              "          import os\n"
+                              "          print(dict(os.environ))\n"
+                              "          PY", "whole-environment", step=step)
+
+    def test_sec001_shell_data_not_command(self):
+        for cmd in ("echo 'env is a noun'", "MESSAGE=environment",
+                    "printf '%s\\n' 'printenv is text'"):
+            with self.subTest(cmd=cmd):
+                self.assertEqual(g.workflow_errors(self.injected("          " + cmd)), [])
+
+    def test_sec001_unparseable_security_python_fails_closed(self):
+        self.rejected("          python3 - <<'PY'\n"
+                      "          import os\n"
+                      "          print(os.environ\n"
+                      "          PY", "unparseable Python environment")
+
+
 if __name__ == "__main__":
     unittest.main()
