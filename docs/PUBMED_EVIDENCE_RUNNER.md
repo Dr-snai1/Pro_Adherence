@@ -31,7 +31,9 @@ Manifest root hash is `SHA256(canonical JSON of manifest with package_root_sha25
 Local smoke (requires real NCBI network and non-secret project contact configuration):
 
 ```bash
-export NCBI_TOOL='your-registered-tool' NCBI_EMAIL='project-contact@example.org'
+export NCBI_TOOL='your-registered-tool'
+: "${NCBI_EMAIL:?set private local contact config before running}"
+export NCBI_EMAIL
 python -m pro_adherence.pubmed_evidence collect --spec configs/pubmed/smoke.v1.json \
   --out /path/to/research-temp --mode smoke --code-commit "$(git rev-parse HEAD)" \
   --runtime 'python-3.13.16/local-<platform>'
@@ -39,7 +41,7 @@ python -m pro_adherence.pubmed_evidence collect --spec configs/pubmed/smoke.v1.j
 
 Actions → **Manual PubMed evidence retrieval** → `workflow_dispatch` with `task_id=TASK-0004`, `run_spec=configs/pubmed/smoke.v1.json`, `mode=smoke`. Full mode is **not** to be launched without explicit task owner request and pinned scientific run-spec.
 
-Provisioning owned by 00: a **private** companion repository, environment `research-pubmed`, repo variable `RESEARCH_EVIDENCE_REPOSITORY`, environment secrets `RESEARCH_EVIDENCE_WRITE_SSH_KEY` (writer only) and `RESEARCH_EVIDENCE_READ_SSH_KEY` (read-only verifier only), variables `NCBI_TOOL` and `NCBI_EMAIL`, optional secret `NCBI_API_KEY`. Keys are distinct repository-scoped deploy keys; never place secret values in docs/code/chat. Initialize the private repository's `main` branch before first write.
+Provisioning owned by 00: a **private** companion repository, environment `research-pubmed`, repo variable `RESEARCH_EVIDENCE_REPOSITORY`, environment secrets `RESEARCH_EVIDENCE_WRITE_SSH_KEY` (writer only) and `RESEARCH_EVIDENCE_READ_SSH_KEY` (read-only verifier only), variable `NCBI_TOOL`, **Environment secret** `NCBI_EMAIL`, optional Environment secret `NCBI_API_KEY`. Keys are distinct repository-scoped deploy keys; never place secret values in docs/code/chat. Initialize the private repository's `main` branch before first write.
 
 The writer commits under `pubmed/{task_id}/{run_id}/`, returns exact evidence Git commit and package root. A **different runner** clones that exact commit with **read-only** key and verifies from the persisted private repository, not the writer workspace. Then the owner must create an independent local/research backup on a separate physical machine/storage:
 
@@ -106,7 +108,7 @@ The ESearch trace is validated in order and is prefix-closed: count, ids, query 
 
 The full-module P2-002 negative fixture creates a legitimate final zero-result package, swaps `00001-count.json` and `00002-ids.json` to opposite semantic suffixes without altering raw bytes or derived empty data, updates request references, metadata, file inventory hashes and package root, and demonstrates real `verify()` rejection on semantic role/order. Separate tests exercise nonzero count-to-ids, partition and nested splits, duplicate/missing/reordered operations, malformed and semantically rejected raw count/ids attempts, append-only retries, tampered failed checkpoints and hash-before-network resume. P2-001 canonical path namespace, ADM-001 durable EFetch checkpoints, raw-to-derived lineage and Stage 0 rev22 remain separate regression gates.
 
-**Implementation PRE_QA is not operational acceptance.** Requiring executable P2-002, P2-001 and ADM-001 regressions under `scripts/pre_qa_task0004.py`, including `--static-only`, does not establish HOFF-0019 provisioning, a merged default-branch workflow, a real NCBI smoke, private durable evidence readback, an owner-local backup or scientific TASK-0003 acceptance. TECHNICAL_ARCHITECTURE remains revision 23; historical Stage 0 remains revision 22; `07_STAGE_STATUS` is not updated here.
+**Implementation PRE_QA is not operational acceptance.** Earlier D1/P2-002/P2-001/ADM regressions were independently accepted by HOFF-0040; TASK-0020 PRE_QA executes only affected operational checks and reuses unchanged evidence after no-impact review. Neither admission nor the historical regressions establish HOFF-0019 provisioning, a merged default-branch workflow, a real NCBI smoke, private durable evidence readback, an owner-local backup or scientific TASK-0003 acceptance. TECHNICAL_ARCHITECTURE remains revision 23; historical Stage 0 remains revision 22; `07_STAGE_STATUS` is not updated here.
 
 
 ## D1 terminal-search failure disposition matrix (TASK-0013)
@@ -123,3 +125,13 @@ The full-module P2-002 negative fixture creates a legitimate final zero-result p
 | Checkpoint identity/plan divergence, tamper, raw/derived corruption | **not persistable** | fail verification; cannot be labelled valid incomplete evidence |
 
 The two-job workflow writes with repository-scoped **writer credential**, then does a fresh exact-commit readback using a distinct **read-only credential**. Readback compares status, root hash, disposition and reason code. Only afterward a terminal run prints “Durable terminal failure evidence verified; this run is not resumable.”; a resumable run prints “Durable resumable incomplete checkpoint verified; re-run with matching resume_id.”. Both then fail the workflow. Final readback remains strict by default and only a genuine final retrieval permits workflow success. This offline implementation contract is separate from operational HOFF-0019 acceptance and TASK-0003 scientific validation.
+
+## TASK-0020 — minimal operational candidate (science-first policy, 2026-10-13)
+
+This is a code-side contract, not a current Stage/QA status: consult 07_STAGE_STATUS. The research-pubmed retrieval step reads NCBI_TOOL from an Environment variable, NCBI_EMAIL from an Environment secret (secrets.NCBI_EMAIL, never vars.NCBI_EMAIL), and optional NCBI_API_KEY from a secret. Do not print, export to GITHUB_OUTPUT, or otherwise expose contact or secret values in public logs. Existing contact metadata may remain in private evidence.
+
+The independent verifier uses only RESEARCH_EVIDENCE_READ_SSH_KEY. After a fresh read-key clone and checkout of the exact private evidence commit, one git push --dry-run targets refs/heads/__readback_permission_probe__ with normal output suppressed. If dry-run unexpectedly succeeds, the job reports a generic error and fails before exact-commit readback. A failed dry-run allows the normal independent readback. No real push, force push, or private evidence mutation occurs. Negative capability is not provider-ACL proof: HOFF-0044 still requires owner-side deploy-key ACL audit, Environment-secret provisioning, old public-variable deprecation, and historical-log mitigation.
+
+Historical run 38422339394 remains historical BLOCKED / NOT ACCEPTED (public NCBI_EMAIL disclosure and no accepted owner-local backup). PR #14 remains historical/superseded, closed without merge, and its HOFF-0051/0052 QA FAIL is preserved. SEC-001-R (command/exec wrapper bypass) and SEC-001-FP (quoted-data false positive) remain P2 backlog under HOFF-0055, not TASK-0020 operational blockers. No broad auxiliary scanner is implemented here.
+
+After independent code QA and authorized integration, one new neutral PubMed smoke must demonstrate the Environment secret and clean public logs, READ dry-run rejection, real retrieval, new private evidence commit and independent exact-commit/root/hash/count readback. Owner-local physically independent hash-verified backup must use the new evidence commit and run_id. Operational PASS is not TASK-0003 scientific acceptance or Stage 1 acceptance.

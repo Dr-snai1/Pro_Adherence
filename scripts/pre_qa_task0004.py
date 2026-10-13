@@ -13,7 +13,7 @@ import sys
 import tomllib
 
 R = Path(__file__).resolve().parents[1]
-PARENT = "c0917885d565348df47417ba34516e79d2e049c9"
+PARENT = "c12135e06429b159fe0704eb13ef693a8cb92b37"
 REPO = "Dr-snai1/Pro_Adherence-research-evidence"
 REQUIRED = (
     "src/pro_adherence/pubmed_evidence.py",
@@ -28,7 +28,12 @@ REQUIRED = (
     "tests/test_pre_qa_task0004.py", ".github/workflows/stage0-tests.yml",
     "scripts/run_pre_qa_exact_runtime.sh", "scripts/run_pre_qa_source_fallback.sh",
 )
-AFFECTED = REQUIRED[:9] + REQUIRED[11:14] + ("tests/test_pubmed_esearch_state.py", "tests/test_pubmed_terminal_failures.py")
+ALLOWED_CHANGED = (
+    ".github/workflows/pubmed-evidence-manual.yml",
+    "scripts/pre_qa_task0004.py",
+    "tests/test_pre_qa_task0004.py",
+    "docs/PUBMED_EVIDENCE_RUNNER.md",
+)
 LOCK = {
     "attrs": "25.4.0", "jsonschema": "4.26.0",
     "jsonschema-specifications": "2025.9.1", "pip": "25.2",
@@ -58,7 +63,7 @@ def identity_errors(sha, parent, git=sh):
     if not re.fullmatch(r"[0-9a-f]{40}", sha):
         errors.append("invalid exact candidate SHA")
     if not re.fullmatch(r"[0-9a-f]{40}", parent) or parent != PARENT:
-        errors.append("candidate parent must be accepted c0917885 baseline")
+        errors.append("candidate parent must be accepted c12135e baseline")
     if errors:
         return errors
     try:
@@ -83,8 +88,12 @@ def forbid(path):
             or bool(SECRET_PATH.search(path)))
 
 def diff_errors(paths):
-    return ([f"forbidden candidate path: {p}" for p in paths if forbid(p)]
-            + [f"missing atomic affected scope: {p}" for p in AFFECTED if p not in paths])
+    return ([f"forbidden candidate path: {p}" for p in paths
+             if forbid(p) or p not in ALLOWED_CHANGED]
+            + (["TASK-0020 candidate must change at least one approved path"]
+               if not paths else [])
+            + (["TASK-0020 candidate exceeds four changed paths"]
+               if len(paths) > 4 else []))
 
 def block(text, name):
     match = re.search(r"(?m)^" + re.escape(name) + r":([^\n]*)\n", text)
@@ -133,6 +142,34 @@ def workflow_errors(text):
         errors.append("pinned public checkout/credential boundary missing")
     if any(x in text for x in ("actions/upload-artifact", "actions/deploy-pages", "git push --force", "git add .")):
         errors.append("public output, Pages, or force-write forbidden")
+    retrieval = writer.split("- name: Retrieve to isolated runner temporary storage", 1)
+    retrieval = (retrieval[1].split("- name: Write only approved private evidence path", 1)[0]
+                 if len(retrieval) == 2 else "")
+    if not re.search(r"(?m)^\s+NCBI_EMAIL:\s*\$\{\{\s*secrets\.NCBI_EMAIL\s*\}\}\s*$", retrieval):
+        errors.append("retrieval NCBI_EMAIL must use Environment secret")
+    if "vars.NCBI_EMAIL" in text:
+        errors.append("NCBI_EMAIL variable source forbidden")
+    # Finite direct-output check, not a general shell execution-context scanner.
+    if any(re.search(r"\b(?:echo|printf|print)\s*(?:\(|\s)", line) and
+           re.search(r"\bNCBI_EMAIL\b", line)
+           for line in text.splitlines() if not line.lstrip().startswith("#")) or any(
+           "NCBI_EMAIL" in line and "GITHUB_OUTPUT" in line for line in text.splitlines()):
+        errors.append("explicit NCBI_EMAIL output/export forbidden")
+    probe = ('if git -C "$probe_repo" push --dry-run origin '
+             'HEAD:refs/heads/__readback_permission_probe__ >/dev/null 2>&1; then')
+    push_lines = re.findall(r"(?m)^.*\bgit(?:\s+-C\s+\S+)?\s+push\b.*$", verifier)
+    if (len(push_lines) != 1 or probe not in verifier
+            or any("--dry-run" not in line or "--force" in line or
+                   re.search(r"(?:^|\s)-f(?:\s|$)", line) for line in push_lines)):
+        errors.append("read-only permission probe missing or unsafe Git push")
+    if ('git clone --quiet --no-checkout "git@github.com:$REPOSITORY.git" "$probe_repo"' not in verifier
+            or 'git -C "$probe_repo" checkout --quiet --detach "$EVIDENCE_COMMIT"' not in verifier
+            or probe not in verifier or verifier.index(probe) > verifier.index("readback ")):
+        errors.append("read-only permission probe must precede exact readback after clone")
+    if (probe not in verifier or not re.search(
+            re.escape(probe) + r"\s*\n\s*echo [^\n]+\n\s*exit 1\s*\n\s*fi\b",
+            verifier)):
+        errors.append("read-only permission probe must fail closed")
     if "TECHNICAL_ARCHITECTURE revision 23" not in text:
         errors.append("workflow architecture revision absent")
     if ("--allow-incomplete" not in verifier
@@ -311,59 +348,27 @@ def main():
     args = ap.parse_args()
     errors = checks(args.expected_sha, args.expected_parent, args.architecture_revision)
     if not errors:
-        # Executable ADM-001 documentation/behavior contract, even with --static-only.
-        # This is a focused test, not static keyword-only admission evidence.
-        r = subprocess.run(
+        # TASK-0020: only affected operational tests. HOFF-0040 covers unchanged
+        # D1/P2-002/P2-001/ADM/raw lineage after exact no-impact analysis.
+        targeted = subprocess.run(
             [sys.executable, "-m", "unittest", "discover", "-s", "tests",
-             "-p", "test_pubmed_adm001.py", "-v"], cwd=R, text=True,
+             "-p", "test_pre_qa_task0004.py", "-v"], cwd=R, text=True,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             env={k: v for k, v in os.environ.items() if k != "PYTHONPATH"})
-        # P2-001 must execute as part of admission even with --static-only.
-        collision = subprocess.run(
-            [sys.executable, "-m", "unittest", "discover", "-s", "tests",
-             "-p", "test_pubmed_paths.py", "-v"], cwd=R, text=True,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            env={k: v for k, v in os.environ.items() if k != "PYTHONPATH"})
-        semantic = subprocess.run(
-            [sys.executable, "-m", "unittest", "discover", "-s", "tests",
-             "-p", "test_pubmed_esearch_state.py", "-v"], cwd=R, text=True,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            env={k: v for k, v in os.environ.items() if k != "PYTHONPATH"})
-        terminal = subprocess.run(
-            [sys.executable, "-m", "unittest", "discover", "-s", "tests",
-             "-p", "test_pubmed_terminal_failures.py", "-v"], cwd=R, text=True,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            env={k: v for k, v in os.environ.items() if k != "PYTHONPATH"})
-        if terminal.returncode:
-            errors.append("D1 executable terminal failure regressions failed")
-            print(terminal.stdout[-3000:], file=sys.stderr)
-            print(terminal.stderr[-7000:], file=sys.stderr)
-        if semantic.returncode:
-            errors.append("P2-002 executable semantic state-machine regressions failed")
-            print(semantic.stdout[-3000:], file=sys.stderr)
-            print(semantic.stderr[-7000:], file=sys.stderr)
-        if collision.returncode:
-            errors.append("P2-001 executable collision regressions failed")
-            print(collision.stdout[-3000:], file=sys.stderr)
-            print(collision.stderr[-7000:], file=sys.stderr)
-        if r.returncode:
-            errors.append("ADM-001 executable regressions failed")
-            print(r.stdout[-3000:], file=sys.stderr)
-            print(r.stderr[-7000:], file=sys.stderr)
+        if targeted.returncode:
+            errors.append("TASK-0020 targeted operational regressions failed")
+            print(targeted.stdout[-3000:], file=sys.stderr)
+            print(targeted.stderr[-7000:], file=sys.stderr)
     if errors:
         print("TASK-0004 IMPLEMENTATION PRE_QA revision 23: FAIL", file=sys.stderr)
         for issue in errors:
             print("-", issue, file=sys.stderr)
         return 1
-    if not args.static_only:
-        p = subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py"],
-                           cwd=R, env={k:v for k,v in os.environ.items() if k != "PYTHONPATH"})
-        if p.returncode:
-            return p.returncode
+    # Ordinary CI owns full-suite execution; do not duplicate it for this narrow patch.
     print("TASK-0004 IMPLEMENTATION PRE_QA revision 23: PASS")
-    print("INFRASTRUCTURE ACCEPTANCE: BLOCKED pending HOFF-0019 provisioning, default-branch "
-          "workflow, real NCBI smoke, private durable commit/root/counts, fresh read-only "
-          "readback and independent owner-local hash-verified backup")
+    print("OPERATIONAL ACCEPTANCE: NOT YET ESTABLISHED; HOFF-0044 owner-side "
+          "secret/ACL/log mitigation, fresh clean NCBI smoke, new private exact-commit "
+          "readback and owner-local hash-verified backup remain mandatory")
     return 0
 
 if __name__ == "__main__":

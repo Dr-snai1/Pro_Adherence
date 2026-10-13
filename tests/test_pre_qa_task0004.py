@@ -92,5 +92,89 @@ class WorkflowMutationTests(unittest.TestCase):
     def test_public_artifact_rejected(self):
         self.assertTrue(g.workflow_errors(YAML+"\nactions/upload-artifact"))
 
+    def test_secret_source_and_approved_workflow_boundary(self):
+        slot = "NCBI_EMAIL: $" + "{{ secrets.NCBI_EMAIL }}"
+        self.assertIn(slot, YAML)
+        self.assertNotIn("vars.NCBI_EMAIL", YAML)
+        self.assertEqual(g.workflow_errors(YAML), [])
+
+    def test_missing_secret_slot_rejected_for_correct_reason(self):
+        slot = "NCBI_EMAIL: $" + "{{ secrets.NCBI_EMAIL }}"
+        changed = YAML.replace(slot, "", 1)
+        self.assertIn("retrieval NCBI_EMAIL must use Environment secret", g.workflow_errors(changed))
+
+    def test_variable_email_source_rejected_for_correct_reason(self):
+        slot = "NCBI_EMAIL: $" + "{{ secrets.NCBI_EMAIL }}"
+        changed = YAML.replace(slot, "NCBI_EMAIL: $" + "{{ vars.NCBI_EMAIL }}", 1)
+        self.assertIn("NCBI_EMAIL variable source forbidden", g.workflow_errors(changed))
+
+    def test_direct_echo_or_printf_email_rejected_for_correct_reason(self):
+        for command in ('echo "$NCBI_EMAIL"', 'printf "%s\\n" "$NCBI_EMAIL"'):
+            with self.subTest(command=command):
+                changed = YAML.replace("          result=$?",
+                                       "          " + command + "\n          result=$?", 1)
+                self.assertIn("explicit NCBI_EMAIL output/export forbidden",
+                              g.workflow_errors(changed))
+
+    def test_github_output_email_rejected_for_correct_reason(self):
+        changed = YAML.replace('          result=$?',
+                               '          echo "contact=$NCBI_EMAIL" >> "$GITHUB_OUTPUT"\n          result=$?', 1)
+        self.assertIn("explicit NCBI_EMAIL output/export forbidden", g.workflow_errors(changed))
+
+    def test_key_separation_rejected_for_correct_reason(self):
+        writer = YAML.replace("RESEARCH_EVIDENCE_WRITE_SSH_KEY",
+                              "RESEARCH_EVIDENCE_READ_SSH_KEY")
+        self.assertIn("writer SSH slot wrong", g.workflow_errors(writer))
+        verifier = YAML.replace("RESEARCH_EVIDENCE_READ_SSH_KEY",
+                                "RESEARCH_EVIDENCE_WRITE_SSH_KEY")
+        self.assertIn("read-only SSH slot wrong", g.workflow_errors(verifier))
+
+    def test_read_probe_present_before_readback(self):
+        self.assertEqual(g.workflow_errors(YAML), [])
+        v = YAML.split("  independent-readback:", 1)[1]
+        self.assertLess(v.index("git clone --quiet --no-checkout"),
+                        v.index("push --dry-run origin"))
+        self.assertLess(v.index("push --dry-run origin"),
+                        v.index("pubmed_evidence readback"))
+
+    def test_missing_or_real_push_rejected_for_correct_reason(self):
+        for changed in (
+            YAML.replace("push --dry-run origin", "push origin", 1),
+            YAML.replace("push --dry-run origin", "push --force origin", 1),
+            YAML.replace("push --dry-run origin",
+                         "push --dry-run origin HEAD:refs/heads/other\n"
+                         "          git push origin", 1),
+        ):
+            self.assertIn("read-only permission probe missing or unsafe Git push",
+                          g.workflow_errors(changed))
+
+    def test_probe_ref_mutation_rejected_for_correct_reason(self):
+        changed = YAML.replace("refs/heads/__readback_permission_probe__",
+                               "refs/heads/main", 1)
+        self.assertIn("read-only permission probe missing or unsafe Git push",
+                      g.workflow_errors(changed))
+
+    def test_probe_order_rejected_for_correct_reason(self):
+        marker = '          readback_flag=()'
+        probe_start = '          # Independent negative-capability check; never update a private ref.\n'
+        start = YAML.index(probe_start)
+        stop = YAML.index(marker, start)
+        changed = YAML[:start] + YAML[stop:].replace(
+            '          rm -f "$key"',
+            YAML[start:stop] + '          rm -f "$key"', 1)
+        self.assertIn("read-only permission probe must precede exact readback after clone",
+                      g.workflow_errors(changed))
+
+    def test_probe_success_must_fail_closed(self):
+        changed = YAML.replace("            exit 1\n          fi\n          readback_flag=()",
+                               "            :\n          fi\n          readback_flag=()", 1)
+        self.assertIn("read-only permission probe must fail closed",
+                      g.workflow_errors(changed))
+
+    def test_only_scoped_diff_paths_admitted(self):
+        self.assertEqual(g.diff_errors(list(g.ALLOWED_CHANGED)), [])
+        self.assertIn("forbidden candidate path: src/pro_adherence/pubmed_evidence.py",
+                      g.diff_errors(["src/pro_adherence/pubmed_evidence.py"]))
+
 if __name__ == "__main__":
     unittest.main()
