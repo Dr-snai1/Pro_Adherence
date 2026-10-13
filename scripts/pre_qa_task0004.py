@@ -13,7 +13,7 @@ import sys
 import tomllib
 
 R = Path(__file__).resolve().parents[1]
-PARENT = "c0917885d565348df47417ba34516e79d2e049c9"
+PARENT = "c12135e06429b159fe0704eb13ef693a8cb92b37"
 REPO = "Dr-snai1/Pro_Adherence-research-evidence"
 REQUIRED = (
     "src/pro_adherence/pubmed_evidence.py",
@@ -28,7 +28,13 @@ REQUIRED = (
     "tests/test_pre_qa_task0004.py", ".github/workflows/stage0-tests.yml",
     "scripts/run_pre_qa_exact_runtime.sh", "scripts/run_pre_qa_source_fallback.sh",
 )
-AFFECTED = REQUIRED[:9] + REQUIRED[11:14] + ("tests/test_pubmed_esearch_state.py", "tests/test_pubmed_terminal_failures.py")
+# Scoped atomic security replacement from integrated rev23 main; historical Stage 0 pin unchanged.
+AFFECTED = (
+    ".github/workflows/pubmed-evidence-manual.yml",
+    "scripts/pre_qa_task0004.py",
+    "tests/test_pre_qa_task0004.py",
+    "docs/PUBMED_EVIDENCE_RUNNER.md",
+)
 LOCK = {
     "attrs": "25.4.0", "jsonschema": "4.26.0",
     "jsonschema-specifications": "2025.9.1", "pip": "25.2",
@@ -94,6 +100,52 @@ def block(text, name):
     end = re.search(r"(?m)^[A-Za-z][A-Za-z0-9_-]*:", tail)
     return tail[:end.start()] if end else tail
 
+def _named_step(job, name):
+    m = re.search(r"(?m)^      - name: " + re.escape(name) + r"\s*$", job)
+    if m is None:
+        return ""
+    tail = job[m.end():]
+    nxt = re.search(r"(?m)^      - (?:name:|uses:)", tail)
+    return tail[:nxt.start()] if nxt else tail
+
+def security_workflow_errors(text, writer, verifier):
+    """Structural fail-closed security contract for TASK-0016."""
+    errors = []
+    retrieve = _named_step(writer, "Retrieve to isolated runner temporary storage")
+    if (text.count("secrets.NCBI_EMAIL") != 1 or "vars.NCBI_EMAIL" in text
+            or not re.search(r"(?m)^          NCBI_EMAIL: [$][{][{] secrets[.]NCBI_EMAIL [}][}]\s*$", retrieve)):
+        errors.append("NCBI_EMAIL must be sourced exactly from research-pubmed Environment secret")
+    if (not re.search(r"(?m)^          NCBI_TOOL: [$][{][{] vars[.]NCBI_TOOL [}][}]\s*$", retrieve)
+            or not re.search(r"(?m)^          NCBI_API_KEY: [$][{][{] secrets[.]NCBI_API_KEY [}][}]\s*$", retrieve)):
+        errors.append("NCBI_TOOL and optional NCBI_API_KEY configuration contract missing")
+    if re.search(
+        r"(?im)^\s*(?:echo\b|printf\b|print\s*\(|printenv\b|set\s+-x\b|bash\s+-x\b)[^\n]*NCBI_EMAIL\b"
+        r"|^.*(?:NCBI_EMAIL[^\n]*GITHUB_OUTPUT|GITHUB_OUTPUT[^\n]*NCBI_EMAIL)",
+        text):
+        errors.append("public log or GitHub output cannot contain NCBI_EMAIL")
+    if re.search(r"(?m)^\s{10,}(?:env|printenv)(?:\s|$)|^\s{10,}(?:set|bash)\s+-x(?:\s|$)", text):
+        errors.append("environment dump or shell tracing forbidden")
+    # Match an active shell control-flow sequence, not a collection of keywords.
+    probe = (
+        '          git clone --quiet "git@github.com:$REPOSITORY.git" "$RUNNER_TEMP/pubmed-permission-probe" >/dev/null 2>&1\n'
+        '          git -C "$RUNNER_TEMP/pubmed-permission-probe" checkout --quiet --detach "$EVIDENCE_COMMIT"\n'
+        '          if git -C "$RUNNER_TEMP/pubmed-permission-probe" push --dry-run "git@github.com:$REPOSITORY.git" HEAD:refs/heads/__readback_permission_probe__ >/dev/null 2>&1; then\n'
+        "            echo 'read-only evidence credential unexpectedly has write capability' >&2\n"
+        '            exit 1\n'
+        '          fi\n'
+    )
+    position = verifier.find(probe)
+    readback = _named_step(verifier, "Independent read-only clone of exact evidence commit")
+    if (position < 0 or verifier.count('git -C "$RUNNER_TEMP/pubmed-permission-probe" push') != 1
+            or not (verifier.find("export GIT_SSH_COMMAND=") < position < verifier.find('result='))
+            or probe not in readback):
+        errors.append("fail-closed non-mutating READ-key dry-run probe before exact readback is mandatory")
+    for line in verifier.splitlines():
+        if re.search(r"\bgit\b[^\n]*\bpush\b", line) and line.strip() != probe.splitlines()[2].strip():
+            errors.append("unexpected verifier git push")
+            break
+    return errors
+
 def workflow_errors(text):
     errors = []
     trigger = block(text, "on")
@@ -141,6 +193,7 @@ def workflow_errors(text):
             or verifier.index("readback_flag") > verifier.index("Durable terminal failure evidence verified")
             or "Fail if source retrieval remained incomplete" in writer):
         errors.append("D1 post-write independent readback and truthful failure messaging absent")
+    errors += security_workflow_errors(text, writer, verifier)
     return errors
 
 def status_errors(path, content):

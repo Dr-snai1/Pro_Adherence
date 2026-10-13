@@ -116,7 +116,7 @@ jobs:
         id: retrieve
         env:
           NCBI_TOOL: ${{ vars.NCBI_TOOL }}
-          NCBI_EMAIL: ${{ vars.NCBI_EMAIL }}
+          NCBI_EMAIL: ${{ secrets.NCBI_EMAIL }}
           NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}
           INPUT_SPEC: ${{ inputs.run_spec }}
           INPUT_MODE: ${{ inputs.mode }}
@@ -203,6 +203,13 @@ jobs:
           mkdir -p "$RUNNER_TEMP/ssh"
           printf '%s\n' 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' > "$RUNNER_TEMP/ssh/known_hosts"
           export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts"
+          # Non-mutating READ deploy-key negative-capability probe; expected failure is not ACL attestation.
+          git clone --quiet "git@github.com:$REPOSITORY.git" "$RUNNER_TEMP/pubmed-permission-probe" >/dev/null 2>&1
+          git -C "$RUNNER_TEMP/pubmed-permission-probe" checkout --quiet --detach "$EVIDENCE_COMMIT"
+          if git -C "$RUNNER_TEMP/pubmed-permission-probe" push --dry-run "git@github.com:$REPOSITORY.git" HEAD:refs/heads/__readback_permission_probe__ >/dev/null 2>&1; then
+            echo 'read-only evidence credential unexpectedly has write capability' >&2
+            exit 1
+          fi
           readback_flag=()
           if [ "$EXPECTED_STATUS" = "incomplete" ]; then readback_flag+=(--allow-incomplete); fi
           result="$(python -m pro_adherence.pubmed_evidence readback \
