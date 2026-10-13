@@ -125,11 +125,13 @@ jobs:
           set -uo pipefail
           resume_flag=()
           if [ -n "$RESUME_ID" ]; then resume_flag+=(--resume); fi
+          set +e  # GitHub runs bash -e; preserve collector exit for checkpoint persistence
           python -m pro_adherence.pubmed_evidence collect \
             --spec "$INPUT_SPEC" --out "$RUNNER_TEMP/pubmed" --mode "$INPUT_MODE" \
             --code-commit "$GITHUB_SHA" --runtime "python-3.13.16/ubuntu-latest" \
             "${resume_flag[@]}"
           result=$?
+          set -e
           echo "exit_code=$result" >> "$GITHUB_OUTPUT"
           exit 0  # persist incomplete package before marking this workflow run unsuccessful
       - name: Write only approved private evidence path
