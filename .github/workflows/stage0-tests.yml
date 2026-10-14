@@ -97,7 +97,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: b82216cb70ee61ab5c975c77517db5b343256e97
-          fetch-depth: 1
+          fetch-depth: 0
           persist-credentials: false
       - name: Install exact requirements
         run: |
