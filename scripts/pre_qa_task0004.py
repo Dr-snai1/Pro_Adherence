@@ -14,6 +14,7 @@ import tomllib
 
 R = Path(__file__).resolve().parents[1]
 PARENT = "c12135e06429b159fe0704eb13ef693a8cb92b37"
+SUCCESSOR_BASELINE = "20b56edc2166148a510cce1fa4edb1ec7dadbb36"
 REPO = "Dr-snai1/Pro_Adherence-research-evidence"
 REQUIRED = (
     "src/pro_adherence/pubmed_evidence.py",
@@ -33,6 +34,7 @@ ALLOWED_CHANGED = (
     "scripts/pre_qa_task0004.py",
     "tests/test_pre_qa_task0004.py",
     "docs/PUBMED_EVIDENCE_RUNNER.md",
+    "tests/test_pubmed_workflow_exit_capture.py",
 )
 LOCK = {
     "attrs": "25.4.0", "jsonschema": "4.26.0",
@@ -62,11 +64,13 @@ def identity_errors(sha, parent, git=sh):
     errors = []
     if not re.fullmatch(r"[0-9a-f]{40}", sha):
         errors.append("invalid exact candidate SHA")
-    if not re.fullmatch(r"[0-9a-f]{40}", parent) or parent != PARENT:
-        errors.append("candidate parent must be accepted c12135e baseline")
+    if not re.fullmatch(r"[0-9a-f]{40}", parent):
+        errors.append("candidate parent must be a full SHA")
     if errors:
         return errors
     try:
+        if parent != PARENT and git("git", "merge-base", SUCCESSOR_BASELINE, sha) != SUCCESSOR_BASELINE:
+            errors.append("successor must descend from approved integrated main baseline")
         if git("git", "rev-parse", "HEAD") != sha:
             errors.append("HEAD != exact SHA")
         if git("git", "rev-parse", "HEAD^") != parent:
@@ -92,8 +96,8 @@ def diff_errors(paths):
              if forbid(p) or p not in ALLOWED_CHANGED]
             + (["TASK-0020 candidate must change at least one approved path"]
                if not paths else [])
-            + (["TASK-0020 candidate exceeds four changed paths"]
-               if len(paths) > 4 else []))
+            + (["bounded successor candidate exceeds five changed paths"]
+               if len(paths) > 5 else []))
 
 def block(text, name):
     match = re.search(r"(?m)^" + re.escape(name) + r":([^\n]*)\n", text)
@@ -304,7 +308,8 @@ def checks(sha, parent, revision):
         if sh("git", "status", "--porcelain", "--untracked-files=all"):
             errors.append("dirty Git tree")
         sh("git", "diff", "--check", parent, "HEAD")
-        changed = sh("git", "diff", "--name-only", parent, "HEAD").splitlines()
+        scope_base = PARENT if parent == PARENT else SUCCESSOR_BASELINE
+        changed = sh("git", "diff", "--name-only", scope_base, "HEAD").splitlines()
         errors += diff_errors(changed)
     except RuntimeError as exc:
         errors.append(str(exc))
