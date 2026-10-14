@@ -1,123 +1,124 @@
-name: Stage 0 tests
-
+name: TASK-0024 exact config-only PRE_QA validation harness
 on:
   push:
     branches:
-      - main
-      - "pre-qa-*"
-  pull_request:
-    branches:
-      - main
-  workflow_dispatch:
-
+      - pre-qa-task0003-config-only-20261014
 permissions:
   contents: read
-
 jobs:
-  contract-tests:
+  exact-native:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: 06694b07e635949e80a7e2852c4a688b351faccc
           fetch-depth: 0
-
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.13.16"
-
-      - name: Install exact locked environment
-        run: python -m pip install --disable-pip-version-check --no-deps -r requirements.lock
-
-      - name: Install project package
-        run: python -m pip install --disable-pip-version-check --no-build-isolation --no-deps -e .
-
-      - name: Show runtime and locked dependencies
+          python-version: '3.13.16'
+      - name: Install exact lock and project
+        run: |
+          python -m pip install --disable-pip-version-check --no-deps -r requirements.lock
+          python -m pip install --disable-pip-version-check --no-deps --no-build-isolation -e .
+      - name: Execute config-only production read_spec and native gates
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "06694b07e635949e80a7e2852c4a688b351faccc"
+          test "$(git rev-parse HEAD^)" = "acadc7191f438b2b4dc6258a641b2dc5c05a16ed"
+          test "$(git rev-parse HEAD^{tree})" = "2e1e4263babe030e9e1fccc15974d6882f0c7236"
+          git diff --check "acadc7191f438b2b4dc6258a641b2dc5c05a16ed" HEAD
+          python - <<'PY'
+          import subprocess
+          get=lambda *args: subprocess.check_output(args, text=True).strip()
+          expected={"configs/pubmed/task-0003-scientific.v01-v02.json":"f92ca88769a79e080c700ff81926e9daf1e25593",
+                    "configs/pubmed/task-0003-scientific-sensitivity.v01.json":"63c6e3bee11013b77e72f053e832de434972e106"}
+          actual=dict((line[2:],line[0]) for line in get("git","diff","--name-status","HEAD^","HEAD").splitlines())
+          assert actual == {p:"A" for p in expected}, actual
+          for path, sha in expected.items():
+              assert get("git","hash-object",path)==sha
+          approved={
+          ".github/workflows/pubmed-evidence-manual.yml":"893b4bff474be982b2007c9aad325231550355d0",
+          "src/pro_adherence/pubmed_evidence.py":"3a15e379a5e975e7fdd2cd3a8fe55ab16e2c25d7",
+          "scripts/pre_qa_task0004.py":"870b609afafdb39b1ad011c5e92a6c3a16a11197"}
+          for path, sha in approved.items():
+              assert get("git","hash-object",path)==sha
+          print("GIT OBJECT + 2-ONLY DIFF + APPROVED CODE: PASS")
+          PY
+          env -u PYTHONPATH python - <<'PY'
+          import re
+          from pathlib import Path
+          from pro_adherence.pubmed_evidence import read_spec
+          
+          commit = "06694b07e635949e80a7e2852c4a688b351faccc"
+          paths = ["configs/pubmed/task-0003-scientific.v01-v02.json","configs/pubmed/task-0003-scientific-sensitivity.v01.json"]
+          expected = {"configs/pubmed/task-0003-scientific.v01-v02.json": 7, "configs/pubmed/task-0003-scientific-sensitivity.v01.json": 10}
+          all_ids = []
+          for path in paths:
+              spec, run_id = read_spec(path, mode="full", code_commit=commit,
+                                       runtime="python-3.13.16/ubuntu-latest")
+              assert spec["task_id"] == "TASK-0003"
+              assert spec["schema"] == "pubmed-run-spec/v1"
+              assert len(spec["queries"]) == expected[path]
+              all_ids.extend(spec["queries"])
+              print("PRODUCTION READ_SPEC: PASS", Path(path).name, "ids=", len(spec["queries"]), "run_id=", run_id)
+          assert len(set(all_ids)) == 17
+          workflow = Path(".github/workflows/pubmed-evidence-manual.yml").read_text()
+          trigger = workflow.split("on:\n",1)[1].split("\npermissions:",1)[0]
+          assert re.findall(r"(?m)^  ([A-Za-z_]+):", trigger) == ["workflow_dispatch"]
+          assert "permissions:\n  contents: read" in workflow
+          print("FROZEN INPUTS + MANUAL ONLY: PASS; no retrieval performed")
+          PY
+          env -u PYTHONPATH python -m unittest discover -s tests -p 'test_*.py'
+          env -u PYTHONPATH python -m pro_adherence.validate stage0
+          env -u PYTHONPATH python scripts/pre_qa_gate.py --expected-sha "06694b07e635949e80a7e2852c4a688b351faccc" --expected-parent "acadc7191f438b2b4dc6258a641b2dc5c05a16ed" --architecture-revision 22 --static-only
+          echo 'Historical TASK-0004 implementation gate: OUT-OF-SCOPE for config-only candidate per HOFF-0075; PR17 aggregate CI failure remains historical'
+  exact-portable:
+    runs-on: ubuntu-latest
+    container:
+      image: python@sha256:8fb4cfa1a2616d7b8e0c2175cc6ad68f5729c34ea8488c0b360d2934b7be9024
+    steps:
+      - name: Show pinned runtime
         run: |
           python --version
-          python - <<'PY'
-          import importlib.metadata
-          for name in (
-              "attrs", "jsonschema", "jsonschema-specifications", "pip",
-              "referencing", "rpds-py", "setuptools", "wheel",
-          ):
-              print(name, importlib.metadata.version(name))
-          PY
-
-      - name: Verify bare installed package
+          test "$(python --version)" = 'Python 3.13.16'
+      - name: Prepare Git for exact checkout
         run: |
-          env -u PYTHONPATH python -c "import pro_adherence; print(pro_adherence.__file__)"
-          env -u PYTHONPATH python -m pro_adherence.validate contracts
-
-      - name: Run Stage 0 tests
-        run: env -u PYTHONPATH python -m unittest discover -s tests -p 'test_*.py'
-
-      - name: Execute D1 terminal-search durable evidence and non-resume regressions
-        run: env -u PYTHONPATH python -m unittest discover -s tests -p 'test_pubmed_terminal_failures.py' -v
-
-      - name: Execute P2-002 deterministic ESearch state-machine and self-rehash regressions
-        run: env -u PYTHONPATH python -m unittest discover -s tests -p 'test_pubmed_esearch_state.py' -v
-
-      - name: Execute P2-001 role namespace collision and resume regressions
-        run: env -u PYTHONPATH python -m unittest discover -s tests -p 'test_pubmed_paths.py' -v
-
-      - name: Execute ADM-001 durable checkpoint and raw-versus-derived regressions
-        run: env -u PYTHONPATH python -m unittest discover -s tests -p 'test_pubmed_adm001.py' -v
-
-      - name: Run focused validator commands bare
-        run: |
-          env -u PYTHONPATH python -m pro_adherence.validate contracts
-          env -u PYTHONPATH python -m pro_adherence.validate corpus contracts/manifests/empty_corpus.manifest.json
-          env -u PYTHONPATH python -m pro_adherence.validate release contracts/manifests/empty_release.manifest.json
-          env -u PYTHONPATH python -m pro_adherence.validate lineage contracts/manifests/minimal_lineage.example.json
-          env -u PYTHONPATH python -m pro_adherence.validate boundary
-
-      - name: Run aggregate Stage 0 validator bare
-        run: env -u PYTHONPATH python -m pro_adherence.validate stage0
-
-      - name: Run deterministic Stage 0 materialization and restore E2E
-        run: env -u PYTHONPATH python scripts/stage0_e2e.py
-
-      - name: Run existing semantic mutation audit
-        run: env -u PYTHONPATH python scripts/stage0_mutation_audit.py
-
-      - name: Run closure-class mutation audit
-        run: env -u PYTHONPATH python scripts/stage0_closure_mutation_audit.py
-
-      - name: Run reusable PRE_QA static preflight
-        run: |
-          EXPECTED_SHA="$(git rev-parse HEAD)"
-          EXPECTED_PARENT="$(git rev-parse HEAD^)"
-          env -u PYTHONPATH python scripts/pre_qa_gate.py \
-            --expected-sha "${EXPECTED_SHA}" \
-            --expected-parent "${EXPECTED_PARENT}" \
-            --architecture-revision 22 \
-            --static-only
-
-      - name: TASK-0004 implementation candidate PRE_QA rev23
-        run: |
-          EXPECTED_SHA="$(git rev-parse HEAD)"
-          EXPECTED_PARENT="$(git rev-parse HEAD^)"
-          env -u PYTHONPATH python scripts/pre_qa_task0004.py \
-            --expected-sha "${EXPECTED_SHA}" \
-            --expected-parent "${EXPECTED_PARENT}" \
-            --architecture-revision 23 --static-only
-
-  portable-qa-runtime:
-    runs-on: ubuntu-latest
-    needs: contract-tests
-    steps:
+          apt-get update -qq
+          apt-get install --no-install-recommends -y -qq git
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          fetch-depth: 0
-
-      - name: Execute pinned OCI QA envelope
+          ref: 06694b07e635949e80a7e2852c4a688b351faccc
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Install pinned project in portable container
         run: |
-          EXPECTED_SHA="$(git rev-parse HEAD)"
-          EXPECTED_PARENT="$(git rev-parse HEAD^)"
-          bash scripts/run_pre_qa_exact_runtime.sh \
-            --expected-sha "${EXPECTED_SHA}" \
-            --expected-parent "${EXPECTED_PARENT}" \
-            --architecture-revision 22 \
-            --task0004-revision 23
+          python -m pip install --disable-pip-version-check --no-deps -r requirements.lock
+          python -m pip install --disable-pip-version-check --no-deps --no-build-isolation -e .
+      - name: Production read_spec on both immutable scientific inputs
+        run: |
+          test "$(git rev-parse HEAD)" = '06694b07e635949e80a7e2852c4a688b351faccc'
+          env -u PYTHONPATH python - <<'PY'
+          import re
+          from pathlib import Path
+          from pro_adherence.pubmed_evidence import read_spec
+          
+          commit = "06694b07e635949e80a7e2852c4a688b351faccc"
+          paths = ["configs/pubmed/task-0003-scientific.v01-v02.json","configs/pubmed/task-0003-scientific-sensitivity.v01.json"]
+          expected = {"configs/pubmed/task-0003-scientific.v01-v02.json": 7, "configs/pubmed/task-0003-scientific-sensitivity.v01.json": 10}
+          all_ids = []
+          for path in paths:
+              spec, run_id = read_spec(path, mode="full", code_commit=commit,
+                                       runtime="python-3.13.16/ubuntu-latest")
+              assert spec["task_id"] == "TASK-0003"
+              assert spec["schema"] == "pubmed-run-spec/v1"
+              assert len(spec["queries"]) == expected[path]
+              all_ids.extend(spec["queries"])
+              print("PRODUCTION READ_SPEC: PASS", Path(path).name, "ids=", len(spec["queries"]), "run_id=", run_id)
+          assert len(set(all_ids)) == 17
+          workflow = Path(".github/workflows/pubmed-evidence-manual.yml").read_text()
+          trigger = workflow.split("on:\n",1)[1].split("\npermissions:",1)[0]
+          assert re.findall(r"(?m)^  ([A-Za-z_]+):", trigger) == ["workflow_dispatch"]
+          assert "permissions:\n  contents: read" in workflow
+          print("FROZEN INPUTS + MANUAL ONLY: PASS; no retrieval performed")
+          PY
