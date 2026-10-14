@@ -29,6 +29,13 @@ class TestCollectorExitCapture(unittest.TestCase):
     def test_successful_collector_exit_is_also_recorded(self):
         self._assert_collector_status_is_recorded(0)
 
+
+    def test_manual_dispatch_only(self):
+        header = WORKFLOW.read_text(encoding='utf-8').split('\npermissions:', 1)[0]
+        self.assertIn('on:\n  workflow_dispatch:', header)
+        for forbidden in ('  push:', '  pull_request:', '  schedule:'):
+            self.assertNotIn(forbidden, header)
+
     def _assert_collector_status_is_recorded(self, code):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
