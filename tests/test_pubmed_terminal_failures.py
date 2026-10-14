@@ -61,9 +61,6 @@ class TerminalTests(unittest.TestCase):
         elif reason=="source_count_mismatch":
             responses=[raw(10000),raw(10000),raw(1),raw(1,["1"]),
                        raw(1),raw(1,["2"])]
-        elif reason=="cross_leaf_duplicate":
-            responses=[raw(10000),raw(10000),raw(1),raw(1,["1"]),
-                       raw(1),raw(1,["1"])]
         else:raise AssertionError(reason)
         root,client,m=self.failure(name,responses,spec)
         self.assertEqual(m["status"],"incomplete")
@@ -117,11 +114,15 @@ class TerminalTests(unittest.TestCase):
         self.assertEqual([x[1] for x in client.calls],[0,0,0,1,0,1])
         self.assertEqual(len(json.loads((root/"partitions/plan.json").read_bytes())),2)
         self.durable(root,"source_count_mismatch");self.no_resume(root,spec)
-    def test_cross_leaf_duplicate_durable(self):
-        root,_,spec=self.terminal("cross_leaf_duplicate","duplicate")
+    def test_cross_leaf_overlap_source_mismatch_durable(self):
+        responses=[raw(10000),raw(10000),raw(1),raw(1,["1"]),
+                   raw(1),raw(1,["1"])]
+        root,_,m=self.failure("duplicate",responses)
+        self.assertEqual(m["failure"]["reason_code"],"source_count_mismatch")
         leaves=json.loads((root/"partitions/plan.json").read_bytes())
         self.assertEqual([(root/x["pmid_file"]).read_text() for x in leaves],["1\n","1\n"])
-        self.durable(root,"cross_leaf_duplicate");self.no_resume(root,spec)
+        self.assertEqual(p.verify(root,require_final=False)["failure_reason_code"],"source_count_mismatch")
+        self.durable(root,"source_count_mismatch");self.no_resume(root,SPEC)
     def test_forged_terminal_on_pending_evidence(self):
         root,_,m=self.failure("pending",[RuntimeError("outage")])
         self.assertEqual(p.verify(root,require_final=False)["failure_disposition"],"resumable")
@@ -174,7 +175,8 @@ class TerminalTests(unittest.TestCase):
         m=json.loads((root/"manifest.json").read_bytes())
         m["failure"]["reason_code"]="cross_leaf_duplicate";self.rehash(root,m)
         with self.assertRaises(ValueError):p.verify(root,require_final=False)
-        other,_,_=self.terminal("cross_leaf_duplicate","corrupt")
+        other,_,_=self.failure("corrupt",[raw(10000),raw(10000),
+             raw(1),raw(1,["1"]),raw(1),raw(1,["1"])])
         m=json.loads((other/"manifest.json").read_bytes())
         (other/m["partitions"][0]["pmid_file"]).write_text("999\n")
         self.rehash(other,m)

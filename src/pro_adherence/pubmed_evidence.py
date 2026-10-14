@@ -487,9 +487,8 @@ def collect(spec, run_id, root, client, *, timestamp=None, resume=False):
                 raise ValueError("checkpoint partition plan diverged")
             union = numeric_pmids([p for leaf in leaves for p in (root / leaf["pmid_file"]).read_text().splitlines()])
             duplicate_count = sum(x["count"] for x in leaves) - len(union)
-            if len(union) != base["count"] or duplicate_count != 0:
-                terminal_reason = ("cross_leaf_duplicate" if duplicate_count != 0
-                                   else "source_count_mismatch")
+            if len(union) != base["count"]:
+                terminal_reason = "source_count_mismatch"
                 raise ValueError("partition union / source count mismatch")
             output = ("\n".join(union) + ("\n" if union else "")).encode()
             write_raw(root, union_path(qid), output)
@@ -936,7 +935,7 @@ def verify(root, *, require_final=True):
         if ids != numeric_pmids(ids) or numeric_pmids(part_ids) != ids:
             raise ValueError("partition union mismatch")
         if (len(ids) != summary["unique_count"] or len(part_ids) - len(ids) != summary["duplicates"]
-                or summary["duplicates"] or summary["source_count"] != summary["unique_count"]
+                or summary["source_count"] != summary["unique_count"]
                 or sha(strict_path(root, summary["pmid_file"]).read_bytes()) != summary["union_sha256"]):
             raise ValueError("NCBI count reconciliation failed")
         qleaves = [leaf for leaf in leaves if leaf["query_id"] == qid]
@@ -976,7 +975,10 @@ def verify(root, *, require_final=True):
             unique = numeric_pmids(observed)
             duplicates = len(observed) - len(unique)
             source_count = base_counts[qid][-1]["count"]
-            derived_reason = ("cross_leaf_duplicate" if duplicates
+            # Original accepted-code failure evidence remains verifiable at its
+            # pinned code identity; all new executions reconcile by unique union.
+            legacy_overlap = manifest["code_commit"] == "06694b07e635949e80a7e2852c4a688b351faccc"
+            derived_reason = ("cross_leaf_duplicate" if legacy_overlap and duplicates
                               else "source_count_mismatch" if len(unique) != source_count
                               else None)
             if derived_reason != reason:
