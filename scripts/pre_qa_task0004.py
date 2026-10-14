@@ -371,9 +371,8 @@ def main():
         return 1
     # Ordinary CI owns full-suite execution; do not duplicate it for this narrow patch.
     print("TASK-0004 IMPLEMENTATION PRE_QA revision 23: PASS")
-    print("OPERATIONAL ACCEPTANCE: NOT YET ESTABLISHED; HOFF-0044 owner-side "
-          "secret/ACL/log mitigation, fresh clean NCBI smoke, new private exact-commit "
-          "readback and owner-local hash-verified backup remain mandatory")
+    print("LIVE OPERATIONAL STATUS: consult project Drive 07_STAGE_STATUS; "
+          "code-side PRE_QA is not scientific or Stage 1 acceptance")
     return 0
 
 if __name__ == "__main__":
