@@ -1,123 +1,149 @@
-name: Stage 0 tests
-
+name: TASK-0026 bounded code-spec exact-SHA PRE_QA harness
 on:
   push:
     branches:
-      - main
-      - "pre-qa-*"
-  pull_request:
-    branches:
-      - main
-  workflow_dispatch:
-
+      - pre-qa-task0026-overlap-20261015
 permissions:
   contents: read
-
 jobs:
-  contract-tests:
+  exact-native:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: b82216cb70ee61ab5c975c77517db5b343256e97
           fetch-depth: 0
-
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.13.16"
-
-      - name: Install exact locked environment
-        run: python -m pip install --disable-pip-version-check --no-deps -r requirements.lock
-
-      - name: Install project package
-        run: python -m pip install --disable-pip-version-check --no-build-isolation --no-deps -e .
-
-      - name: Show runtime and locked dependencies
+          python-version: '3.13.16'
+      - name: Install exact requirements
+        run: |
+          python -m pip install --disable-pip-version-check --no-deps -r requirements.lock
+          python -m pip install --disable-pip-version-check --no-deps --no-build-isolation -e .
+      - name: Exact native scope and production tests
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "b82216cb70ee61ab5c975c77517db5b343256e97"
+          test "$(git rev-parse HEAD^)" = "06694b07e635949e80a7e2852c4a688b351faccc"
+          test "$(git rev-parse HEAD^{tree})" = "6e36ff395668a8f519229157fb7395de49b56fe9"
+          git diff --check "06694b07e635949e80a7e2852c4a688b351faccc" HEAD
+          python - <<'PY'
+          import subprocess
+          v = subprocess.check_output(['git','diff','--name-status','HEAD^','HEAD'], text=True).strip().splitlines()
+          expected = {
+           'A\tconfigs/pubmed/task-0003-scientific.v01-v02-ptdelta-r1.json',
+           'M\tdocs/PUBMED_EVIDENCE_RUNNER.md',
+           'M\tsrc/pro_adherence/pubmed_evidence.py',
+           'A\ttests/test_pubmed_overlap_reconciliation.py',
+           'M\ttests/test_pubmed_terminal_failures.py',
+          }
+          assert set(v) == expected, (v,expected)
+          print('EXACT FIVE-PATH GIT SCOPE: PASS')
+          PY
+          env -u PYTHONPATH python - <<'PY'
+          import copy, json, re, subprocess
+          from pathlib import Path
+          from pro_adherence.pubmed_evidence import read_spec
+          sha = "b82216cb70ee61ab5c975c77517db5b343256e97"
+          old_path = Path('configs/pubmed/task-0003-scientific.v01-v02.json')
+          new_path = Path('configs/pubmed/task-0003-scientific.v01-v02-ptdelta-r1.json')
+          old, new = json.loads(old_path.read_text()), json.loads(new_path.read_text())
+          old_term, new_term = ' AND NOT "journal article"[pt]', ' NOT "journal article"[pt]'
+          assert old['queries']['V01_PT_delta'].endswith(old_term)
+          expected = copy.deepcopy(old)
+          expected['queries']['V01_PT_delta'] = old['queries']['V01_PT_delta'][:-len(old_term)] + new_term
+          assert new == expected, 'input drift outside exactly one PT delta expression'
+          assert not new['queries']['V01_PT_delta'].endswith(old_term)
+          expected_blobs = {
+              str(old_path): "f92ca88769a79e080c700ff81926e9daf1e25593",
+              str(new_path): "6e4bb8336adcced84c8f99269bea6c66e381bfe6",
+              "configs/pubmed/task-0003-scientific-sensitivity.v01.json": "63c6e3bee11013b77e72f053e832de434972e106",
+              ".github/workflows/pubmed-evidence-manual.yml": "893b4bff474be982b2007c9aad325231550355d0",
+          }
+          for path, blob in expected_blobs.items():
+              actual = subprocess.check_output(['git', 'hash-object', path], text=True).strip()
+              assert actual == blob, (path, actual, blob)
+          value, run_id = read_spec(str(new_path), mode='full', code_commit=sha, runtime='python-3.13.16/ubuntu-latest')
+          assert value['task_id'] == 'TASK-0003' and value['schema'] == 'pubmed-run-spec/v1'
+          assert len(value['queries']) == 7 and len(set(value['queries'])) == 7
+          wf = Path('.github/workflows/pubmed-evidence-manual.yml').read_text()
+          trigger = wf.split('on:\n', 1)[1].split('\npermissions:', 1)[0]
+          assert re.findall(r'(?m)^  ([A-Za-z_]+):', trigger) == ['workflow_dispatch']
+          assert 'permissions:\n  contents: read' in wf
+          docs = Path('docs/PUBMED_EVIDENCE_RUNNER.md').read_text().lower()
+          assert 'overlap' in docs and 'source_count_mismatch' in docs
+          print('PRODUCTION READ_SPEC + EXACT INPUT DIFF + BLOBS + MANUAL ONLY: PASS; run_id=', run_id)
+          PY
+          env -u PYTHONPATH python -m unittest discover -s tests -p 'test_pubmed_overlap_reconciliation.py' -v
+          env -u PYTHONPATH python -m unittest discover -s tests -p 'test_pubmed_terminal_failures.py' -v
+          env -u PYTHONPATH python -m unittest discover -s tests -p 'test_*.py'
+          env -u PYTHONPATH python -m pro_adherence.validate stage0
+          env -u PYTHONPATH python scripts/pre_qa_gate.py --expected-sha "b82216cb70ee61ab5c975c77517db5b343256e97" --expected-parent "06694b07e635949e80a7e2852c4a688b351faccc" --architecture-revision 22 --static-only
+          echo 'TASK-0004 old implementation preflight: OUT-OF-SCOPE (NOT PASS), per binding HOFF-0088; original aggregate failure retained'
+  exact-portable:
+    runs-on: ubuntu-latest
+    container:
+      image: python@sha256:8fb4cfa1a2616d7b8e0c2175cc6ad68f5729c34ea8488c0b360d2934b7be9024
+    steps:
+      - name: Verify pinned Python
         run: |
           python --version
-          python - <<'PY'
-          import importlib.metadata
-          for name in (
-              "attrs", "jsonschema", "jsonschema-specifications", "pip",
-              "referencing", "rpds-py", "setuptools", "wheel",
-          ):
-              print(name, importlib.metadata.version(name))
-          PY
-
-      - name: Verify bare installed package
+          test "$(python --version)" = 'Python 3.13.16'
+      - name: Prepare exact checkout
         run: |
-          env -u PYTHONPATH python -c "import pro_adherence; print(pro_adherence.__file__)"
-          env -u PYTHONPATH python -m pro_adherence.validate contracts
-
-      - name: Run Stage 0 tests
-        run: env -u PYTHONPATH python -m unittest discover -s tests -p 'test_*.py'
-
-      - name: Execute D1 terminal-search durable evidence and non-resume regressions
-        run: env -u PYTHONPATH python -m unittest discover -s tests -p 'test_pubmed_terminal_failures.py' -v
-
-      - name: Execute P2-002 deterministic ESearch state-machine and self-rehash regressions
-        run: env -u PYTHONPATH python -m unittest discover -s tests -p 'test_pubmed_esearch_state.py' -v
-
-      - name: Execute P2-001 role namespace collision and resume regressions
-        run: env -u PYTHONPATH python -m unittest discover -s tests -p 'test_pubmed_paths.py' -v
-
-      - name: Execute ADM-001 durable checkpoint and raw-versus-derived regressions
-        run: env -u PYTHONPATH python -m unittest discover -s tests -p 'test_pubmed_adm001.py' -v
-
-      - name: Run focused validator commands bare
-        run: |
-          env -u PYTHONPATH python -m pro_adherence.validate contracts
-          env -u PYTHONPATH python -m pro_adherence.validate corpus contracts/manifests/empty_corpus.manifest.json
-          env -u PYTHONPATH python -m pro_adherence.validate release contracts/manifests/empty_release.manifest.json
-          env -u PYTHONPATH python -m pro_adherence.validate lineage contracts/manifests/minimal_lineage.example.json
-          env -u PYTHONPATH python -m pro_adherence.validate boundary
-
-      - name: Run aggregate Stage 0 validator bare
-        run: env -u PYTHONPATH python -m pro_adherence.validate stage0
-
-      - name: Run deterministic Stage 0 materialization and restore E2E
-        run: env -u PYTHONPATH python scripts/stage0_e2e.py
-
-      - name: Run existing semantic mutation audit
-        run: env -u PYTHONPATH python scripts/stage0_mutation_audit.py
-
-      - name: Run closure-class mutation audit
-        run: env -u PYTHONPATH python scripts/stage0_closure_mutation_audit.py
-
-      - name: Run reusable PRE_QA static preflight
-        run: |
-          EXPECTED_SHA="$(git rev-parse HEAD)"
-          EXPECTED_PARENT="$(git rev-parse HEAD^)"
-          env -u PYTHONPATH python scripts/pre_qa_gate.py \
-            --expected-sha "${EXPECTED_SHA}" \
-            --expected-parent "${EXPECTED_PARENT}" \
-            --architecture-revision 22 \
-            --static-only
-
-      - name: TASK-0004 implementation candidate PRE_QA rev23
-        run: |
-          EXPECTED_SHA="$(git rev-parse HEAD)"
-          EXPECTED_PARENT="$(git rev-parse HEAD^)"
-          env -u PYTHONPATH python scripts/pre_qa_task0004.py \
-            --expected-sha "${EXPECTED_SHA}" \
-            --expected-parent "${EXPECTED_PARENT}" \
-            --architecture-revision 23 --static-only
-
-  portable-qa-runtime:
-    runs-on: ubuntu-latest
-    needs: contract-tests
-    steps:
+          apt-get update -qq
+          apt-get install --no-install-recommends -y -qq git
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          fetch-depth: 0
-
-      - name: Execute pinned OCI QA envelope
+          ref: b82216cb70ee61ab5c975c77517db5b343256e97
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Install exact requirements
         run: |
-          EXPECTED_SHA="$(git rev-parse HEAD)"
-          EXPECTED_PARENT="$(git rev-parse HEAD^)"
-          bash scripts/run_pre_qa_exact_runtime.sh \
-            --expected-sha "${EXPECTED_SHA}" \
-            --expected-parent "${EXPECTED_PARENT}" \
-            --architecture-revision 22 \
-            --task0004-revision 23
+          python -m pip install --disable-pip-version-check --no-deps -r requirements.lock
+          python -m pip install --disable-pip-version-check --no-deps --no-build-isolation -e .
+      - name: Exact portable overlap and readback
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "b82216cb70ee61ab5c975c77517db5b343256e97"
+          test "$(git rev-parse HEAD^{tree})" = "6e36ff395668a8f519229157fb7395de49b56fe9"
+          env -u PYTHONPATH python - <<'PY'
+          import copy, json, re, subprocess
+          from pathlib import Path
+          from pro_adherence.pubmed_evidence import read_spec
+          sha = "b82216cb70ee61ab5c975c77517db5b343256e97"
+          old_path = Path('configs/pubmed/task-0003-scientific.v01-v02.json')
+          new_path = Path('configs/pubmed/task-0003-scientific.v01-v02-ptdelta-r1.json')
+          old, new = json.loads(old_path.read_text()), json.loads(new_path.read_text())
+          old_term, new_term = ' AND NOT "journal article"[pt]', ' NOT "journal article"[pt]'
+          assert old['queries']['V01_PT_delta'].endswith(old_term)
+          expected = copy.deepcopy(old)
+          expected['queries']['V01_PT_delta'] = old['queries']['V01_PT_delta'][:-len(old_term)] + new_term
+          assert new == expected, 'input drift outside exactly one PT delta expression'
+          assert not new['queries']['V01_PT_delta'].endswith(old_term)
+          expected_blobs = {
+              str(old_path): "f92ca88769a79e080c700ff81926e9daf1e25593",
+              str(new_path): "6e4bb8336adcced84c8f99269bea6c66e381bfe6",
+              "configs/pubmed/task-0003-scientific-sensitivity.v01.json": "63c6e3bee11013b77e72f053e832de434972e106",
+              ".github/workflows/pubmed-evidence-manual.yml": "893b4bff474be982b2007c9aad325231550355d0",
+          }
+          for path, blob in expected_blobs.items():
+              actual = subprocess.check_output(['git', 'hash-object', path], text=True).strip()
+              assert actual == blob, (path, actual, blob)
+          value, run_id = read_spec(str(new_path), mode='full', code_commit=sha, runtime='python-3.13.16/ubuntu-latest')
+          assert value['task_id'] == 'TASK-0003' and value['schema'] == 'pubmed-run-spec/v1'
+          assert len(value['queries']) == 7 and len(set(value['queries'])) == 7
+          wf = Path('.github/workflows/pubmed-evidence-manual.yml').read_text()
+          trigger = wf.split('on:\n', 1)[1].split('\npermissions:', 1)[0]
+          assert re.findall(r'(?m)^  ([A-Za-z_]+):', trigger) == ['workflow_dispatch']
+          assert 'permissions:\n  contents: read' in wf
+          docs = Path('docs/PUBMED_EVIDENCE_RUNNER.md').read_text().lower()
+          assert 'overlap' in docs and 'source_count_mismatch' in docs
+          print('PRODUCTION READ_SPEC + EXACT INPUT DIFF + BLOBS + MANUAL ONLY: PASS; run_id=', run_id)
+          PY
+          env -u PYTHONPATH python -m unittest discover -s tests -p 'test_pubmed_overlap_reconciliation.py' -v
+          env -u PYTHONPATH python -m unittest discover -s tests -p 'test_pubmed_terminal_failures.py' -v
+          env -u PYTHONPATH python -m unittest discover -s tests -p 'test_pubmed_esearch_state.py' -v
+          echo 'PINNED PORTABLE EXACT-TARGET COLLECTOR/VERIFIER REGRESSIONS: PASS; no NCBI/retrieval'
