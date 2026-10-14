@@ -97,6 +97,7 @@ jobs:
           python -m pip install --disable-pip-version-check --no-deps --no-build-isolation -e .
       - name: Production read_spec on both immutable scientific inputs
         run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           test "$(git rev-parse HEAD)" = '06694b07e635949e80a7e2852c4a688b351faccc'
           env -u PYTHONPATH python - <<'PY'
           import re
