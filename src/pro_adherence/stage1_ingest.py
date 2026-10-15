@@ -156,7 +156,7 @@ def _parse(raw_bytes, raw_id, source_id, retrieval_time):
                   "original_metadata_payload_pointer": f"{raw_pointer}#PubmedArticle={index}",
                   "retrieval_timestamp": retrieval_time,
                   "parsed_fields": {"title_original": title, "doi_original": doi_texts[0] if doi_texts else None,
-                                    "duplicate_occurrences": 1}
+                                    "duplicate_occurrences": 1}}
         seen[pmid] = (cmp, len(sources))
         articles.append(record)
         sources.append(source)
