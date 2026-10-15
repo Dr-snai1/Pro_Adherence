@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ENTIRELY SYNTHETIC: fabricated identifiers and titles, no real source records -->
+<PubmedArticleSet>
+  <PubmedArticle><MedlineCitation><PMID>900000001</PMID><Article>
+    <Journal><JournalIssue><PubDate><Year>2020</Year><Month>04</Month><Day>09</Day></PubDate></JournalIssue></Journal>
+    <ArticleTitle>  Simulated <i>medication</i> taking behaviour  </ArticleTitle>
+    <Abstract><AbstractText Label="BACKGROUND">A completely synthetic record.</AbstractText><AbstractText Label="RESULTS">Fabricated adherence observations.</AbstractText></Abstract>
+    <Language>eng</Language><PublicationTypeList><PublicationType>Journal Article</PublicationType></PublicationTypeList>
+  </Article></MedlineCitation><PubmedData><ArticleIdList><ArticleId IdType="doi">https://doi.org/10.9999/SYNTH.01</ArticleId></ArticleIdList></PubmedData></PubmedArticle>
+  <PubmedArticle><MedlineCitation><PMID>900000002</PMID><Article>
+    <Journal><JournalIssue><PubDate><Year>2021</Year></PubDate></JournalIssue></Journal>
+    <ArticleTitle>Simulated dispensing behaviour</ArticleTitle><Language>eng</Language>
+    <PublicationTypeList><PublicationType>Journal Article</PublicationType></PublicationTypeList>
+  </Article></MedlineCitation><PubmedData><ArticleIdList><ArticleId IdType="doi">10.9999/SYNTH.02</ArticleId></ArticleIdList></PubmedData></PubmedArticle>
+  <PubmedArticle><MedlineCitation><PMID>900000001</PMID><Article>
+    <Journal><JournalIssue><PubDate><Year>2020</Year><Month>04</Month><Day>09</Day></PubDate></JournalIssue></Journal>
+    <ArticleTitle>  Simulated <i>medication</i> taking behaviour  </ArticleTitle>
+    <Abstract><AbstractText Label="BACKGROUND">A completely synthetic record.</AbstractText><AbstractText Label="RESULTS">Fabricated adherence observations.</AbstractText></Abstract>
+    <Language>eng</Language><PublicationTypeList><PublicationType>Journal Article</PublicationType></PublicationTypeList>
+  </Article></MedlineCitation><PubmedData><ArticleIdList><ArticleId IdType="doi">https://doi.org/10.9999/SYNTH.01</ArticleId></ArticleIdList></PubmedData></PubmedArticle>
+</PubmedArticleSet>
