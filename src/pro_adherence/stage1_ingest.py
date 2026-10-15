@@ -95,6 +95,7 @@ def _parse(raw_bytes, raw_id, source_id, retrieval_time):
     """Validate source record identity and preserve original metadata pointers."""
     if b"<!DOCTYPE" in raw_bytes.upper() or b"<!ENTITY" in raw_bytes.upper():
         raise ValueError("DTD/entity declarations forbidden in raw XML")
+    raw_pointer = f"raw/{_sha(raw_bytes)}.xml"
     root = ET.fromstring(raw_bytes)
     if root.tag != "PubmedArticleSet":
         raise ValueError("expected PubmedArticleSet root")
@@ -150,7 +151,7 @@ def _parse(raw_bytes, raw_id, source_id, retrieval_time):
         source_id_value = _id("source/"+source_id+"/"+raw_id+"/"+pmid)
         source = {"source_record_id": source_id_value, "source_id": source_id,
                   "raw_artifact_id": raw_id, "source_native_id": pmid,
-                  "original_metadata_payload_pointer": f"raw/{raw_id}.xml#PubmedArticle={index}",
+                  "original_metadata_payload_pointer": f"{raw_pointer}#PubmedArticle={index}",
                   "retrieval_timestamp": retrieval_time, "title_original": title,
                   "doi_original": doi_texts[0] if doi_texts else None, "duplicate_occurrences": 1}
         seen[pmid] = (cmp, len(sources))
