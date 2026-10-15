@@ -1121,9 +1121,15 @@ def git_write(package, repository, *, workdir=None):
             _emit_safe_failure("INTEGRITY" if _VERIFICATION_FAILED.get() else "UNKNOWN",
                                "writer-preflight")
         raise
-    if check["status"] not in ("final", "incomplete"):
-        raise ValueError("unsupported package status")
-    url = validate_repository(repository)
+    try:
+        if check["status"] not in ("final", "incomplete"):
+            raise ValueError("unsupported package status")
+        url = validate_repository(repository)
+    except ValueError:
+        # Post-verify writer destination rejection is still a preflight failure.
+        # Never interpolate the repository value or the exception message.
+        _emit_safe_failure("UNKNOWN", "writer-preflight")
+        raise
     with tempfile.TemporaryDirectory(dir=workdir) as tmp:
         git = Path(tmp) / "evidence"
         _run("git", "clone", "--quiet", url, str(git))

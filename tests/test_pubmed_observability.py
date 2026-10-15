@@ -217,6 +217,28 @@ class ObservabilityTests(unittest.TestCase):
         self.assertTrue(set(ds[0])=={"failure_category","failure_stage","package_bytes",
                                      "package_status","failure_disposition"})
 
+    def test_writer_verified_invalid_repository_unknown_safe_cli(self):
+        # A verified FINAL package must reach destination validation without Git/network.
+        root = self.full()
+        sentinel = "qa-unapproved-repo-PRIVATE-QUERY-12345678987654321-token_S3NT1N3LQ9"
+        before = {x.relative_to(root).as_posix(): p.sha(x.read_bytes())
+                  for x in root.rglob("*") if x.is_file()}
+        err, stdout = io.StringIO(), io.StringIO()
+        with mock.patch.object(p, "_run", side_effect=AssertionError("Git/network forbidden")):
+            with contextlib.redirect_stderr(err), contextlib.redirect_stdout(stdout):
+                exit_code = p.main(["write", str(root), "--repository", sentinel])
+        self.assertEqual(exit_code, 1)
+        self.assertEqual(stdout.getvalue(), "")
+        events = observed(err.getvalue())
+        self.assertEqual(len(events), 1)
+        self.assert_diag(events[0], "UNKNOWN", "writer-preflight")
+        self.assertEqual(err.getvalue().count("pubmed-evidence: failed (ValueError)"), 1)
+        self.assertNotIn(sentinel, err.getvalue())
+        self.assertNotIn("unapproved evidence repository", err.getvalue())
+        after = {x.relative_to(root).as_posix(): p.sha(x.read_bytes())
+                 for x in root.rglob("*") if x.is_file()}
+        self.assertEqual(before, after)
+
     def test_no_package_semantics_modified_by_diagnostics(self):
         root=self.full()
         before = {x.relative_to(root).as_posix():p.sha(x.read_bytes()) for x in root.rglob("*") if x.is_file()}
