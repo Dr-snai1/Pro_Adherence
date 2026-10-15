@@ -16,6 +16,8 @@ permissions:
 jobs:
   contract-tests:
     runs-on: ubuntu-latest
+    outputs:
+      task0004_applicable: ${{ steps.task0004_scope.outputs.applicable }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -94,7 +96,59 @@ jobs:
             --architecture-revision 22 \
             --static-only
 
+      - name: Classify TASK-0004 preflight scope (fail closed)
+        id: task0004_scope
+        shell: bash
+        run: |
+          python - <<'PY'
+          import ast
+          import os
+          from pathlib import Path, PurePosixPath
+          import subprocess
+
+          def git(*args):
+              return subprocess.check_output(['git', *args], stderr=subprocess.DEVNULL)
+
+          head = git('rev-parse', '--verify', 'HEAD').decode('ascii').strip()
+          parent = git('rev-parse', '--verify', 'HEAD^').decode('ascii').strip()
+          if not all(len(x) == 40 and all(c in '0123456789abcdef' for c in x) for x in (head, parent)):
+              raise RuntimeError('invalid commit ancestry for scope decision')
+          raw = git('diff', '--name-only', '--no-renames', '-z', parent, head)
+          paths = [os.fsdecode(x) for x in raw.split(b'\0') if x]
+          if not paths or len(paths) != len(set(paths)):
+              raise RuntimeError('missing or ambiguous candidate scope')
+          if any(not x or x.startswith('/') or any(p in ('', '.', '..') for p in PurePosixPath(x).parts) for x in paths):
+              raise RuntimeError('invalid candidate path')
+
+          tree = ast.parse(Path('scripts/pre_qa_task0004.py').read_text(encoding='utf-8'))
+          bindings = [node for node in tree.body if isinstance(node, ast.Assign)
+                      and any(isinstance(target, ast.Name) and target.id == 'ALLOWED_CHANGED'
+                              for target in node.targets)]
+          if len(bindings) != 1:
+              raise RuntimeError('invalid historic TASK-0004 allowlist definition')
+          allowed_tuple = ast.literal_eval(bindings[0].value)
+          if not isinstance(allowed_tuple, tuple) or not allowed_tuple or any(not isinstance(x, str) or not x for x in allowed_tuple):
+              raise RuntimeError('invalid historic TASK-0004 allowlist')
+          allowed = set(allowed_tuple)
+          if len(allowed) != len(allowed_tuple):
+              raise RuntimeError('duplicate historic allowlist paths')
+          dedicated = {'.github/workflows/pubmed-evidence-manual.yml',
+                       'scripts/pre_qa_task0004.py', 'tests/test_pre_qa_task0004.py',
+                       'tests/test_pubmed_workflow_exit_capture.py'}
+          if not dedicated.issubset(allowed):
+              raise RuntimeError('historic dedicated scope is inconsistent')
+          changed = set(paths)
+          if changed & dedicated and changed - allowed:
+              raise RuntimeError('mixed or ambiguous TASK-0004 scope; explicit decision required')
+          applicable = changed <= allowed
+          output = os.environ['GITHUB_OUTPUT']
+          with open(output, 'a', encoding='utf-8') as stream:
+              stream.write('applicable=' + ('true' if applicable else 'false') + '\n')
+          print('TASK-0004 preflight applicable' if applicable
+                else 'TASK-0004 preflight OUT-OF-SCOPE (NOT PASS)')
+          PY
       - name: TASK-0004 implementation candidate PRE_QA rev23
+        if: steps.task0004_scope.outputs.applicable == 'true'
         run: |
           EXPECTED_SHA="$(git rev-parse HEAD)"
           EXPECTED_PARENT="$(git rev-parse HEAD^)"
@@ -113,11 +167,18 @@ jobs:
           fetch-depth: 0
 
       - name: Execute pinned OCI QA envelope
+        env:
+          TASK0004_APPLICABLE: ${{ needs.contract-tests.outputs.task0004_applicable }}
         run: |
           EXPECTED_SHA="$(git rev-parse HEAD)"
           EXPECTED_PARENT="$(git rev-parse HEAD^)"
-          bash scripts/run_pre_qa_exact_runtime.sh \
-            --expected-sha "${EXPECTED_SHA}" \
-            --expected-parent "${EXPECTED_PARENT}" \
-            --architecture-revision 22 \
-            --task0004-revision 23
+          args=(--expected-sha "${EXPECTED_SHA}"
+                --expected-parent "${EXPECTED_PARENT}"
+                --architecture-revision 22)
+          if [[ "${TASK0004_APPLICABLE}" == "true" ]]; then
+            args+=(--task0004-revision 23)
+          elif [[ "${TASK0004_APPLICABLE}" != "false" ]]; then
+            echo 'TASK-0004 applicability output missing or invalid' >&2
+            exit 1
+          fi
+          bash scripts/run_pre_qa_exact_runtime.sh "${args[@]}"
