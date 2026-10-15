@@ -35,4 +35,4 @@ jobs:
           PY
       - name: Targeted synthetic Stage 1 tests (no skips)
         run: |
-          python -m unittest discover -s tests -p "test_stage1_ingest.py" -v
+          python -m unittest discover -s tests -p "test_stage1_*.py" -v

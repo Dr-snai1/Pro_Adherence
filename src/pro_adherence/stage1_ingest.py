@@ -93,10 +93,25 @@ def _pub_date(article):
 
 def _parse(raw_bytes, raw_id, source_id, retrieval_time):
     """Validate source record identity and preserve original metadata pointers."""
-    if b"<!DOCTYPE" in raw_bytes.upper() or b"<!ENTITY" in raw_bytes.upper():
+    # NLM EFetch emits an external PUBLIC DTD. Accept its exact identity,
+    # then remove the declaration from parser input only (no DTD fetch).
+    # The archived raw XML bytes and source hash are never modified.
+    if re.search(rb"<!ENTITY\b", raw_bytes, re.IGNORECASE):
         raise ValueError("DTD/entity declarations forbidden in raw XML")
+    declaration = re.search(rb"<!DOCTYPE\b[^>]*>", raw_bytes, re.IGNORECASE)
+    parse_bytes = raw_bytes
+    if declaration:
+        expected = re.fullmatch(
+            rb'<!DOCTYPE PubmedArticleSet PUBLIC "-//NLM//DTD PubMedArticle, 1st January (20[0-9]{2})//EN" "https://dtd\.nlm\.nih\.gov/ncbi/pubmed/out/pubmed_([0-9]{2})0101\.dtd">',
+            declaration.group(0),
+        )
+        if expected is None or expected.group(1)[2:] != expected.group(2):
+            raise ValueError("untrusted PubMed DTD declaration")
+        parse_bytes = raw_bytes[:declaration.start()] + raw_bytes[declaration.end():]
+    if re.search(rb"<!DOCTYPE\b", parse_bytes, re.IGNORECASE):
+        raise ValueError("multiple or untrusted DTD declarations")
     raw_pointer = f"raw/{_sha(raw_bytes)}.xml"
-    root = ET.fromstring(raw_bytes)
+    root = ET.fromstring(parse_bytes)
     if root.tag != "PubmedArticleSet":
         raise ValueError("expected PubmedArticleSet root")
     articles, sources, ext, seen, dois = [], [], [], {}, {}
@@ -116,6 +131,19 @@ def _parse(raw_bytes, raw_id, source_id, retrieval_time):
         if not title:
             raise ValueError("no title: fail closed rather than invent a record")
         abstract_el = art.find("Abstract")
+        abstract_source = "Article/Abstract" if abstract_el is not None else None
+        abstract_type = None
+        if abstract_el is None:
+            # A legacy citation may contain an English OtherAbstract only.
+            # Foreign-language or ambiguous alternatives are not substituted.
+            alternatives = [x for x in medline.findall("OtherAbstract")
+                            if x.get("Language", "").lower() in ("eng", "en")]
+            if len(alternatives) > 1:
+                raise ValueError("ambiguous English OtherAbstract sources")
+            if alternatives:
+                abstract_el = alternatives[0]
+                abstract_source = "MedlineCitation/OtherAbstract"
+                abstract_type = abstract_el.get("Type")
         abstract_parts = ([_content(node) for node in abstract_el.findall("AbstractText")]
                           if abstract_el is not None else [])
         abstract = "\n".join(part for part in abstract_parts if part) or None
@@ -156,7 +184,8 @@ def _parse(raw_bytes, raw_id, source_id, retrieval_time):
                   "original_metadata_payload_pointer": f"{raw_pointer}#PubmedArticle={index}",
                   "retrieval_timestamp": retrieval_time,
                   "parsed_fields": {"title_original": title, "doi_original": doi_texts[0] if doi_texts else None,
-                                    "duplicate_occurrences": 1}}
+                                    "duplicate_occurrences": 1, "abstract_source": abstract_source,
+                                    "other_abstract_type": abstract_type}}
         seen[pmid] = (cmp, len(sources))
         articles.append(record)
         sources.append(source)

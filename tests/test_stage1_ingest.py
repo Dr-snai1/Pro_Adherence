@@ -81,6 +81,44 @@ class LocalStage1Contracts(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "DOI shared"):
             stage1._parse(bad, stage1._id("raw/fake"), "pubmed", self.meta["retrieval_time"])
 
+    def test_real_nlm_doctype_is_parsed_offline_with_raw_identity(self):
+        dtd = (b'<!DOCTYPE PubmedArticleSet PUBLIC "-//NLM//DTD PubMedArticle, 1st January 2025//EN" '
+               b'"https://dtd.nlm.nih.gov/ncbi/pubmed/out/pubmed_250101.dtd">\n')
+        source = self.xml.replace(b"<PubmedArticleSet>", dtd + b"<PubmedArticleSet>", 1)
+        rows, origins, _, positions = stage1._parse(source, stage1._id("raw/fake"), "pubmed", self.meta["retrieval_time"])
+        self.assertEqual((len(rows), positions), (2, 3))
+        self.assertEqual(origins[0]["original_metadata_payload_pointer"],
+                         f"raw/{hashlib.sha256(source).hexdigest()}.xml#PubmedArticle=0")
+
+    def test_english_otherabstract_fallback_tracks_provenance(self):
+        primary = (b'<Abstract><AbstractText Label="BACKGROUND">A completely synthetic record.</AbstractText>'
+                   b'<AbstractText Label="RESULTS">Fabricated adherence observations.</AbstractText></Abstract>')
+        self.assertIn(primary, self.xml)
+        sample = self.xml.replace(primary, b"", 2).replace(
+            b"</Article></MedlineCitation>",
+            b'</Article><OtherAbstract Type="PIP" Language="eng"><AbstractText>'
+            b'A completely synthetic record.</AbstractText></OtherAbstract></MedlineCitation>', 3)
+        articles, sources, _, _ = stage1._parse(sample, stage1._id("raw/fake"), "pubmed", self.meta["retrieval_time"])
+        self.assertEqual(articles[0]["abstract_text"], "A completely synthetic record.")
+        self.assertEqual(sources[0]["parsed_fields"]["abstract_source"], "MedlineCitation/OtherAbstract")
+        self.assertEqual(sources[0]["parsed_fields"]["other_abstract_type"], "PIP")
+
+    def test_untrusted_external_dtd_rejected(self):
+        sample = self.xml.replace(
+            b"<PubmedArticleSet>",
+            b'<!DOCTYPE PubmedArticleSet SYSTEM "http://unsafe.example/evil.dtd"><PubmedArticleSet>', 1)
+        with self.assertRaisesRegex(ValueError, "untrusted PubMed DTD"):
+            stage1._parse(sample, stage1._id("raw/fake"), "pubmed", self.meta["retrieval_time"])
+
+    def test_foreign_language_otherabstract_does_not_replace_primary(self):
+        sample = self.xml.replace(
+            b"</Article></MedlineCitation>",
+            b'</Article><OtherAbstract Language="fre"><AbstractText>texte fictif</AbstractText>'
+            b'</OtherAbstract></MedlineCitation>', 1)
+        articles, _, _, _ = stage1._parse(sample, stage1._id("raw/fake"), "pubmed", self.meta["retrieval_time"])
+        self.assertEqual(articles[0]["abstract_text"],
+                         "A completely synthetic record.\nFabricated adherence observations.")
+
     def test_unsafe_xml_is_rejected(self):
         malicious = b'<!DOCTYPE PubmedArticleSet [<!ENTITY x "expansion">]>' + self.xml
         with self.assertRaisesRegex(ValueError, "DTD/entity"):
