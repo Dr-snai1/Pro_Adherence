@@ -5,6 +5,7 @@ Only Python stdlib. Raw responses precede parsing; this module never writes to s
 from __future__ import annotations
 
 import argparse
+import contextvars
 import datetime as dt
 import hashlib
 import json
@@ -29,6 +30,57 @@ ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}\Z")
 PMID_RE = re.compile(r"[1-9][0-9]*\Z")
 SHA_RE = re.compile(r"[0-9a-f]{64}\Z")
 
+
+
+# TASK-0030: ephemeral, allowlisted diagnostics. Never add fields to evidence.
+_VERIFIED_OVERSIZE = contextvars.ContextVar("pubmed_oversize", default=None)
+_VERIFICATION_FAILED = contextvars.ContextVar("pubmed_verify_failed", default=False)
+_COLLECT_PHASE = contextvars.ContextVar("pubmed_collect_phase", default="collect-search")
+
+
+def _emit_safe_failure(category, stage, package_bytes=None, status="unknown", disposition="unknown"):
+    # All strings below are fixed vocabulary, never exception/spec/source text.
+    categories = {"SIZE_CAP", "SEARCH_PENDING", "RECONCILIATION", "INTEGRITY", "SPEC", "UNKNOWN"}
+    stages = {"collect-read-spec", "collect-search", "collect-final-verify", "writer-preflight"}
+    category = category if category in categories else "UNKNOWN"
+    stage = stage if stage in stages else "collect-search"
+    status = status if status in ("final", "incomplete") else "unknown"
+    disposition = disposition if disposition in ("resumable", "terminal") else "unknown"
+    package_bytes = package_bytes if type(package_bytes) is int and package_bytes >= 0 else None
+    print(json.dumps({"failure_category": category, "failure_stage": stage,
+                      "package_bytes": package_bytes, "package_status": status,
+                      "failure_disposition": disposition}, sort_keys=True, separators=(",", ":")),
+          file=sys.stderr)
+
+
+def _observe_collect_failure(root):
+    overflow = _VERIFIED_OVERSIZE.get()
+    if overflow is not None:
+        _emit_safe_failure("SIZE_CAP", "collect-final-verify", overflow[0], overflow[1])
+        return
+    stage = _COLLECT_PHASE.get()
+    # Final verification was actually entered: the verifier's typed boundary
+    # signal is enough to distinguish integrity from arbitrary ValueError.
+    if stage == "collect-final-verify" and _VERIFICATION_FAILED.get():
+        _emit_safe_failure("INTEGRITY", stage)
+        return
+    try:
+        check = verify(root, require_final=False)
+    except Exception:
+        _emit_safe_failure("UNKNOWN", stage)
+        return
+    reason = check["failure_reason_code"]
+    disposition = check["failure_disposition"]
+    if check["status"] == "incomplete" and reason == "search_pending" and disposition == "resumable":
+        category = "SEARCH_PENDING"
+    elif (check["status"] == "incomplete" and disposition == "terminal"
+          and reason in ("source_count_mismatch", "unsplittable_single_day_partition",
+                         "cross_leaf_duplicate")):
+        category = "RECONCILIATION"
+    else:
+        category = "UNKNOWN"
+    _emit_safe_failure(category, "collect-search" if stage != "collect-final-verify" else stage,
+                       check["bytes"], check["status"], disposition or "unknown")
 
 def canonical(value):
     return json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
@@ -342,7 +394,7 @@ def collect_sample(spec, root, qid, union, client, calls):
     else:
         write_raw(root, sample_rel, data)
 
-def collect(spec, run_id, root, client, *, timestamp=None, resume=False):
+def _collect_unobserved(spec, run_id, root, client, *, timestamp=None, resume=False):
     """Save raw bytes before parsing; a verified incomplete package may resume.
 
     Replay verified ESearch counts and UID leaves on resume without refetching;
@@ -525,7 +577,22 @@ def collect(spec, run_id, root, client, *, timestamp=None, resume=False):
         raise
     write_manifest(root, spec, run_id, now, results, "final", partitions, calls,
                    states, None)
+    _COLLECT_PHASE.set("collect-final-verify")
     return verify(root)
+
+
+def collect(spec, run_id, root, client, *, timestamp=None, resume=False):
+    """Preserve collection and exception semantics; publish only safe diagnostics."""
+    token = _COLLECT_PHASE.set("collect-search")
+    _VERIFIED_OVERSIZE.set(None)
+    _VERIFICATION_FAILED.set(False)
+    try:
+        return _collect_unobserved(spec, run_id, root, client, timestamp=timestamp, resume=resume)
+    except Exception:
+        _observe_collect_failure(root)
+        raise
+    finally:
+        _COLLECT_PHASE.reset(token)
 
 
 def write_summaries(root, partitions, results, calls):
@@ -577,7 +644,7 @@ def valid_query_span(term, exact, start, end):
         return False
 
 
-def verify(root, *, require_final=True):
+def _verify_unobserved(root, *, require_final=True):
     """One integrity gate for final and declared incomplete states; reparse source raw."""
     root = Path(root)
     manifest = json.loads((root / "manifest.json").read_bytes())
@@ -1008,12 +1075,26 @@ def verify(root, *, require_final=True):
                 raise ValueError("completed sample missing successful attempt")
     size = sum(p.stat().st_size for p in root.rglob("*") if p.is_file())
     if size > MAX_PACKAGE:
+        # Reached only after all manifest/raw/inventory semantic checks pass.
+        _VERIFIED_OVERSIZE.set((size, manifest["status"]))
         raise ValueError("package exceeds 50 MiB")
     return {"task_id": task, "run_id": run, "root_hash": reported_hash, "bytes": size,
             "status": manifest["status"],
             "failure_disposition": failure["disposition"] if failure else None,
             "failure_reason_code": failure["reason_code"] if failure else None,
             "counts": {k: v["unique_count"] for k, v in rec.items()}}
+
+def verify(root, *, require_final=True):
+    """Original verifier, with a transient typed failure-boundary tag."""
+    _VERIFIED_OVERSIZE.set(None)
+    _VERIFICATION_FAILED.set(False)
+    try:
+        return _verify_unobserved(root, require_final=require_final)
+    except (ValueError, FileNotFoundError, KeyError, TypeError):
+        if _VERIFIED_OVERSIZE.get() is None:
+            _VERIFICATION_FAILED.set(True)
+        raise
+
 
 def _run(*args, cwd=None, env=None):
     return subprocess.check_output(args, cwd=cwd, env=env, stderr=subprocess.DEVNULL, text=True).strip()
@@ -1030,7 +1111,16 @@ def validate_repository(repository):
 
 
 def git_write(package, repository, *, workdir=None):
-    check = verify(package, require_final=False)
+    try:
+        check = verify(package, require_final=False)
+    except (ValueError, FileNotFoundError, KeyError, TypeError):
+        overflow = _VERIFIED_OVERSIZE.get()
+        if overflow is not None:
+            _emit_safe_failure("SIZE_CAP", "writer-preflight", overflow[0], overflow[1])
+        else:
+            _emit_safe_failure("INTEGRITY" if _VERIFICATION_FAILED.get() else "UNKNOWN",
+                               "writer-preflight")
+        raise
     if check["status"] not in ("final", "incomplete"):
         raise ValueError("unsupported package status")
     url = validate_repository(repository)
@@ -1146,7 +1236,11 @@ def main(argv=None):
     args = p.parse_args(argv)
     try:
         if args.action == "collect":
-            spec, run = read_spec(args.spec, mode=args.mode, code_commit=args.code_commit, runtime=args.runtime)
+            try:
+                spec, run = read_spec(args.spec, mode=args.mode, code_commit=args.code_commit, runtime=args.runtime)
+            except (ValueError, FileNotFoundError, KeyError, TypeError):
+                _emit_safe_failure("SPEC", "collect-read-spec")
+                raise
             os.environ["PUBMED_CODE_COMMIT"] = args.code_commit
             os.environ["PUBMED_RUNTIME"] = args.runtime
             info = collect(spec, run, Path(args.out) / evidence_path(spec["task_id"], run),
