@@ -22,7 +22,7 @@ class LocalStage1Contracts(unittest.TestCase):
     def test_three_positions_two_unique_articles(self):
         rows, sources, external, positions = stage1._parse(self.xml, stage1._id("raw/fake"), "pubmed", self.meta["retrieval_time"])
         self.assertEqual((positions, len(rows), len(sources), len(external)), (3, 2, 2, 4))
-        self.assertEqual(sources[0]["duplicate_occurrences"], 2)
+        self.assertEqual(sources[0]["parsed_fields"]["duplicate_occurrences"], 2)
         self.assertEqual(sources[0]["original_metadata_payload_pointer"], f"raw/{hashlib.sha256(self.xml).hexdigest()}.xml#PubmedArticle=0")
         self.assertEqual(rows[0]["doi"], "10.9999/synth.01")
         self.assertEqual(rows[1]["abstract_text"], None)
@@ -45,6 +45,20 @@ class LocalStage1Contracts(unittest.TestCase):
                 validator = Draft202012Validator({"$ref": "entities.schema.json#/$defs/article"},
                                                    resolver=resolver, format_checker=FormatChecker())
                 validator.validate(article)
+
+    def test_source_and_external_id_contracts(self):
+        _, source, external, _ = stage1._parse(self.xml, stage1._id("raw/fake"), "pubmed", self.meta["retrieval_time"])
+        self.assertEqual(set(source[0]), {"source_record_id", "source_id", "raw_artifact_id", "source_native_id", "original_metadata_payload_pointer", "parsed_fields", "retrieval_timestamp"})
+        self.assertEqual(set(external[0]), {"canonical_article_id", "namespace", "value_normalized", "source_record_id", "confidence", "valid_from"})
+        schema_dir = ROOT / "contracts" / "schemas"
+        if schema_dir.is_dir():
+            from jsonschema import Draft202012Validator, FormatChecker, RefResolver
+            store = {p.name: json.loads(p.read_text()) for p in schema_dir.glob("*.schema.json")}
+            resolver = RefResolver.from_schema(store["entities.schema.json"], store=store)
+            for name, records in (("article_source_record", source), ("article_external_id", external)):
+                validator = Draft202012Validator({"$ref": f"entities.schema.json#/$defs/{name}"}, resolver=resolver, format_checker=FormatChecker())
+                for record in records:
+                    validator.validate(record)
 
     def test_workspace_inside_public_repo_fails_closed(self):
         with self.assertRaisesRegex(ValueError, "outside public Git repository"):

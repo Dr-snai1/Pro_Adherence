@@ -22,7 +22,7 @@ SCHEMA_VERSION = "pubmed-stage1-v0.1.0"
 UUID_SEED = b"pro-adherence/stage1/deterministic-id/v1/"
 REQUIRED_META = {"source_id", "retrieval_time", "query_definition", "source_cursor", "license_class", "access_class"}
 CANON_COLUMNS = ["canonical_article_id", "pmid", "doi", "title_display", "title_match", "abstract_text", "publication_date", "document_type", "language", "access_license", "record_status", "created_in_resolution_version"]
-SOURCE_COLUMNS = ["source_record_id", "source_id", "raw_artifact_id", "source_native_id", "original_metadata_payload_pointer", "retrieval_timestamp", "title_original", "doi_original", "duplicate_occurrences"]
+SOURCE_COLUMNS = ["source_record_id", "source_id", "raw_artifact_id", "source_native_id", "original_metadata_payload_pointer", "parsed_fields", "retrieval_timestamp"]
 EXTERNAL_COLUMNS = ["canonical_article_id", "namespace", "value_normalized", "source_record_id", "confidence", "valid_from"]
 
 
@@ -142,7 +142,7 @@ def _parse(raw_bytes, raw_id, source_id, retrieval_time):
             previous, n = seen[pmid]
             if previous != cmp:
                 raise ValueError("same PMID has conflicting content: no silent merge")
-            sources[n]["duplicate_occurrences"] += 1
+            sources[n]["parsed_fields"]["duplicate_occurrences"] += 1
             continue
         if doi:
             if doi in dois and dois[doi] != pmid:
@@ -152,8 +152,9 @@ def _parse(raw_bytes, raw_id, source_id, retrieval_time):
         source = {"source_record_id": source_id_value, "source_id": source_id,
                   "raw_artifact_id": raw_id, "source_native_id": pmid,
                   "original_metadata_payload_pointer": f"{raw_pointer}#PubmedArticle={index}",
-                  "retrieval_timestamp": retrieval_time, "title_original": title,
-                  "doi_original": doi_texts[0] if doi_texts else None, "duplicate_occurrences": 1}
+                  "retrieval_timestamp": retrieval_time,
+                  "parsed_fields": {"title_original": title, "doi_original": doi_texts[0] if doi_texts else None,
+                                    "duplicate_occurrences": 1}
         seen[pmid] = (cmp, len(sources))
         articles.append(record)
         sources.append(source)
