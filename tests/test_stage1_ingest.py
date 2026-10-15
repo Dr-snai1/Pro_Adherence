@@ -25,6 +25,7 @@ class LocalStage1Contracts(unittest.TestCase):
         self.assertEqual(sources[0]["parsed_fields"]["duplicate_occurrences"], 2)
         self.assertEqual(sources[0]["original_metadata_payload_pointer"], f"raw/{hashlib.sha256(self.xml).hexdigest()}.xml#PubmedArticle=0")
         self.assertEqual(rows[0]["doi"], "10.9999/synth.01")
+        self.assertEqual(rows[0]["abstract_text"], "A completely synthetic record.\nFabricated adherence observations.")
         self.assertEqual(rows[1]["abstract_text"], None)
         self.assertTrue(rows[0]["canonical_article_id"].split("-")[2].startswith("7"))
 

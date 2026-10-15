@@ -116,7 +116,9 @@ def _parse(raw_bytes, raw_id, source_id, retrieval_time):
         if not title:
             raise ValueError("no title: fail closed rather than invent a record")
         abstract_el = art.find("Abstract")
-        abstract = _content(abstract_el) or None
+        abstract_parts = ([_content(node) for node in abstract_el.findall("AbstractText")]
+                          if abstract_el is not None else [])
+        abstract = "\n".join(part for part in abstract_parts if part) or None
         doi_texts = []
         for v in entry.findall("./PubmedData/ArticleIdList/ArticleId[@IdType='doi']"):
             if _content(v):
