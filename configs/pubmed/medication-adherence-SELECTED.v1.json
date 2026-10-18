@@ -13,5 +13,11 @@
     "NCBI_TOOL",
     "NCBI_EMAIL",
     "NCBI_API_KEY(optional)"
-  ]
+  ],
+  "sample_policy": {
+    "V04_S0": {
+      "size": 150,
+      "sha256_prefix": "Pro_Adherence|V04_S0|2026-10-19|"
+    }
+  }
 }
