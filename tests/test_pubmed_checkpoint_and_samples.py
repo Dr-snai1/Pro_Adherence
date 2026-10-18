@@ -149,4 +149,34 @@ class ResumeAndSamples(unittest.TestCase):
         (root/'raw/D_only/efetch/00001.xml').write_bytes(b'<PubmedArticleSet/>')
         with self.assertRaisesRegex(ValueError,'hash'):p.verify(root)
 
+
+    def test_single_selected_query_150_sample_and_book(self):
+        spec = dict(SPEC, sample_policy={"D_only": {
+            "size": 150, "sha256_prefix": "Pro_Adherence|V04_S0|2026-10-19|"}})
+        spec_path = self.base / "selected.json"
+        spec_path.write_text(json.dumps(spec), encoding="utf-8")
+        parsed, run_id = p.read_spec(
+            spec_path, mode="full", code_commit="a" * 40,
+            runtime="python-3.13.16")
+        self.assertEqual(parsed["sample_policy"]["D_only"]["size"], 150)
+        self.assertTrue(run_id.startswith("r-"))
+        ids = [str(i) for i in range(1, 151)]
+        chosen = p.selected_pmids(parsed, "D_only", ids)
+        self.assertEqual(chosen, ids)
+        xml = "<PubmedArticleSet>"
+        for value in ids:
+            if value == "40":
+                xml += f"<PubmedBookArticle><BookDocument><PMID>{value}</PMID></BookDocument></PubmedBookArticle>"
+            else:
+                xml += f"<PubmedArticle><MedlineCitation><PMID>{value}</PMID></MedlineCitation></PubmedArticle>"
+        xml += "</PubmedArticleSet>"
+        p.checked_sample(xml.encode(), chosen)
+        with self.assertRaisesRegex(ValueError, "EFetch PMID identity mismatch"):
+            p.checked_sample(xml.replace("<PMID>40</PMID>", "<PMID>41</PMID>").encode(), chosen)
+        spec["sample_policy"]["D_only"]["size"] = 151
+        spec_path.write_text(json.dumps(spec), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "unsafe sample size"):
+            p.read_spec(spec_path, mode="full", code_commit="a"*40,
+                        runtime="python-3.13.16")
+
 if __name__=='__main__':unittest.main()
