@@ -167,7 +167,7 @@ def read_spec(path, *, mode, code_commit, runtime):
     for qid, rule in policy.items():
         if not isinstance(rule, dict) or set(rule) != {"size", "sha256_prefix"}:
             raise ValueError("invalid sample rule")
-        if not isinstance(rule["size"], int) or not 1 <= rule["size"] <= 100:
+        if not isinstance(rule["size"], int) or not 1 <= rule["size"] <= 150:
             raise ValueError("unsafe sample size")
         if not isinstance(rule["sha256_prefix"], str) or not rule["sha256_prefix"] or len(rule["sha256_prefix"]) > 256:
             raise ValueError("invalid sample prefix")
@@ -200,8 +200,8 @@ class Client:
         self.last_request = None
 
     def efetch(self, pmids):
-        if not pmids or len(pmids) > 100 or numeric_pmids(pmids) != pmids:
-            raise ValueError("EFetch requires <=100 canonical PMIDs")
+        if not pmids or len(pmids) > 150 or numeric_pmids(pmids) != pmids:
+            raise ValueError("EFetch requires <=150 canonical PMIDs")
         return self._post(EFETCH_ENDPOINT, {"db": "pubmed", "id": ",".join(pmids), "retmode": "xml"}, len(pmids))
 
     def esearch(self, term, retmax):
@@ -343,6 +343,7 @@ def checked_sample(raw, chosen):
     if root.tag != "PubmedArticleSet":
         raise ValueError("unexpected PubMed EFetch XML")
     found = [element.text for element in root.findall("./PubmedArticle/MedlineCitation/PMID")]
+    found += [element.text for element in root.findall("./PubmedBookArticle/BookDocument/PMID")]
     try:
         valid = numeric_pmids(found) == chosen and len(found) == len(chosen)
     except ValueError:
@@ -690,7 +691,7 @@ def _verify_unobserved(root, *, require_final=True):
         raise ValueError("invalid sample policy")
     for rule in manifest["sample_policy"].values():
         if (not isinstance(rule, dict) or set(rule) != {"size", "sha256_prefix"}
-                or type(rule["size"]) is not int or not 1 <= rule["size"] <= 100
+                or type(rule["size"]) is not int or not 1 <= rule["size"] <= 150
                 or not isinstance(rule["sha256_prefix"], str) or not rule["sha256_prefix"]):
             raise ValueError("invalid sample rule")
     failure = manifest["failure"]
