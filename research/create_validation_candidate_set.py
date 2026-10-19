@@ -8,7 +8,8 @@ import collections,csv,datetime,hashlib,json,math,random,re,time,xml.etree.Eleme
 from pathlib import Path
 from query_probe_precision_20261019 import api,FILTER,Q as focus
 from query_probe_20261019 import Q as old
-from recall_probe_20261019 import POS as EXPERT_POS, NEG as USER_NEG
+EXPERT_POS='9404746 12441805 17110087 22021483 23032359 23065532 25301330 26495883 28807035 29081045 29427293 31626087 31929426 33371973 35173501 35416595 37091492 38603915 38730371 39525610 41798698'.split()
+USER_NEG='1332520 2448571 2792052 2898461 3555041 7414106 8141977 8914177 9676753 9730424 9888412 10103334'.split()
 
 ROOT=Path("research/validation_candidate_set_20261019")
 ROOT.mkdir(parents=True,exist_ok=True)
@@ -64,19 +65,19 @@ def fetch(ids):
   print('FETCHED',len(out),'/',len(ids),flush=True)
  return out
 def split_count(q,a,b):
- clause=f'({q}) AND {a}:{b}[edat]'
+ clause=f'({q}) AND {a:%Y/%m/%d}:{b:%Y/%m/%d}[edat]'
  count=int(search(clause)['count'])
- if count<=9000 or a==b:
-  if count>9999:raise ValueError('EDAT day over 9999')
+ if count<=9000:
   return [(a,b,count)]
- mid=(a+b)//2
- return split_count(q,a,mid)+split_count(q,mid+1,b)
+ if a==b:raise ValueError('EDAT single-day partition >9000')
+ middle=a+datetime.timedelta(days=(b-a).days//2)
+ return split_count(q,a,middle)+split_count(q,middle+datetime.timedelta(days=1),b)
 def source_sample(name,term,target):
  # Restrict all retrieval to the same language/publication-type decision.
  expr='('+term+') AND '+FILTER
  bins=[]
  for a,b in YEARS:
-  bins.extend(split_count(expr,a,b))
+  bins.extend(split_count(expr,datetime.date(a,1,1),datetime.date(b,12,31)))
  pop=sum(c for _,_,c in bins)
  expected=int(search(expr)['count'])
  if expected!=pop:raise RuntimeError(f'count mismatch {name} {expected} vs {pop}')
@@ -92,7 +93,7 @@ def source_sample(name,term,target):
   for _ in range(chunks):
    page0=min(page,c)
    start=randomizer.randint(0,max(0,c-page0))
-   r=search(f'({expr}) AND {a}:{b}[edat]',start,page0)
+   r=search(f'({expr}) AND {a:%Y/%m/%d}:{b:%Y/%m/%d}[edat]',start,page0)
    if len(r['idlist'])!=page0:raise RuntimeError('sample window unexpectedly short')
    for x in r['idlist']:
     if x not in seen:ids.append(x);seen.add(x)
@@ -109,11 +110,11 @@ print('TOTAL_UNIQUE_TO_FETCH',len(membership),flush=True)
 rows=fetch(sorted(membership,key=int))
 assert len(rows)>=len(membership)*.99, 'EFetch missing unusual number of PMIDs'
 def has(pat,s):return bool(re.search(pat,s,re.I))
-DRUG=r'\\b(?:medicat(?:ion|ions|ed|e)?|drug[s]?|prescri\\w+|pharmacotherap\\w*|tablet[s]?|pill[s]?|antiretroviral\\w*|antidepressant\\w*|antipsychotic\\w*|anticoagulant\\w*|antiepileptic\\w*|antiseizure|statin[s]?|biologic[s]?|insulin|antihypertensive\\w*|PrEP|immunosuppress\\w*|inhaler[s]?|oral agents?|treatment regimen[s]?)\\b'
-ADH=r'\\b(?:adheren\\w*|non.?adheren\\w*|complian\\w*|non.?complian\\w*|persisten\\w*|non.?persisten\\w*)\\b'
-MEASURE=r'(?:\\b(?:PDC|MPR|MMAS|Morisky)\\b|proportion of days covered|medication possession ratio|refill adherence|pill count[s]?|medication event monitoring|electronic (?:pill|medication) monitor|missed doses?|self.reported adherence|adherence (?:was|were|is) (?:measured|assessed|evaluated)|(?:measured|assessed|evaluated|reported) adherence|patients? (?:were|was) adherent|adherence (?:rate|score|level)[s]?)'
-OBVIOUS_MED_TITLE=r'(?:medicat\\w*|drug adherence|prescription adherence|pharmacotherap\\w*|antiretroviral\\w*|PrEP adherence|antidepressant\\w*|antipsychotic\\w*|statin[s]?|anticoagulant\\w*|antiepileptic\\w*|insulin|inhaler\\w*|oral anticoagulant\\w*)'
-NEG_FIELD=r'(?:cell.?cell adhesion|adhesive|adherent cells?|molecul\\w+ adhesion|bacterial persistence|microbial persistence|persistent organic pollutant|persistent inflammation|persistent symptom[s]?|treatment guideline compliance|physician[s]? adherence|clinician[s]? adherence|protocol adherence|nursing compliance|guideline.concordant care|adherence to guidelines|guideline adherence|policy compliance|regulatory compliance|prEP awareness|osteoblast adhesion|patient safety events)'
+DRUG=r'\b(?:medicat(?:ion|ions|ed|e)?|drug[s]?|prescri\w+|pharmacotherap\w*|tablet[s]?|pill[s]?|antiretroviral\w*|antidepressant\w*|antipsychotic\w*|anticoagulant\w*|antiepileptic\w*|antiseizure|statin[s]?|biologic[s]?|insulin|antihypertensive\w*|PrEP|immunosuppress\w*|inhaler[s]?|oral agents?|treatment regimen[s]?)\b'
+ADH=r'\b(?:adheren\w*|non.?adheren\w*|complian\w*|non.?complian\w*|persisten\w*|non.?persisten\w*)\b'
+MEASURE=r'(?:\b(?:PDC|MPR|MMAS|Morisky)\b|proportion of days covered|medication possession ratio|refill adherence|pill count[s]?|medication event monitoring|electronic (?:pill|medication) monitor|missed doses?|self.reported adherence|adherence (?:was|were|is) (?:measured|assessed|evaluated)|(?:measured|assessed|evaluated|reported) adherence|patients? (?:were|was) adherent|adherence (?:rate|score|level)[s]?)'
+OBVIOUS_MED_TITLE=r'(?:medicat\w*|drug adherence|prescription adherence|pharmacotherap\w*|antiretroviral\w*|PrEP adherence|antidepressant\w*|antipsychotic\w*|statin[s]?|anticoagulant\w*|antiepileptic\w*|insulin|inhaler\w*|oral anticoagulant\w*)'
+NEG_FIELD=r'(?:cell.?cell adhesion|adhesive|adherent cells?|molecul\w+ adhesion|bacterial persistence|microbial persistence|persistent organic pollutant|persistent inflammation|persistent symptom[s]?|treatment guideline compliance|physician[s]? adherence|clinician[s]? adherence|protocol adherence|nursing compliance|guideline.concordant care|adherence to guidelines|guideline adherence|policy compliance|regulatory compliance|prEP awareness|osteoblast adhesion|patient safety events)'
 PATIENT=r'(?:patient[s]?|participant[s]?|people|persons|women|men|adolescents?|children|caregiver|self.report|cohort|observational|clinical trial)'
 STRONG_NEG=r'(?:biological|cell|microbial|gene|toxicant|ecosystem|crop|materials|bacteria|enzyme|protein|chemotaxis|surgery|imaging|molecular|mice|mechanism)'
 def label(row):
@@ -126,7 +127,7 @@ def label(row):
  negtitle=has(NEG_FIELD,title)
  positive=( (tadh and tdrug and ba and bd and clinical) or
             (ba and bd and meas and clinical and not negtitle) or
-            (tdrug and has(r'non.?adheren\\w*|adheren\\w*|compliance|persistence',ab) and meas and clinical))
+            (tdrug and has(r'non.?adheren\w*|adheren\w*|compliance|persistence',ab) and meas and clinical))
  if positive and not negtitle:
   evidence='explicit_title_plus_patient_drug_adherence' if tadh and tdrug else 'patient_drug_adherence_measure_in_abstract'
   score=3 if tadh and tdrug and meas else 2
