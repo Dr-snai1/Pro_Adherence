@@ -150,7 +150,7 @@ for pmid,row in rows.items():
  elif pmid in FIXEDPOS:
   if cls=='N':cls,score,basis='U',0,'conflict_with_preexisting_expert_R'
   elif cls=='R':basis='expert_previously_read_plus_rules'
- row.update(label=cls,confidence=score,label_basis=basis,sources=';'.join(sorted(membership[pmid])))
+ row.update(label=cls,confidence=score,label_basis=basis,sources=';'.join(sorted(membership[pmid])),has_abstract=bool(row['abstract']),abstract_sha256=hashlib.sha256(row['abstract'].encode()).hexdigest(),pubmed_url='https://pubmed.ncbi.nlm.nih.gov/'+pmid+'/')
  labeled.append(row)
 # Independent negative-evidence triage. New lower-confidence negatives must be
 # individually reviewed before gold-standard use. Never treat no abstract as N.
@@ -175,7 +175,7 @@ if initial.get('N',0)<500:
   x['label_basis']='provisional_negative_other_topic_requires_expert_review'
 stats=collections.Counter(x['label'] for x in labeled)
 # Persist all annotation candidates in independently readable shards, including U.
-cols=['pmid','label','confidence','label_basis','sources','publication_year','journal','title','abstract']
+cols=['pmid','label','confidence','label_basis','sources','publication_year','journal','title','has_abstract','abstract_sha256','pubmed_url']
 for shard_no in range(0,len(labeled),170):
  with (ROOT/f'all_candidates_part_{shard_no//170+1:02}.csv').open('w',encoding='utf-8',newline='') as f:
   w=csv.DictWriter(f,fieldnames=cols);w.writeheader()
@@ -209,12 +209,10 @@ selected=pickR+pickN
 assert len(selected)==1000 and len(set(x['pmid'] for x in selected))==1000
 assert collections.Counter(x['label'] for x in selected)=={'R':500,'N':500}
 selected.sort(key=lambda x:(x['label'],int(x['pmid'])))
-with (ROOT/'silver_1000_full.csv').open('w',encoding='utf-8',newline='') as f:
+with (ROOT/'silver_1000_labels.csv').open('w',encoding='utf-8',newline='') as f:
  w=csv.DictWriter(f,fieldnames=cols);w.writeheader()
  for row in selected:w.writerow({k:row.get(k,'') for k in cols})
-with (ROOT/'silver_1000_compact.csv').open('w',encoding='utf-8',newline='') as f:
- w=csv.DictWriter(f,fieldnames=[k for k in cols if k!='abstract']);w.writeheader()
- for row in selected:w.writerow({k:row.get(k,'') for k in cols if k!='abstract'})
+
 with (ROOT/'unresolved_candidates.csv').open('w',encoding='utf-8',newline='') as f:
  w=csv.DictWriter(f,fieldnames=cols);w.writeheader()
  for row in labeled:
@@ -236,7 +234,7 @@ metadata={
 (ROOT/'manifest.json').write_text(json.dumps(metadata,indent=2,ensure_ascii=False)+'\n',encoding='utf-8')
 (ROOT/'README.md').write_text("""# Provisional PubMed evaluation cohort (2026-10-19)
 **NOT a validated gold standard.** Contains 500 auto-screened R and 500 auto-screened N,
-with abstracts and PubMed PMIDs. Label confidence and rule provenance are explicit.
+with PubMed PMIDs, title, source, and label provenance. Label confidence and rule provenance are explicit.
 This is a deliberately balanced challenge set and MUST NOT be used to estimate
 prevalence, overall PubMed retrieval precision, or external recall.
 
@@ -248,6 +246,7 @@ prevalence, overall PubMed retrieval precision, or external recall.
   earlier assistant-read positives are *not* independently human-confirmed.
 - Query provenance in manifest.json; original V04_S0 config has not been changed.
 - Audit of *silver label noise* and expert dual review are mandatory before release gate.
+- Full copyrighted abstracts are deliberately NOT redistributed in GitHub; obtain them from PubMed by PMID when reviewing.
 - Candidate set selection is biased toward clear labels; test sensitivity on held-out
   documented clinical benchmark separately, not just on these generated rows.
 """,encoding='utf-8')
