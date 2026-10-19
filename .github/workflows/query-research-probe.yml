@@ -1,0 +1,24 @@
+name: Research PubMed query candidate probe
+on:
+  push:
+    branches: [research/v04-query-candidates-20261019]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  pubmed-research-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Verify NCBI ESearch access with a count-only test
+        run: |
+          python - <<'PY'
+          import json,urllib.parse,urllib.request
+          q='"Medication Adherence"[mh] AND english[la] AND "journal article"[pt]'
+          u='https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?'+urllib.parse.urlencode({'db':'pubmed','term':q,'retmode':'json','retmax':0,'tool':'ProAdherenceQueryResearch'})
+          with urllib.request.urlopen(u,timeout=40) as res:
+              data=json.load(res)
+          s=data['esearchresult']
+          print('PUBMED_ACCESS_PASS',s['count'],s.get('querytranslation'))
+          PY
