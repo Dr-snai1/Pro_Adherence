@@ -12,6 +12,6 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: PubMed year-weighted independent sample and known-positive coverage
+      - name: Compare source-sentinel R and N across candidate PubMed queries
         run: |
-          python research/weighted_sample_probe_20261019.py
+          python research/recall_probe_20261019.py
