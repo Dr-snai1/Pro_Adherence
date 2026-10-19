@@ -21,3 +21,21 @@ for name,ids in {**SAMPLES,'previous_positive':GOLD}.items():
    matches.extend(x for x in target if x in got)
   print('MATCH',name,variant,'FOUND',len(matches),'TOTAL',len(ids),'MISSED',','.join(x for x in ids if x not in matches),flush=True)
 print('LIVE_AUDIT_DONE')
+
+
+# Additional recall-frontier test: behavior-measurement phrases without automatic exclusions.
+# Sample the independent proxy search, then check exact live V04 membership.
+from weighted_sample_probe_20261019 import sample as weighted_sample,fetch as fetch_articles
+PROXY='''("proportion of days covered"[tiab] OR "medication possession ratio"[tiab] OR "missed doses"[tiab] OR "doses taken"[tiab] OR "pill count"[tiab] OR "directly observed therapy"[tiab] OR "medication taking"[tiab] OR "medication-taking"[tiab] OR "prescription refill"[tiab] OR "refill gaps"[tiab])'''
+ids=weighted_sample('proxy-frontier',PROXY,n=70)
+matched=[]
+for start in range(0,len(ids),20):
+ chunk=ids[start:start+20]
+ res=search('('+q+') AND ('+' OR '.join(x+'[uid]' for x in chunk)+')')
+ matched.extend(x for x in chunk if x in set(res['idlist']))
+off=set(ids)-set(matched)
+print('PROXY_FRONTIER',len(ids),'SOURCE_MATCH',len(matched),'SOURCE_MISSING',len(off),flush=True)
+for a in fetch_articles(ids):
+ if a['pmid'] in off:
+  print('MISSING_ABSTRACT',json.dumps(a,ensure_ascii=False),flush=True)
+print('PROXY_FRONTIER_DONE',flush=True)
