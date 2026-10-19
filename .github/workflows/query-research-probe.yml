@@ -12,6 +12,6 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Audit V04 source coverage against independent samples
+      - name: Compare V04 expansions for high-recall retrieval
         run: |
-          python research/live_recall_pool_audit.py
+          python research/patch_count_probe.py
