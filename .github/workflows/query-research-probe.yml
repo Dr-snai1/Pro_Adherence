@@ -12,6 +12,6 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Test A/B/C/D candidate queries on live PubMed
+      - name: Read E/F/G/H candidate PubMed counts and diagnostic abstracts
         run: |
-          python research/query_probe_20261019.py
+          python research/query_probe_precision_20261019.py
