@@ -39,7 +39,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add research/validation_candidate_set_20261019/
+          git add research/validation_candidate_set_20261019/ research/create_validation_candidate_set.py
           git diff --cached --quiet && exit 0
           git commit -m "research: provisional 500R and 500N PubMed screening cohort [skip ci]"
           git push origin HEAD:research/v04-query-candidates-20261019
