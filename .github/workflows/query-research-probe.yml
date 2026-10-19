@@ -23,8 +23,16 @@ jobs:
         with:
           ref: research/v04-query-candidates-20261019
           persist-credentials: true
-      - name: Verify generator syntax
-        run: python -m py_compile research/create_validation_candidate_set.py
+      - name: Normalize line endings in candidate generator
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('research/create_validation_candidate_set.py')
+          s=p.read_text()
+          s=s.replace(chr(92)+'n# Stratified', chr(10)+'# Stratified').replace(chr(92)+'nNONPATIENT', chr(10)+'NONPATIENT').replace(chr(92)+'nB_HARD', chr(10)+'B_HARD')
+          p.write_text(s)
+          PY
+          python -m py_compile research/create_validation_candidate_set.py
       - name: Generate provisional query reference cohort from PubMed
         run: python research/create_validation_candidate_set.py
       - name: Persist reproducible provisional cohort only on isolated research branch
