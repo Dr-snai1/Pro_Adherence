@@ -5,17 +5,23 @@ on:
     paths:
       - 'research/create_validation_candidate_set.py'
       - '.github/workflows/query-research-probe.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'research/create_validation_candidate_set.py'
+      - '.github/workflows/query-research-probe.yml'
   workflow_dispatch:
 permissions:
   contents: write
 jobs:
   build-reference-cohort:
-    if: github.ref == 'refs/heads/research/v04-query-candidates-20261019'
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 16
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: research/v04-query-candidates-20261019
           persist-credentials: true
       - name: Verify generator syntax
         run: python -m py_compile research/create_validation_candidate_set.py
