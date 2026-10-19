@@ -15,3 +15,6 @@ prevalence, overall PubMed retrieval precision, or external recall.
 - Full copyrighted abstracts are deliberately NOT redistributed in GitHub; obtain them from PubMed by PMID when reviewing.
 - Candidate set selection is biased toward clear labels; test sensitivity on held-out
   documented clinical benchmark separately, not just on these generated rows.
+
+## Reference v1.1 retention guarantee
+All 21 earlier assistant-reviewed positive examples are present as R (one user-confirmed); all 12 earlier user-reviewed N examples are present as N. This is NOT independent expert consensus. See manifest.json and label_basis for provenance. The accepted PubMed search query is unchanged.

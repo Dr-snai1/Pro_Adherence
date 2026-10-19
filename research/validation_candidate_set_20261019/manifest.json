@@ -1,5 +1,5 @@
 {
-  "version": "2026-10-19-silver-v1",
+  "version": "2026-10-19-silver-v1.1",
   "status": "provisional_silver_not_gold",
   "warning": "Automatic title/abstract heuristics; some N are lower-confidence triage; NOT independently expert-confirmed for 1000 labels; unsuitable as ground truth for final scientific gate.",
   "purpose": "Challenge/diagnostic set for candidate PubMed query comparison, not population precision estimation.",
@@ -93,5 +93,54 @@
     "E_focus": 77,
     "H_titleonly": 270
   },
-  "no_PubMed_query_NOT": "All corpus source expressions without exclusion (NOT); NOT label uses explicit evidence and metadata"
+  "no_PubMed_query_NOT": "All corpus source expressions without exclusion (NOT); NOT label uses explicit evidence and metadata",
+  "sentinel_retention": {
+    "all_21_previous_expert_relevant_in_positive_500": true,
+    "all_12_previous_user_irrelevant_in_negative_500": true,
+    "previous_expert_label_not_human_confirmation": true,
+    "added_expert_positive_pmids": [
+      "12441805",
+      "17110087",
+      "22021483",
+      "23032359",
+      "25301330",
+      "26495883",
+      "28807035",
+      "29081045",
+      "29427293",
+      "31626087",
+      "31929426",
+      "33371973",
+      "35173501",
+      "35416595",
+      "37091492",
+      "38603915",
+      "38730371",
+      "39525610",
+      "41798698"
+    ],
+    "removed_easy_positive_pmids": [
+      "38780122",
+      "27363822",
+      "29649015",
+      "42036050",
+      "38819905",
+      "27738515",
+      "38636147",
+      "27003560",
+      "28934403",
+      "39345761",
+      "33942250",
+      "41622047",
+      "35310157",
+      "32651883",
+      "23814461",
+      "32271148",
+      "20668975",
+      "7820327",
+      "32281312"
+    ],
+    "postprocessing_script": "research/finalize_validation_reference.py",
+    "selection_note": "Forced inclusion of all prior known positive and negative sentinels. Expert positive classifications except 9404746 need independent confirmation."
+  }
 }
