@@ -2,16 +2,30 @@ name: Research PubMed query candidate probe
 on:
   push:
     branches: [research/v04-query-candidates-20261019]
-  pull_request:
-    branches: [main]
+    paths:
+      - 'research/create_validation_candidate_set.py'
+      - '.github/workflows/query-research-probe.yml'
+  workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
-  pubmed-research-probe:
+  build-reference-cohort:
+    if: github.ref == 'refs/heads/research/v04-query-candidates-20261019'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 16
     steps:
       - uses: actions/checkout@v4
-      - name: Sample drug-class-only adherence candidates from PubMed
+        with:
+          persist-credentials: true
+      - name: Verify generator syntax
+        run: python -m py_compile research/create_validation_candidate_set.py
+      - name: Generate provisional query reference cohort from PubMed
+        run: python research/create_validation_candidate_set.py
+      - name: Persist reproducible provisional cohort only on isolated research branch
         run: |
-          python research/class_frontier_20261019.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research/validation_candidate_set_20261019/
+          git diff --cached --quiet && exit 0
+          git commit -m "research: provisional 500R and 500N PubMed screening cohort [skip ci]"
+          git push origin HEAD:research/v04-query-candidates-20261019
