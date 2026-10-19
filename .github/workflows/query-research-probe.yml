@@ -12,6 +12,6 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Read E/F/G/H candidate PubMed counts and diagnostic abstracts
+      - name: PubMed year-weighted independent sample and known-positive coverage
         run: |
-          python research/query_probe_precision_20261019.py
+          python research/weighted_sample_probe_20261019.py
