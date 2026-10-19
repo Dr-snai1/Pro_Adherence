@@ -12,6 +12,6 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Compare V04 expansions for high-recall retrieval
+      - name: Sample drug-class-only adherence candidates from PubMed
         run: |
-          python research/patch_count_probe.py
+          python research/class_frontier_20261019.py
