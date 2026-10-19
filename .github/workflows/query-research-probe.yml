@@ -12,6 +12,6 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Independently sample G and C candidate PubMed results across EDAT
+      - name: Audit V04 source coverage against independent samples
         run: |
-          python research/weighted_sample_probe_20261019.py
+          python research/live_recall_pool_audit.py
