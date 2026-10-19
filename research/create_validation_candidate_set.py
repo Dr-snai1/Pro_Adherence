@@ -16,7 +16,10 @@ ROOT.mkdir(parents=True,exist_ok=True)
 Q=json.loads(Path('configs/pubmed/medication-adherence-SELECTED.v1.json').read_text())['queries']['V04_S0']
 PROXY='''("proportion of days covered"[tiab] OR "medication possession ratio"[tiab] OR "missed doses"[tiab] OR "pill count"[tiab] OR "directly observed therapy"[tiab] OR "medication taking"[tiab] OR "medication-taking"[tiab] OR "prescription refill"[tiab] OR "refill gaps"[tiab])'''
 SPEC='''(antiretroviral*[tiab] OR PrEP[tiab] OR antipsychotic*[tiab] OR antiepileptic*[tiab] OR antiseizure[tiab] OR biologic*[tiab] OR insulin[tiab] OR statin*[tiab] OR inhaler*[tiab] OR anticoagulant*[tiab] OR immunosuppress*[tiab] OR ixekizumab[tiab] OR riluzole[tiab])'''
-CLASSES='('+SPEC+' AND (adheren*[tiab] OR nonadheren*[tiab] OR complian*[tiab] OR persisten*[tiab] OR "missed doses"[tiab]))'\n# Stratified hard-negative challenge subset is still a subset of the archived B query.\nNONPATIENT='''(cell*[ti] OR protein*[ti] OR molecular[ti] OR enzyme*[ti] OR pharmacokinetic*[ti] OR surgical[ti] OR laboratory[ti] OR gene*[ti] OR nanoparticle*[ti] OR "drug resistance"[ti] OR "drug delivery"[ti] OR "physician adherence"[ti] OR "guideline adherence"[ti] OR "protocol compliance"[ti] OR epithelial[ti] OR cancer[ti] OR bacteria*[ti])'''\nB_HARD='('+old['B_context']+' AND '+NONPATIENT+')'
+CLASSES='('+SPEC+' AND (adheren*[tiab] OR nonadheren*[tiab] OR complian*[tiab] OR persisten*[tiab] OR "missed doses"[tiab]))'
+# Stratified hard-negative challenge subset is still a subset of the archived B query.
+NONPATIENT='''(cell*[ti] OR protein*[ti] OR molecular[ti] OR enzyme*[ti] OR pharmacokinetic*[ti] OR surgical[ti] OR laboratory[ti] OR gene*[ti] OR nanoparticle*[ti] OR "drug resistance"[ti] OR "drug delivery"[ti] OR "physician adherence"[ti] OR "guideline adherence"[ti] OR "protocol compliance"[ti] OR epithelial[ti] OR cancer[ti] OR bacteria*[ti])'''
+B_HARD='('+old['B_context']+' AND '+NONPATIENT+')'
 SOURCES={
 'H_titleonly':focus['H_titleonly'],
 'E_focus':focus['E_focus'],

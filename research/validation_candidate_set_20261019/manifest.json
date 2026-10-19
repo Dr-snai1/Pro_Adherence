@@ -1,0 +1,97 @@
+{
+  "version": "2026-10-19-silver-v1",
+  "status": "provisional_silver_not_gold",
+  "warning": "Automatic title/abstract heuristics; some N are lower-confidence triage; NOT independently expert-confirmed for 1000 labels; unsuitable as ground truth for final scientific gate.",
+  "purpose": "Challenge/diagnostic set for candidate PubMed query comparison, not population precision estimation.",
+  "labels": {
+    "R": 500,
+    "N": 500
+  },
+  "sampling": "deterministic EDAT-stratified random pages for eight original/experimental PubMed queries plus B_context AND independent hard-negative topic strata; publication type English journal article, plus previously discussed sentinels",
+  "seed_sha256": "60b021cba75c968f2bed7766105a12b4cdfd04a8ad6faadf181db8513b65f958",
+  "source_counts": {
+    "H_titleonly": 9465,
+    "E_focus": 17460,
+    "G_proximity": 42112,
+    "C_anchored": 45004,
+    "B_context": 151408,
+    "A_direct": 41336,
+    "P1_proxy": 7892,
+    "P2_drugclass": 91809,
+    "B_hard_topic": 16597
+  },
+  "source_query_sha256": {
+    "H_titleonly": "4d0ee9f8130bbed17b06f03940c2fd3ae784c06752e1cf4338a6de79b2ca0214",
+    "E_focus": "595aa78e414a2e61d18021bda4d1dc5f45a16ad01974f911578a0f482767ed42",
+    "G_proximity": "5f227261b9a5f58b9a263a2b0b02fe1f4a9b4e67af2e4c381536894bfd25f2c2",
+    "C_anchored": "9c1d5fae82752e20647310a759d6348d4e3e6e062e464440422aa772dba65c80",
+    "B_context": "f8aec33905c093ee59df3a92ccd981a00cc449e35ce30c94f4c738e4bc721a22",
+    "A_direct": "7ee695cfaa94711879a832d8f940d65ff5d05868f4c641c01f1ce33a9ef0b926",
+    "P1_proxy": "d7a14ffe88dee7f3752bb56aa659b5c178eae8454d1c5bd78c3ca15600f1256a",
+    "P2_drugclass": "3dbec782e00e08c765635cb81efa3eb66a9f56fa7c4ea030d0149a47d7cedb15",
+    "B_hard_topic": "f065d542bf5627455ec7a7095a3c8c2d0c670262d358e8adfcf9b053e79b3f35"
+  },
+  "all_candidates": 4213,
+  "all_labels": {
+    "U": 2293,
+    "N": 500,
+    "R": 1420
+  },
+  "unresolved_count": 2293,
+  "human_previously_confirmed": {
+    "R": [
+      "9404746"
+    ],
+    "N": [
+      "10103334",
+      "1332520",
+      "2448571",
+      "2792052",
+      "2898461",
+      "3555041",
+      "7414106",
+      "8141977",
+      "8914177",
+      "9676753",
+      "9730424",
+      "9888412"
+    ]
+  },
+  "known_previous_expert_positives": [
+    "12441805",
+    "17110087",
+    "22021483",
+    "23032359",
+    "23065532",
+    "25301330",
+    "26495883",
+    "28807035",
+    "29081045",
+    "29427293",
+    "31626087",
+    "31929426",
+    "33371973",
+    "35173501",
+    "35416595",
+    "37091492",
+    "38603915",
+    "38730371",
+    "39525610",
+    "41798698",
+    "9404746"
+  ],
+  "non_titleonly_positive_count": 230,
+  "sampled_from_source_counts": {
+    "C_anchored": 60,
+    "existing_validation_seed": 14,
+    "P1_proxy": 88,
+    "P2_drugclass": 66,
+    "B_hard_topic": 260,
+    "B_context": 48,
+    "A_direct": 89,
+    "G_proximity": 66,
+    "E_focus": 77,
+    "H_titleonly": 270
+  },
+  "no_PubMed_query_NOT": "All corpus source expressions without exclusion (NOT); NOT label uses explicit evidence and metadata"
+}
