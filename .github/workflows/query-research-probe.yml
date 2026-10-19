@@ -12,6 +12,6 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Compare source-sentinel R and N across candidate PubMed queries
+      - name: Independently sample G and C candidate PubMed results across EDAT
         run: |
-          python research/recall_probe_20261019.py
+          python research/weighted_sample_probe_20261019.py
