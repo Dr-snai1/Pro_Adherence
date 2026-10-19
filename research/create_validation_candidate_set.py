@@ -23,12 +23,12 @@ SOURCES={
 'G_proximity':focus['G_proximity'],
 'C_anchored':old['C_anchored'],
 'B_context':old['B_context'],
-'V04_S0':Q,
+'A_direct':old['A_direct'],
 'P1_proxy':PROXY,
 'P2_drugclass':CLASSES,
 }
 YEARS=[(1800,1999),(2000,2009),(2010,2012),(2013,2014),(2015,2016),(2017,2018),(2019,2020),(2021,2022),(2023,2024),(2025,2026)]
-TARGETS={'H_titleonly':460,'E_focus':380,'G_proximity':480,'C_anchored':380,'B_context':400,'V04_S0':500,'P1_proxy':300,'P2_drugclass':430}
+TARGETS={'H_titleonly':460,'E_focus':380,'G_proximity':480,'C_anchored':380,'B_context':400,'A_direct':500,'P1_proxy':300,'P2_drugclass':430}
 FIXEDPOS=set(EXPERT_POS)
 FIXEDNEG=set(USER_NEG)
 USER_R={'9404746'}
