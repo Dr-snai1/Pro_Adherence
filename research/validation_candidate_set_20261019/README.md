@@ -6,7 +6,7 @@ prevalence, overall PubMed retrieval precision, or external recall.
 
 - R = evidence in title+abstract consistent with actual patient medication-taking adherence,
   persistence or refill/coverage outcome; includes historical examples.
-- N = clear other-topic or absent substantive patient medication adherence evidence.
+- N = provisionally classified as other-topic or lacking substantive patient medication adherence evidence; 129 included lower-confidence negative examples REQUIRE independent expert review before any gold-standard use.
 - U = ambiguous/missing abstract; kept in unresolved_candidates.csv and not forced N.
 - Existing user labels from the 150-sheet are preserved and marked human-confirmed;
   earlier assistant-read positives are *not* independently human-confirmed.
