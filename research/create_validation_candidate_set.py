@@ -16,7 +16,7 @@ ROOT.mkdir(parents=True,exist_ok=True)
 Q=json.loads(Path('configs/pubmed/medication-adherence-SELECTED.v1.json').read_text())['queries']['V04_S0']
 PROXY='''("proportion of days covered"[tiab] OR "medication possession ratio"[tiab] OR "missed doses"[tiab] OR "pill count"[tiab] OR "directly observed therapy"[tiab] OR "medication taking"[tiab] OR "medication-taking"[tiab] OR "prescription refill"[tiab] OR "refill gaps"[tiab])'''
 SPEC='''(antiretroviral*[tiab] OR PrEP[tiab] OR antipsychotic*[tiab] OR antiepileptic*[tiab] OR antiseizure[tiab] OR biologic*[tiab] OR insulin[tiab] OR statin*[tiab] OR inhaler*[tiab] OR anticoagulant*[tiab] OR immunosuppress*[tiab] OR ixekizumab[tiab] OR riluzole[tiab])'''
-CLASSES='('+SPEC+' AND (adheren*[tiab] OR nonadheren*[tiab] OR complian*[tiab] OR persisten*[tiab] OR "missed doses"[tiab]))'
+CLASSES='('+SPEC+' AND (adheren*[tiab] OR nonadheren*[tiab] OR complian*[tiab] OR persisten*[tiab] OR "missed doses"[tiab]))'\n# Stratified hard-negative challenge subset is still a subset of the archived B query.\nNONPATIENT='''(cell*[ti] OR protein*[ti] OR molecular[ti] OR enzyme*[ti] OR pharmacokinetic*[ti] OR surgical[ti] OR laboratory[ti] OR gene*[ti] OR nanoparticle*[ti] OR "drug resistance"[ti] OR "drug delivery"[ti] OR "physician adherence"[ti] OR "guideline adherence"[ti] OR "protocol compliance"[ti] OR epithelial[ti] OR cancer[ti] OR bacteria*[ti])'''\nB_HARD='('+old['B_context']+' AND '+NONPATIENT+')'
 SOURCES={
 'H_titleonly':focus['H_titleonly'],
 'E_focus':focus['E_focus'],
@@ -26,9 +26,10 @@ SOURCES={
 'A_direct':old['A_direct'],
 'P1_proxy':PROXY,
 'P2_drugclass':CLASSES,
+'B_hard_topic':B_HARD,
 }
 YEARS=[(1800,1999),(2000,2009),(2010,2012),(2013,2014),(2015,2016),(2017,2018),(2019,2020),(2021,2022),(2023,2024),(2025,2026)]
-TARGETS={'H_titleonly':460,'E_focus':380,'G_proximity':480,'C_anchored':380,'B_context':400,'A_direct':500,'P1_proxy':300,'P2_drugclass':430}
+TARGETS={'H_titleonly':460,'E_focus':380,'G_proximity':480,'C_anchored':380,'B_context':400,'A_direct':500,'P1_proxy':300,'P2_drugclass':430,'B_hard_topic':950}
 FIXEDPOS=set(EXPERT_POS)
 FIXEDNEG=set(USER_NEG)
 USER_R={'9404746'}
@@ -221,7 +222,7 @@ metadata={
  'version':'2026-10-19-silver-v1','status':'provisional_silver_not_gold',
  'warning':'Automatic title/abstract heuristics; some N are lower-confidence triage; NOT independently expert-confirmed for 1000 labels; unsuitable as ground truth for final scientific gate.',
  'purpose':'Challenge/diagnostic set for candidate PubMed query comparison, not population precision estimation.',
- 'labels':{'R':500,'N':500},'sampling': 'deterministic EDAT-stratified random pages for eight original/experimental PubMed queries; publication type English journal article, plus previously discussed sentinels',
+ 'labels':{'R':500,'N':500},'sampling': 'deterministic EDAT-stratified random pages for eight original/experimental PubMed queries plus B_context AND independent hard-negative topic strata; publication type English journal article, plus previously discussed sentinels',
  'seed_sha256':hashlib.sha256(str(SEED).encode()).hexdigest(),
  'source_counts':counts,'source_query_sha256':{x:hashlib.sha256(q.encode()).hexdigest() for x,q in SOURCES.items()},
  'all_candidates':len(labeled),'all_labels':dict(stats),'unresolved_count':stats.get('U',0),
