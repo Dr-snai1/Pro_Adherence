@@ -1,7 +1,9 @@
 """Weighted random PubMed sampling using non-overlapping EDAT windows."""
 import hashlib,json,random,time,xml.etree.ElementTree as ET
-from query_probe_precision_20261019 import Q, api, FILTER
-YEARS=[(1800,1999),(2000,2009),(2010,2014),(2015,2019),(2020,2023),(2024,2026)]
+from query_probe_precision_20261019 import Q as FOCUSED, api, FILTER
+from query_probe_20261019 import Q as FIRST
+Q={**FOCUSED, **FIRST}
+YEARS=[(1800,1999),(2000,2009),(2010,2012),(2013,2014),(2015,2016),(2017,2018),(2019,2020),(2021,2022),(2023,2024),(2025,2026)]
 GOLD=[
 '9404746','12441805','17110087','22021483','23032359','23065532','25301330',
 '26495883','28807035','29081045','29427293','31626087','31929426','33371973',
@@ -13,7 +15,7 @@ def search(term,retstart=0,retmax=0):
   if doc.get('warninglist'):print('WARNING',doc['warninglist'],flush=True)
   return doc
 
-def sample(label,q,n=50):
+def sample(label,q,n=60):
   base='('+q+') AND '+FILTER
   counts=[]
   for yr1,yr2 in YEARS:
@@ -54,7 +56,7 @@ def fetch(ids):
 
 if __name__=='__main__':
   print('STRATIFIED_RESEARCH_BEGIN',flush=True)
-  for label in ('E_focus','H_titleonly'):
+  for label in ('G_proximity','C_anchored'):
     q=Q[label]
     print('QUERY',label,'SHA',hashlib.sha256(q.encode()).hexdigest(),flush=True)
     ids=sample(label,q)
