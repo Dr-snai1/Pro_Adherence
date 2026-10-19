@@ -152,7 +152,35 @@ for pmid,row in rows.items():
   elif cls=='R':basis='expert_previously_read_plus_rules'
  row.update(label=cls,confidence=score,label_basis=basis,sources=';'.join(sorted(membership[pmid])))
  labeled.append(row)
+# Independent negative-evidence triage. New lower-confidence negatives must be
+# individually reviewed before gold-standard use. Never treat no abstract as N.
+def weak_negative_strength(x):
+ t=x['title'];a=x['abstract']
+ if not t or not a or x['pmid'] in FIXEDPOS:return 0
+ if has(ADH,t) or has(MEASURE,a):return 0
+ if has(r'(?:\\b(?:missed|skipped) dose[s]?\\b|\\b(?:dose[s]? taken|patient.s? uptake|refill gap[s]?|pharmacy dispensing|pill taking|drug taking|self.discontinuation|treatment discontinuation)\\b)',t+' '+a):return 0
+ if has(NEG_FIELD,t):return 4
+ if has(STRONG_NEG,t) and not has(OBVIOUS_MED_TITLE,t):return 3
+ if not has(ADH,a) and not has(r'\\b(?:dose[s]?|refill|persistence|medication.taking)\\b',a):return 2
+ if has(r'(?:surgery|gene[s]?|biomarker[s]?|cell[s]?|enzyme[s]?|molecular|nanoparticle|drug release|pharmacokinetic[s]?|preclinical|antimicrobial resistance|radiology)',t):return 2
+ return 0
+initial=collections.Counter(x['label'] for x in labeled)
+if initial.get('N',0)<500:
+ candidates=[x for x in labeled if x['label']=='U' and weak_negative_strength(x)>=2]
+ candidates.sort(key=lambda x:(-weak_negative_strength(x),hashlib.sha256((str(SEED)+'|'+x['pmid']).encode()).hexdigest()))
+ needed=500-initial['N']
+ print('WEAK_NEG_CANDIDATES',len(candidates),'NEEDED',needed,flush=True)
+ for x in candidates[:needed]:
+  x['label']='N';x['confidence']=1
+  x['label_basis']='provisional_negative_other_topic_requires_expert_review'
 stats=collections.Counter(x['label'] for x in labeled)
+# Persist all annotation candidates in independently readable shards, including U.
+cols=['pmid','label','confidence','label_basis','sources','publication_year','journal','title','abstract']
+for shard_no in range(0,len(labeled),170):
+ with (ROOT/f'all_candidates_part_{shard_no//170+1:02}.csv').open('w',encoding='utf-8',newline='') as f:
+  w=csv.DictWriter(f,fieldnames=cols);w.writeheader()
+  for row in labeled[shard_no:shard_no+170]:w.writerow({k:row.get(k,'') for k in cols})
+
 print('LABELS_ALL',dict(stats),flush=True)
 for group in ('R','N','U'):
  parts=collections.Counter(x['label_basis'] for x in labeled if x['label']==group)
@@ -181,7 +209,6 @@ selected=pickR+pickN
 assert len(selected)==1000 and len(set(x['pmid'] for x in selected))==1000
 assert collections.Counter(x['label'] for x in selected)=={'R':500,'N':500}
 selected.sort(key=lambda x:(x['label'],int(x['pmid'])))
-cols=['pmid','label','confidence','label_basis','sources','publication_year','journal','title','abstract']
 with (ROOT/'silver_1000_full.csv').open('w',encoding='utf-8',newline='') as f:
  w=csv.DictWriter(f,fieldnames=cols);w.writeheader()
  for row in selected:w.writerow({k:row.get(k,'') for k in cols})
@@ -194,7 +221,7 @@ with (ROOT/'unresolved_candidates.csv').open('w',encoding='utf-8',newline='') as
   if row['label']=='U':w.writerow({k:row.get(k,'') for k in cols})
 metadata={
  'version':'2026-10-19-silver-v1','status':'provisional_silver_not_gold',
- 'warning':'Automatic title/abstract heuristics; NOT independently expert-confirmed for 1000 labels; unsuitable as ground truth for final scientific gate.',
+ 'warning':'Automatic title/abstract heuristics; some N are lower-confidence triage; NOT independently expert-confirmed for 1000 labels; unsuitable as ground truth for final scientific gate.',
  'purpose':'Challenge/diagnostic set for candidate PubMed query comparison, not population precision estimation.',
  'labels':{'R':500,'N':500},'sampling': 'deterministic EDAT-stratified random pages for eight original/experimental PubMed queries; publication type English journal article, plus previously discussed sentinels',
  'seed_sha256':hashlib.sha256(str(SEED).encode()).hexdigest(),
