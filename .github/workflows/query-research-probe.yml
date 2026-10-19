@@ -1,15 +1,5 @@
 name: Research PubMed query candidate probe
 on:
-  push:
-    branches: [research/v04-query-candidates-20261019]
-    paths:
-      - 'research/create_validation_candidate_set.py'
-      - '.github/workflows/query-research-probe.yml'
-  pull_request:
-    branches: [main]
-    paths:
-      - 'research/create_validation_candidate_set.py'
-      - '.github/workflows/query-research-probe.yml'
   workflow_dispatch:
 permissions:
   contents: write
