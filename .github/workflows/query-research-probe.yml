@@ -11,14 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Verify NCBI ESearch access with a count-only test
+      - uses: actions/checkout@v4
+      - name: Test A/B/C/D candidate queries on live PubMed
         run: |
-          python - <<'PY'
-          import json,urllib.parse,urllib.request
-          q='"Medication Adherence"[mh] AND english[la] AND "journal article"[pt]'
-          u='https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?'+urllib.parse.urlencode({'db':'pubmed','term':q,'retmode':'json','retmax':0,'tool':'ProAdherenceQueryResearch'})
-          with urllib.request.urlopen(u,timeout=40) as res:
-              data=json.load(res)
-          s=data['esearchresult']
-          print('PUBMED_ACCESS_PASS',s['count'],s.get('querytranslation'))
-          PY
+          python research/query_probe_20261019.py
