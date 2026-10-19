@@ -1,4 +1,4 @@
-"""Weighted random PubMed sampling for an isolated query research candidate."""
+"""Weighted random PubMed sampling using non-overlapping EDAT windows."""
 import hashlib,json,random,time,xml.etree.ElementTree as ET
 from query_probe_precision_20261019 import Q, api, FILTER
 YEARS=[(1800,1999),(2000,2009),(2010,2014),(2015,2019),(2020,2023),(2024,2026)]
@@ -17,12 +17,12 @@ def sample(label,q,n=50):
   base='('+q+') AND '+FILTER
   counts=[]
   for yr1,yr2 in YEARS:
-    term=base+f' AND {yr1}:{yr2}[dp]'
+    term=base+f' AND {yr1}:{yr2}[edat]'
     v=search(term)
     counts.append((yr1,yr2,int(v['count']),term))
   total=sum(c for _,_,c,_ in counts)
   print('BIN_COUNTS',label,json.dumps([[a,b,c] for a,b,c,_ in counts]),'TOTAL',total,flush=True)
-  if total!=int(search(base)['count']):raise RuntimeError('PARTITION_COUNTS_DO_NOT_SUM')
+  if total!=int(search(base)['count']):raise RuntimeError('EDAT_PARTITION_COUNTS_DO_NOT_SUM')
   if any(c>=10000 for _,_,c,_ in counts):raise RuntimeError('ONE_PARTITION_OVER_10000')
   rng=random.Random(int(hashlib.sha256((label+'|2026-10-19|weighted-holdout-v1').encode()).hexdigest(),16))
   positions=sorted(rng.sample(range(total),n))
