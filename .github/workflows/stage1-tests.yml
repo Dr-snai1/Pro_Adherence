@@ -1,0 +1,38 @@
+name: Stage 1 synthetic ingestion tests
+
+on:
+  push:
+    branches:
+      - "stage1-*"
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-stage1:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13.16"
+      - name: Install pinned Stage 0 and Stage 1 packages
+        run: |
+          python -m pip install --disable-pip-version-check --no-deps -r requirements.lock
+          python -m pip install --disable-pip-version-check --no-deps -r requirements-stage1.lock
+          python -m pip install --disable-pip-version-check --no-build-isolation --no-deps -e .
+      - name: Require full Parquet runtime
+        run: |
+          python - <<'PY'
+          import sys, pyarrow, numpy, pro_adherence.stage1_ingest as s
+          assert sys.version_info[:3] == (3, 13, 16)
+          assert pyarrow.__version__ == "26.0.0"
+          assert numpy.__version__ == "2.3.5"
+          print("Module:", s.__file__)
+          PY
+      - name: Targeted synthetic Stage 1 tests (no skips)
+        run: |
+          python -m unittest discover -s tests -p "test_stage1_*.py" -v

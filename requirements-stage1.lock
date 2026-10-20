@@ -1,0 +1,4 @@
+# Stage 1 optional research-only Parquet stack, isolated from static serving.
+# CPython 3.13.16; install with --no-deps after requirements.lock.
+numpy==2.3.5
+pyarrow==26.0.0
