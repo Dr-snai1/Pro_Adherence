@@ -39,3 +39,17 @@ Verified live PubMed ESearch using two differently partitioned sets of exact PMI
 | V04_S0 + methods v2 | 500 | 0 | 324 | 45 | 100.00% | 12.20% |
 
 Record-level checks: `reference_FINAL_v2_query_2x2.csv`; query and evidence hashes: `reference_FINAL_v2_query_2x2.json`. This retrospective corpus is assembled from related queries and has imperfect heuristic labels. Its sensitivity/specificity numbers are **within-reference diagnostic rates, not externally validated retrieval characteristics**.
+
+## V05 phrase search: independently verified PubMed 2×2 (2026-10-20)
+
+Compared exactly as written in the user-provided Google Drive file `PubMed_V05_PHRASE_CANDIDATE_20261020.txt`, using the **same frozen 500 R / 369 N silver reference** as V04. Full NCBI ESearch reports 49,930 articles and no phrase warnings. Two independent PMID partition strategies produced identical matching sets; exported CSV recount passed.
+
+| Query | TP / 500 R | FN / 500 R | FP / 369 N | TN / 369 N | Sensitivity | Specificity |
+|---|---:|---:|---:|---:|---:|---:|
+| V04_S0 | 499 | 1 | 312 | 57 | 99.80% | 15.45% |
+| V04_S0 + methods v2 | 500 | 0 | 324 | 45 | 100.00% | 12.20% |
+| V05 phrase candidate | 496 | 4 | 96 | 273 | 99.20% | 73.98% |
+
+V05 misses 4 previously retrieved R PMIDs (12441805, 23225173, 28807035, 37091492) and newly retrieves PMID 38289464, whose R labeling requires caution: its abstract/title may pertain to CGM-device rather than medication-taking adherence. The count-based values are fixed-test-set *silver metrics*, not external sensitivity/specificity estimates. The selected production PubMed query on main is unchanged.
+
+Audit: `reference_FINAL_v2_V05_PHRASE_2x2.csv` (869 PMID rows), `reference_FINAL_v2_V05_PHRASE_2x2.json` (hashes, live source, second-pass checks), `research/PubMed_V05_PHRASE_CANDIDATE_20261020.txt` (source query snapshot). Older query and reference versions remain preserved for provenance.
