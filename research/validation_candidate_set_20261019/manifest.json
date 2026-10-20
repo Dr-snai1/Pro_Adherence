@@ -1,6 +1,6 @@
 {
   "version": "2026-10-19-silver-v1.1",
-  "status": "superseded",
+  "status": "provisional_silver_not_gold",
   "warning": "Automatic title/abstract heuristics; some N are lower-confidence triage; NOT independently expert-confirmed for 1000 labels; unsuitable as ground truth for final scientific gate.",
   "purpose": "Challenge/diagnostic set for candidate PubMed query comparison, not population precision estimation.",
   "labels": {
