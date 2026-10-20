@@ -1,0 +1,38 @@
+name: PubMed Exact 2x2 Research Evaluation
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/query-exact-2x2-evaluation.yml'
+      - 'research/evaluate_selected_vs_methods_2x2_20261020.py'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  evaluate-live-confusion-matrices:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/v04-query-candidates-20261019
+          persist-credentials: true
+      - name: Compile validation code
+        run: python -m py_compile research/evaluate_selected_vs_methods_2x2_20261020.py
+      - name: Independently check both PubMed retrieval confusion matrices
+        run: python research/evaluate_selected_vs_methods_2x2_20261020.py
+      - name: Preserve verified matrices
+        uses: actions/upload-artifact@v4
+        with:
+          name: medication-adherence-pubmed-2x2-matrices
+          path: research/validation_candidate_set_20261019/reference_FINAL_v2_query_2x2.*
+          retention-days: 30
+      - name: Commit exact PubMed membership audit to research branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f research/validation_candidate_set_20261019/reference_FINAL_v2_query_2x2.*
+          git diff --cached --quiet && exit 0
+          git commit -m "research: exact verified PMID-by-PMID V04 and method query 2x2 [skip ci]"
+          git push origin HEAD:research/v04-query-candidates-20261019
