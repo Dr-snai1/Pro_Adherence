@@ -1,0 +1,38 @@
+name: PubMed V05 Exact Frozen Reference 2x2
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/query-V05-exact-2x2-evaluation.yml'
+      - 'research/evaluate_V05_phrase_2x2_20261020.py'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  evaluate-live-V05-2x2:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/v04-query-candidates-20261019
+          persist-credentials: true
+      - name: Verify V05 evaluation code syntax
+        run: python -m py_compile research/evaluate_V05_phrase_2x2_20261020.py
+      - name: Query PubMed twice for every 869 test PMID
+        run: python research/evaluate_V05_phrase_2x2_20261020.py
+      - name: Archive verified comparison matrices
+        uses: actions/upload-artifact@v4
+        with:
+          name: ProAdherence-V05-vs-V04-reference-2x2
+          path: research/validation_candidate_set_20261019/reference_FINAL_v2_V05_PHRASE_2x2.*
+          retention-days: 30
+      - name: Publish verified V05 2x2 to research-only branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f research/validation_candidate_set_20261019/reference_FINAL_v2_V05_PHRASE_2x2.*
+          git diff --cached --quiet && exit 0
+          git commit -m "research: verified V05 PubMed phrase candidate 2x2 reference [skip ci]"
+          git push origin HEAD:research/v04-query-candidates-20261019
