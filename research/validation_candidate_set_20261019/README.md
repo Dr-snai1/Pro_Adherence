@@ -27,3 +27,15 @@ file remains as historical superseded evidence, NEVER use it as active set.
 All 21 assistant-reviewed R and 12 user-reviewed N examples are retained.
 Final means fixed operational selection; heuristically screened references
 are NOT independently adjudicated gold labels. See v2 manifest.
+
+## PMID-by-PMID query comparison, 2026-10-20
+
+Based on the fixed 500 R / 369 N active silver reference, not population inference.
+Verified live PubMed ESearch using two differently partitioned sets of exact PMID constraints and an independent export recount. The baseline selected query is unchanged.
+
+| Query | TP / 500 R | FN / 500 R | FP / 369 N | TN / 369 N | Sensitivity | Specificity |
+|---|---:|---:|---:|---:|---:|---:|
+| V04_S0 | 499 | 1 | 312 | 57 | 99.80% | 15.45% |
+| V04_S0 + methods v2 | 500 | 0 | 324 | 45 | 100.00% | 12.20% |
+
+Record-level checks: `reference_FINAL_v2_query_2x2.csv`; query and evidence hashes: `reference_FINAL_v2_query_2x2.json`. This retrospective corpus is assembled from related queries and has imperfect heuristic labels. Its sensitivity/specificity numbers are **within-reference diagnostic rates, not externally validated retrieval characteristics**.
