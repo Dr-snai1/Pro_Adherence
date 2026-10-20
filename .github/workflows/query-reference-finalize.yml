@@ -1,38 +1,11 @@
-name: Research PubMed reference sentinel QA
+name: Superseded historical PubMed sentinel QA
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'research/finalize_validation_reference.py'
-      - '.github/workflows/query-reference-finalize.yml'
   workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
 jobs:
-  postprocess-reference:
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+  historical:
+    if: false
     runs-on: ubuntu-latest
-    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: research/v04-query-candidates-20261019
-          persist-credentials: true
-      - name: Enforce all 21R and 12N previous sentinels, balance, unique IDs
-        run: |
-          python -m py_compile research/finalize_validation_reference.py
-          python research/finalize_validation_reference.py
-      - name: Retain revised dataset artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: provisional-pubmed-reference-sentinel-qa
-          path: research/validation_candidate_set_20261019/
-          retention-days: 30
-      - name: Commit verified cohort in isolated research branch
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f research/validation_candidate_set_20261019/*.csv research/validation_candidate_set_20261019/*.json research/validation_candidate_set_20261019/*.md
-          git diff --cached --quiet && exit 0
-          git commit -m "research: retain previous reference sentinels in provisional 500R 500N [skip ci]"
-          git push origin HEAD:research/v04-query-candidates-20261019
+      - run: echo "Superseded by frozen reference_FINAL_v2_R500_N369.csv; no automatic writes."
