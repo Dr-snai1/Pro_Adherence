@@ -1,0 +1,45 @@
+name: Research Final Reference and Expanded PubMed Probe
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/query-final-evaluation-and-methods-qa.yml'
+      - 'research/freeze_validation_reference_v2.py'
+      - 'research/qa_method_expansion_candidate.py'
+      - 'research/pubmed_method_expansion_CANDIDATE_20261020.json'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  validate-and-freeze:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/v04-query-candidates-20261019
+          persist-credentials: true
+      - name: Verify source syntax and freeze the cleaned reference
+        run: |
+          python -m py_compile research/freeze_validation_reference_v2.py research/qa_method_expansion_candidate.py
+          python research/freeze_validation_reference_v2.py
+      - name: Live PubMed recall probe on expanded query
+        run: python research/qa_method_expansion_candidate.py
+      - name: Capture reviewable reference set
+        uses: actions/upload-artifact@v4
+        with:
+          name: PubMed-frozen-500R-369N-and-query-recall
+          path: research/validation_candidate_set_20261019/reference_FINAL_v2*
+          retention-days: 30
+      - name: Persist frozen reference, supersession and methodology on isolated research branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f research/validation_candidate_set_20261019/reference_FINAL_v2*.csv
+          git add -f research/validation_candidate_set_20261019/reference_FINAL_v2*.json
+          git add -f research/validation_candidate_set_20261019/manifest.json
+          git add -f research/validation_candidate_set_20261019/README.md
+          git diff --cached --quiet && exit 0
+          git commit -m "research: freeze 500R 369N and supersede provisional reference [skip ci]"
+          git push origin HEAD:research/v04-query-candidates-20261019
