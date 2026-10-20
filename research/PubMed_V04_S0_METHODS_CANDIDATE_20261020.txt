@@ -1,0 +1,152 @@
+((((
+        "Medication Adherence"[mh]
+        OR "medication adherence"[tiab] OR "adherence to medication"[tiab] OR "adherence to medications"[tiab]
+        OR "drug adherence"[tiab] OR "prescription adherence"[tiab] OR "medication nonadherence"[tiab]
+        OR "medication non-adherence"[tiab] OR "nonadherence to medication"[tiab:~0]
+        OR "non-adherence to medication"[tiab:~0]
+        OR (
+          (
+            adheren*[tiab]
+            OR nonadheren*[tiab] OR non-adheren*[tiab]
+          )
+          AND (
+            medication*[tiab]
+            OR medicine*[tiab] OR pharmacotherap*[tiab] OR prescription*[tiab]
+            OR (
+              drug*[tiab]
+              AND (
+                patient*[tiab]
+                OR taking[tiab] OR taken[tiab] OR prescribed[tiab] OR regimen*[tiab] OR dose*[tiab]
+                OR dosing[tiab]
+              ))
+            OR "Drug Therapy"[mh] OR "Drug Prescriptions"[mh] OR "Prescription Drugs"[mh] OR "drug therapy"[sh]
+          ))))
+    OR (
+      ((
+          "Patient Compliance"[mh:noexp]
+          AND (
+            medication*[tiab]
+            OR medicine*[tiab] OR pharmacotherap*[tiab] OR prescription*[tiab]
+            OR (
+              drug*[tiab]
+              AND (
+                patient*[tiab]
+                OR taking[tiab] OR taken[tiab] OR prescribed[tiab] OR regimen*[tiab] OR dose*[tiab]
+                OR dosing[tiab]
+              ))
+            OR "Drug Therapy"[mh] OR "Drug Prescriptions"[mh] OR "Prescription Drugs"[mh] OR "drug therapy"[sh]
+          ))
+        OR pharmionics[tiab] OR pharmacoadherence[tiab]
+        OR (
+          (
+            complian*[tiab]
+            OR noncomplian*[tiab] OR non-complian*[tiab] OR persisten*[tiab] OR nonpersisten*[tiab]
+            OR non-persisten*[tiab] OR "patient irregularity"[tiab:~0] OR "primary adherence"[tiab]
+            OR "primary nonadherence"[tiab] OR "primary non-adherence"[tiab]
+          )
+          AND (
+            medication*[tiab]
+            OR medicine*[tiab] OR pharmacotherap*[tiab] OR prescription*[tiab]
+            OR (
+              drug*[tiab]
+              AND (
+                patient*[tiab]
+                OR taking[tiab] OR taken[tiab] OR prescribed[tiab] OR regimen*[tiab] OR dose*[tiab]
+                OR dosing[tiab]
+              ))
+            OR "Drug Therapy"[mh] OR "Drug Prescriptions"[mh] OR "Prescription Drugs"[mh] OR "drug therapy"[sh]
+          ))))
+    OR (
+      ((
+          initiation[tiab]
+          OR "late initiation"[tiab] OR noninitiation[tiab] OR "non-initiation"[tiab] OR implementation[tiab]
+          OR "suboptimal implementation"[tiab] OR "sub-optimal implementation"[tiab] OR discontinuation[tiab]
+          OR "early discontinuation"[tiab]
+        )
+        AND (
+          medication*[tiab]
+          OR medicine*[tiab] OR pharmacotherap*[tiab] OR prescription*[tiab]
+          OR (
+            drug*[tiab]
+            AND (
+              patient*[tiab]
+              OR taking[tiab] OR taken[tiab] OR prescribed[tiab] OR regimen*[tiab] OR dose*[tiab] OR dosing[tiab]
+            ))
+          OR "Drug Therapy"[mh] OR "Drug Prescriptions"[mh] OR "Prescription Drugs"[mh] OR "drug therapy"[sh]
+        )
+        AND (
+          taking[tiab]
+          OR taken[tiab] OR intake[tiab] OR dose*[tiab] OR dosing[tiab] OR fill*[tiab] OR refill*[tiab]
+          OR pickup[tiab] OR "pick-up"[tiab]
+        )))
+    OR (
+      ((
+          concordance[tiab]
+          OR "therapeutic alliance"[tiab] OR readiness[tiab] OR "treatment acceptance"[tiab]
+        )
+        AND (
+          medication*[tiab]
+          OR medicine*[tiab] OR pharmacotherap*[tiab] OR prescription*[tiab]
+          OR (
+            drug*[tiab]
+            AND (
+              patient*[tiab]
+              OR taking[tiab] OR taken[tiab] OR prescribed[tiab] OR regimen*[tiab] OR dose*[tiab] OR dosing[tiab]
+            ))
+          OR "Drug Therapy"[mh] OR "Drug Prescriptions"[mh] OR "Prescription Drugs"[mh] OR "drug therapy"[sh]
+        )))
+    OR (
+      (
+        "medication possession ratio*"[tiab]
+        OR (
+          MPR[tiab]
+          AND (
+            medication*[tiab]
+            OR prescription*[tiab] OR refill*[tiab] OR pharmacy[tiab]
+          ))
+        OR (
+          (
+            refill*[tiab]
+            OR fill*[tiab] OR pickup[tiab] OR "pick-up"[tiab] OR unclaimed[tiab]
+          )
+          AND (
+            prescription*[tiab]
+            OR medication*[tiab]
+          )
+          AND (
+            patient*[tiab]
+            OR pharmacy[tiab]
+          )))))
+  OR (
+    (
+      "proportion of days covered"[tiab]
+      OR "percentage of days covered"[tiab] OR "medication possession ratio"[tiab] OR "medication possession rate"[tiab]
+      OR "medication event monitoring system"[tiab] OR "medication events monitoring system"[tiab] OR "pill count"[tiab]
+      OR "pill counts"[tiab] OR "pill counting"[tiab] OR "tablet count"[tiab] OR "tablet counts"[tiab]
+      OR "missed dose"[tiab] OR "missed doses"[tiab] OR "dose omission"[tiab] OR "dose omissions"[tiab]
+      OR "refill gap"[tiab] OR "refill gaps"[tiab] OR "refill adherence"[tiab] OR "prescription refill"[tiab]
+      OR "pharmacy refill"[tiab] OR "directly observed therapy"[tiab] OR "medication taking"[tiab]
+      OR "medication-taking"[tiab] OR "medication intake"[tiab] OR "days without medication"[tiab]
+      OR "electronic medication monitoring"[tiab] OR "electronic pill bottle"[tiab] OR "electronic pillbox"[tiab]
+      OR "pharmacy dispensing records"[tiab] OR "prescription claims"[tiab] OR "Morisky Medication Adherence Scale"[tiab]
+      OR "Medication Adherence Report Scale"[tiab] OR "Medication Adherence Rating Scale"[tiab]
+      OR "Adherence to Refills and Medications Scale"[tiab] OR "Brief Medication Questionnaire"[tiab]
+      OR "medication adherence questionnaire"[tiab] OR "doses taken"[tiab:~0] OR "doses missed"[tiab:~0]
+    )
+    OR (
+      (
+        PDC[tiab]
+        OR MPR[tiab] OR MEMS[tiab] OR MMAS[tiab] OR MARS[tiab]
+      )
+      AND (
+        adheren*[tiab]
+        OR nonadheren*[tiab] OR persisten*[tiab] OR nonpersisten*[tiab] OR medication*[tiab] OR prescription*[tiab]
+        OR pharmacy[tiab] OR refill*[tiab] OR dose*[tiab] OR dosing[tiab] OR pharmacotherap*[tiab]
+        OR antiretroviral*[tiab] OR antidepressant*[tiab] OR antipsychotic*[tiab] OR antiepileptic*[tiab]
+        OR anticoagulant*[tiab] OR statin*[tiab] OR insulin[tiab] OR immunosuppress*[tiab] OR inhaler*[tiab]
+        OR PrEP[tiab]
+      )))
+  AND (
+    english[la]
+    AND "journal article"[pt]
+  ))
