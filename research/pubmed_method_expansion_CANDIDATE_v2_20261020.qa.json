@@ -1,0 +1,45 @@
+{
+  "version": "methods-expanded-2026-10-20-v2-qa",
+  "status": "research_candidate_tested_not_promoted_to_selected",
+  "candidate": "research/pubmed_method_expansion_CANDIDATE_v2_20261020.json",
+  "readable_query": "research/PubMed_V04_S0_METHODS_CANDIDATE_v2_20261020.txt",
+  "current_approved_source": "configs/pubmed/medication-adherence-SELECTED.v1.json",
+  "methods": [
+    "logical_parentheses_check",
+    "same-base-prefix_and_language_publication_filter",
+    "live_PubMed_Esearch_counts",
+    "previous_positive_control_retention",
+    "rescued_sentinel_membership",
+    "PubMed_parser_warnings",
+    "live_sampled_method_candidates_topic_diagnostic"
+  ],
+  "source": "NCBI PubMed ESearch and EFetch on GitHub Actions run 39483679707 job 118838475925",
+  "results": {
+    "original_count": 310950,
+    "candidate_count": 315380,
+    "incremental_count": 4430,
+    "method_branch_count": 15914,
+    "pubmed_warninglist": null,
+    "previous_relevant_control_count": 21,
+    "previous_relevant_control_retained": 21,
+    "previously_missed_relevant_gained": [
+      "34031152",
+      "36334241",
+      "36436161",
+      "37682179",
+      "42876567"
+    ],
+    "other_control_PMIDs_present": [
+      "24702721",
+      "33464991"
+    ],
+    "independent_newest-method_sampled": 35,
+    "newest-method_sample_outside_original": 10
+  },
+  "limitations": [
+    "Added 4430 records are not presumed relevant and no population PPV estimate is made.",
+    "Live recent-title diagnostics included unrelated records (such as ecology and vaccine timeliness); broad recall is intentional and separate topic screening remains needed.",
+    "21 control positives are previously assistant-reviewed, not all independently expert-adjudicated.",
+    "No change to accepted main PubMed query. Candidate remains research-only pending user's review."
+  ]
+}
