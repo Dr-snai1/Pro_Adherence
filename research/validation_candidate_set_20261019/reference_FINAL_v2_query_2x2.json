@@ -1,0 +1,45 @@
+{
+  "status": "LIVE_QUERY_MATCH_VERIFIED_NOT_GOLD",
+  "timestamp_utc": "2026-10-20T19:39:56.600512+00:00",
+  "reference_file": "research/validation_candidate_set_20261019/reference_FINAL_v2_R500_N369.csv",
+  "reference_sha256": "b8e7beb3a3ba97bdf7e44df86edaead10b2cfcdd07e6630c8d4f5d7638e3a002",
+  "labels": "SILVER; 500 R and 369 N are heuristically screened rather than independently adjudicated gold",
+  "base_sha256": "c5b731ce6d4aab0b7f4edb2f2e0a00cb68a2a6428a5976b841cfcdd909eb7a49",
+  "expanded_sha256": "15c0cd61085b8d37e0f96993d7c4e0e9b6d3876d7f4340b59aaa43f9ed735b21",
+  "metrics": {
+    "V04_S0": {
+      "TP": 499,
+      "FN": 1,
+      "FP": 312,
+      "TN": 57,
+      "sensitivity": 0.998,
+      "specificity": 0.15447154471544716,
+      "TP_share_R": 0.998,
+      "FN_share_R": 0.002,
+      "FP_share_N": 0.8455284552845529,
+      "TN_share_N": 0.15447154471544716,
+      "retrieved_reference_total": 811,
+      "missed_reference_total": 58
+    },
+    "V04_S0_plus_methods_v2": {
+      "TP": 500,
+      "FN": 0,
+      "FP": 324,
+      "TN": 45,
+      "sensitivity": 1.0,
+      "specificity": 0.12195121951219512,
+      "TP_share_R": 1.0,
+      "FN_share_R": 0.0,
+      "FP_share_N": 0.8780487804878049,
+      "TN_share_N": 0.12195121951219512,
+      "retrieved_reference_total": 824,
+      "missed_reference_total": 45
+    }
+  },
+  "checks": [
+    "Primary PMID-by-PMID ESearch in mixed 35-size windows.",
+    "Independent ESearch in label-partitioned shuffled 47-size windows, exact hit-set equality.",
+    "Row margins and reference membership, unique PMIDs, candidate superset and absence of excluded Ns."
+  ],
+  "interpretation_caveat": "Retrospective query-derived nonrepresentative silver corpus; sensitivity/specificity are sample-internal reference metrics, not general PubMed search sensitivity/specificity."
+}
