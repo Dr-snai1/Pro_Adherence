@@ -1,6 +1,6 @@
 {
   "version": "2026-10-19-silver-v1.1",
-  "status": "provisional_silver_not_gold",
+  "status": "superseded",
   "warning": "Automatic title/abstract heuristics; some N are lower-confidence triage; NOT independently expert-confirmed for 1000 labels; unsuitable as ground truth for final scientific gate.",
   "purpose": "Challenge/diagnostic set for candidate PubMed query comparison, not population precision estimation.",
   "labels": {
@@ -105,5 +105,6 @@
   },
   "superseded_by": "reference_FINAL_v2_R500_N369.csv",
   "superseded_on": "2026-10-20",
-  "reason": "129 lower-confidence negatives and 2 additional likely-positive/borderline records excluded as user requested"
+  "reason": "129 lower-confidence negatives and 2 additional likely-positive/borderline records excluded as user requested",
+  "supersession_note": "Retain historical original 500/500 for provenance; do not use in active query evaluation. New active set excludes 129 lower-confidence N and 2 suspect original N."
 }
