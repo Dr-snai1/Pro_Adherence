@@ -1,6 +1,6 @@
 {
   "status": "LIVE_QUERY_MATCH_VERIFIED_NOT_GOLD",
-  "timestamp_utc": "2026-10-20T19:39:56.600512+00:00",
+  "timestamp_utc": "2026-10-20T19:44:35.397590+00:00",
   "reference_file": "research/validation_candidate_set_20261019/reference_FINAL_v2_R500_N369.csv",
   "reference_sha256": "b8e7beb3a3ba97bdf7e44df86edaead10b2cfcdd07e6630c8d4f5d7638e3a002",
   "labels": "SILVER; 500 R and 369 N are heuristically screened rather than independently adjudicated gold",
