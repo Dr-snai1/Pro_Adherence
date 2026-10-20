@@ -1,0 +1,33 @@
+name: One-time cleanup of superseded PubMed research refs
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/retire-temp-branches-once.yml'
+permissions:
+  contents: write
+jobs:
+  retire-old-worktrees:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Ensure experimental PR was closed without merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          state="$(gh api repos/${{ github.repository }}/pulls/22 --jq .state)"
+          merged="$(gh api repos/${{ github.repository }}/pulls/22 --jq .merged)"
+          test "$state" = closed
+          test "$merged" = false
+      - name: Delete only the two temporary PubMed branches made during query experiments
+        run: |
+          set -euo pipefail
+          git push origin --delete research/v04-query-candidates-20261019
+          git push origin --delete archive/pubmed-v05-phrase-20261020
+          git ls-remote --heads origin research/v04-query-candidates-20261019 archive/pubmed-v05-phrase-20261020 | tee /tmp/heads.txt
+          test ! -s /tmp/heads.txt
+          echo "EXPERIMENTAL_PUBMED_BRANCHES_REMOVED"
