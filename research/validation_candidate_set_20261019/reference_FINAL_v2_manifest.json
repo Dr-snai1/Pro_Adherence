@@ -1,0 +1,29 @@
+{
+  "version": "2026-10-20-reference-FINAL-v2",
+  "status": "FINAL_FROZEN_FOR_EXPLORATORY_QUERY_EVALUATION",
+  "label_evidence_status": "heuristic_screened_silver_NOT_independently_adjudicated_gold",
+  "source_file": "silver_1000_labels.csv",
+  "source_version": "2026-10-19-silver-v1.1",
+  "result_file": "reference_FINAL_v2_R500_N369.csv",
+  "total": 869,
+  "labels": {
+    "N": 369,
+    "R": 500
+  },
+  "excluded_total": 131,
+  "excluded_low_confidence_N": 129,
+  "excluded_prior_N_misclassification_or_high_risk": 2,
+  "excluded_pmids_extra": [
+    "24702721",
+    "33464991"
+  ],
+  "previous_sentinels": {
+    "positive_count": 21,
+    "negative_count": 12,
+    "all_retained": true
+  },
+  "provenance": "PubMed prior query strata, rule evidence and independent title/abstract verification for removed misclassified/high-risk N",
+  "use_limitation": "Frozen user-requested benchmark, not a scientifically validated adjudicated gold-standard; 500/369 balancedness differs, not a prevalence sample",
+  "no_new_annotator_work_required": true,
+  "public_abstracts_embedded": false
+}

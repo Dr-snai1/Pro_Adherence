@@ -18,3 +18,12 @@ prevalence, overall PubMed retrieval precision, or external recall.
 
 ## Reference v1.1 retention guarantee
 All 21 earlier assistant-reviewed positive examples are present as R (one user-confirmed); all 12 earlier user-reviewed N examples are present as N. This is NOT independent expert consensus. See manifest.json and label_basis for provenance. The accepted PubMed search query is unchanged.
+
+## Current evaluation reference: FINAL v2 (2026-10-20)
+Primary active set is `reference_FINAL_v2_R500_N369.csv`, with exactly 500 R
+and 369 N (869 unique PMIDs). Removed the 129 less-confident negatives,
+plus two further incorrect/at-risk N (24702721, 33464991). Prior 1000-row
+file remains as historical superseded evidence, NEVER use it as active set.
+All 21 assistant-reviewed R and 12 user-reviewed N examples are retained.
+Final means fixed operational selection; heuristically screened references
+are NOT independently adjudicated gold labels. See v2 manifest.

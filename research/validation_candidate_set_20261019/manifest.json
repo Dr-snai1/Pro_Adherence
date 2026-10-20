@@ -1,6 +1,6 @@
 {
   "version": "2026-10-19-silver-v1.1",
-  "status": "provisional_silver_not_gold",
+  "status": "superseded",
   "warning": "Automatic title/abstract heuristics; some N are lower-confidence triage; NOT independently expert-confirmed for 1000 labels; unsuitable as ground truth for final scientific gate.",
   "purpose": "Challenge/diagnostic set for candidate PubMed query comparison, not population precision estimation.",
   "labels": {
@@ -102,5 +102,8 @@
     "removed_easy_positive_pmids": [],
     "postprocessing_script": "research/finalize_validation_reference.py",
     "selection_note": "Forced inclusion of all prior known positive and negative sentinels. Expert positive classifications except 9404746 need independent confirmation."
-  }
+  },
+  "superseded_by": "reference_FINAL_v2_R500_N369.csv",
+  "superseded_on": "2026-10-20",
+  "reason": "129 lower-confidence negatives and 2 additional likely-positive/borderline records excluded as user requested"
 }
