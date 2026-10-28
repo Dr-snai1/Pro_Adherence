@@ -29,6 +29,7 @@ MAX_REPOSITORY = 1024 * 1024 * 1024
 ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}\Z")
 PMID_RE = re.compile(r"[1-9][0-9]*\Z")
 SHA_RE = re.compile(r"[0-9a-f]{64}\Z")
+NOT_TRANSLATION_GUARD = "pubmed-not-translation/v1"
 
 
 
@@ -141,10 +142,53 @@ def strict_path(base, name):
     return path
 
 
+
+def _not_operator_count(term):
+    """Count lexical Boolean NOT outside quoted PubMed term phrases."""
+    if not isinstance(term, str):
+        raise ValueError("invalid Boolean query")
+    unquoted = re.sub(r'"(?:[^"\\]|\\.)*"', " ", term)
+    return len(re.findall(r"(?<![A-Za-z0-9_])NOT(?![A-Za-z0-9_])", unquoted, flags=re.I))
+
+
+def check_not_guard_spec(spec, *, mode="full"):
+    """Future full-mode NOT searches pin guard semantics; old archives remain verifiable."""
+    policy = spec.get("translation_guard")
+    if policy is not None and policy != NOT_TRANSLATION_GUARD:
+        raise ValueError("unknown ESearch translation guard")
+    if mode == "full":
+        for term in spec["queries"].values():
+            if _not_operator_count(term) and not policy:
+                raise ValueError("NOT requires versioned PubMed translation guard")
+            unquoted = re.sub(r'"(?:[^"\\]|\\.)*"', " ", term)
+            if re.search(r"(?<![A-Za-z0-9_])AND\s+NOT(?![A-Za-z0-9_])",
+                         unquoted, flags=re.I):
+                raise ValueError("historical AND NOT syntax disallowed")
+
+
+def check_not_translation(exact_query, parsed):
+    """Necessary but not sufficient evidence exclusion survived server translation."""
+    needed = _not_operator_count(exact_query)
+    if not needed:
+        return
+    translated = parsed.get("querytranslation")
+    warning = parsed.get("warninglist")
+    if not isinstance(translated, str) or not isinstance(warning, dict):
+        raise ValueError("PubMed NOT translation unverifiable")
+    messages = warning.get("outputmessages", [])
+    if not isinstance(messages, list) or any(not isinstance(msg, str) for msg in messages):
+        raise ValueError("malformed PubMed warning list")
+    if any(re.search(r"(?<![A-Za-z0-9_])NOT(?![A-Za-z0-9_])", msg, flags=re.I)
+           for msg in messages):
+        raise ValueError("PubMed NOT warning")
+    if _not_operator_count(translated) < needed:
+        raise ValueError("PubMed NOT lost in query translation")
+
+
 def read_spec(path, *, mode, code_commit, runtime):
     value = json.loads(Path(path).read_text(encoding="utf-8"))
     required = {"schema", "task_id", "query_artifact", "queries", "operation", "partition_policy", "date_start", "date_end", "ncbi_config_refs"}
-    if not isinstance(value, dict) or not required.issubset(value) or set(value) - required - {"sample_policy"} or value["schema"] != "pubmed-run-spec/v1":
+    if not isinstance(value, dict) or not required.issubset(value) or set(value) - required - {"sample_policy", "translation_guard"} or value["schema"] != "pubmed-run-spec/v1":
         raise ValueError("run spec schema/keys mismatch")
     safe_id(value["task_id"])
     safe_id(value["query_artifact"])
@@ -179,6 +223,7 @@ def read_spec(path, *, mode, code_commit, runtime):
         raise ValueError("smoke must use a small neutral query")
     if mode == "full" and value["query_artifact"].startswith("infra-smoke"):
         raise ValueError("smoke-only input cannot be used as scientific run")
+    check_not_guard_spec(value, mode=mode)
     if not re.fullmatch(r"[a-f0-9]{40}", code_commit):
         raise ValueError("code commit must be pinned SHA")
     identity = {"spec": value, "mode": mode, "code_commit": code_commit, "runtime": runtime, "attempt": "1"}
@@ -261,7 +306,7 @@ def plan_spans(start, end):
 
 
 
-def esearch_expected_trace(qid, term, start, end, attempts, directory):
+def esearch_expected_trace(qid, term, start, end, attempts, directory, *, translation_guard=None):
     """Pure deterministic semantic frontier replay, driven only by verified raw counts.
 
     The filename, stored retmax, and stored query are assertions, never selectors.
@@ -289,6 +334,8 @@ def esearch_expected_trace(qid, term, start, end, attempts, directory):
             raise ValueError("noncanonical ESearch semantic role/order/state")
         try:
             parsed = parse_result(strict_path(directory, call["file"]).read_bytes())
+            if translation_guard == NOT_TRANSLATION_GUARD:
+                check_not_translation(exact, parsed)
             if kind == "count" and parsed["ids"]:
                 raise ValueError("count-only ESearch supplied UIDs")
             if kind == "ids" and (parsed["count"] != limit
@@ -402,6 +449,7 @@ def _collect_unobserved(spec, run_id, root, client, *, timestamp=None, resume=Fa
     fail closed if the saved partition plan differs from the current plan.
     """
     task = safe_id(spec["task_id"])
+    check_not_guard_spec(spec)
     if not re.fullmatch(r"r-[0-9a-f]{32}", run_id):
         raise ValueError("invalid run identity")
     root = Path(root)
@@ -471,7 +519,10 @@ def _collect_unobserved(spec, run_id, root, client, *, timestamp=None, resume=Fa
                         raise ValueError("checkpoint ESearch semantic role/order/state mismatch")
                     if prior["outcome"] == "rejected":
                         continue
-                    return parse_result(strict_path(root, prior["file"]).read_bytes())
+                    parsed = parse_result(strict_path(root, prior["file"]).read_bytes())
+                    if spec.get("translation_guard") == NOT_TRANSLATION_GUARD:
+                        check_not_translation(query, parsed)
+                    return parsed
                 counter += 1
                 rel = esearch_raw_path(qid, counter, kind)
                 raw, meta = client.esearch(query, retmax)
@@ -481,6 +532,8 @@ def _collect_unobserved(spec, run_id, root, client, *, timestamp=None, resume=Fa
                 calls.append(call)
                 try:
                     parsed = parse_result(raw)
+                    if spec.get("translation_guard") == NOT_TRANSLATION_GUARD:
+                        check_not_translation(query, parsed)
                     if kind == "count" and parsed["ids"]:
                         raise ValueError("count-only ESearch supplied UIDs")
                     if kind == "ids" and (parsed["count"] != retmax
@@ -563,7 +616,7 @@ def _collect_unobserved(spec, run_id, root, client, *, timestamp=None, resume=Fa
             trace_calls = [c for c in calls if c["query_id"] == active and c["endpoint"] == ENDPOINT]
             _, pending, _, terminal = esearch_expected_trace(
                 active, spec["queries"][active], spec["date_start"], spec["date_end"],
-                trace_calls, root)
+                trace_calls, root, translation_guard=spec.get("translation_guard"))
             if terminal is not None or not pending:
                 raise
         disposition = "terminal" if terminal_reason else "resumable"
@@ -624,6 +677,8 @@ def write_manifest(root, spec, run_id, created, reconciliation, status, partitio
                 "requests": calls, "reconciliation": reconciliation,
                 "query_states": query_states, "failure": failure,
                 "files": dict(sorted(files.items()))}
+    if spec.get("translation_guard"):
+        manifest["translation_guard"] = spec["translation_guard"]
     manifest["package_root_sha256"] = sha(canonical(manifest))
     (root / "manifest.json").write_bytes(canonical(manifest) + b"\n")
 
@@ -655,7 +710,8 @@ def _verify_unobserved(root, *, require_final=True):
                      "date_start", "date_end", "partitions", "requests",
                      "reconciliation", "files", "package_root_sha256",
                      "query_states", "failure"}
-    if set(manifest) != expected_keys or manifest["schema"] != SCHEMA:
+    if (set(manifest) not in (expected_keys, expected_keys | {"translation_guard"})
+            or manifest["schema"] != SCHEMA):
         raise ValueError("manifest schema mismatch")
     if manifest["status"] not in ("final", "incomplete") or (require_final and manifest["status"] != "final"):
         raise ValueError("schema/status mismatch")
@@ -681,6 +737,8 @@ def _verify_unobserved(root, *, require_final=True):
     if (manifest["ncbi"]["endpoint"] != ENDPOINT or manifest["ncbi"]["method"] != "POST"
             or not manifest["ncbi"].get("tool") or not manifest["ncbi"].get("email")):
         raise ValueError("NCBI provenance mismatch")
+    if "translation_guard" in manifest and manifest["translation_guard"] != NOT_TRANSLATION_GUARD:
+        raise ValueError("invalid pinned NOT translation guard")
     queries = manifest["query_hashes"]
     states = manifest["query_states"]
     if not isinstance(queries, dict) or not queries or set(states) != set(queries):
@@ -775,7 +833,7 @@ def _verify_unobserved(root, *, require_final=True):
         query_calls = [c for c in calls if c["query_id"] == qid and c["endpoint"] == ENDPOINT]
         roles, pending, _accepted, terminal_code = esearch_expected_trace(
             qid, exact_queries[qid], manifest["date_start"], manifest["date_end"],
-            query_calls, root)
+            query_calls, root, translation_guard=manifest.get("translation_guard"))
         expected_roles.update(roles)
         search_completeness[qid] = not pending and terminal_code is None
         terminal_trace[qid] = terminal_code
@@ -906,6 +964,8 @@ def _verify_unobserved(root, *, require_final=True):
                 raise ValueError("ESearch exact query provenance mismatch")
             try:
                 parsed = parse_result(strict_path(root, rel).read_bytes())
+                if manifest.get("translation_guard") == NOT_TRANSLATION_GUARD:
+                    check_not_translation(query, parsed)
             except (ValueError, KeyError, TypeError, json.JSONDecodeError):
                 if call.get("outcome") != "rejected" or call.get("failure_reason") not in ("ValueError", "KeyError", "TypeError", "JSONDecodeError"):
                     raise ValueError("unrecorded invalid ESearch response")

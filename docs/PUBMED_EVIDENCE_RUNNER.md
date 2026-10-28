@@ -1,5 +1,7 @@
 # Scoped PubMed/NCBI evidence runner — contract v1
 
+> **Technical safety extension (candidate):** future full-mode Boolean NOT searches require a pinned translation_guard and checked ESearch source translation/warnings. This does not update frozen scientific queries or validate old *_only sample labels. See [PubMed NOT translation guard](PUBMED_NOT_TRANSLATION_GUARD.md) and HOFF-0118 (scientific issue OPEN).
+
 Technical baseline: `TECHNICAL_ARCHITECTURE` revision **23**, §§8.3, 8.5, 8.6, 10.1, 10.5, 10.10, 11.8, 12.2. This is an infrastructure transport only. Current Stage/QA status is owned by Drive `07_STAGE_STATUS` (not by this file).
 
 ## Scope and provenance
