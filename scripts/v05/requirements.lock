@@ -1,0 +1,5 @@
+# TASK-0033 accepted V05 offline canonical builder: exact direct scientific dependencies.
+# Python interpreter must be CPython 3.13.16; 7z/7zz/7zr CLI needed to restore Drive parts.
+# Pin scientific builder's runtime requirements; stage0 requirements.lock is separate.
+numpy==2.3.5
+pyarrow==26.0.0
