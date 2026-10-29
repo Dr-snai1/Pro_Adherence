@@ -101,6 +101,13 @@ class Stage2SourcesTests(unittest.TestCase):
         view = reconcile_sources([wos, apa])
         self.assertEqual(view["canonical_article_count"], 2)
         self.assertEqual(len(view["blocked_identity_pairs"]), 1)
+        self.assertEqual(len({a["canonical_article_id"] for a in view["articles"]}), 2)
+        self.assertTrue(all(a["ambiguous_doi"] for a in view["articles"]))
+        citer = synthetic("other", "citing", refs=["EXAMPLE DOI 10.1234/test-1"])
+        with_reference = reconcile_sources([wos, apa, citer])
+        self.assertIsNone(with_reference["citation_links"][0]["cited_article_id"])
+        self.assertEqual(with_reference["citation_links"][0]["external_target_doi"],
+                         "10.1234/test-1")
 
     def test_no_title_fuzzy_or_missing_reference_as_uncited(self):
         a = synthetic("woscc", "WOS:a", refs=["REF NO DOI"])
