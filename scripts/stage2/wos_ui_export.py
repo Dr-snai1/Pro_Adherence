@@ -115,94 +115,124 @@ def visible(locator):
     return locator.count() > 0 and locator.first.is_visible()
 
 
-def locate_export_panel(page):
-    """Find the real WoS export panel without assuming ARIA dialog or CSS class.
-
-    Screenshot from the owner shows the distinctive heading, two radio
-    choices, Record Content, and a final Export button. Some WoS builds
-    render this as an ordinary DIV, and menu selection is asynchronous.
-    Identify the *smallest visible ancestor* that contains these controls.
-    """
-    title = page.get_by_text(re.compile(r"^Export Records to Plain Text File$", re.I))
-    try:
-        title.first.wait_for(state="visible", timeout=15000)
-    except Exception as exc:
-        raise ExportError("WoS export heading did not appear after Plain text file selection") from exc
-
-    dialog = page.get_by_role("dialog").filter(
-        has_text=re.compile(r"Export Records to Plain Text File", re.I))
-    if visible(dialog) and dialog.first.locator('input[type="radio"]').count() >= 2:
-        return dialog.first
-
-    for i in range(min(title.count(), 3)):
-        heading = title.nth(i)
-        if not heading.is_visible():
+def _panel_from_control(page, control):
+    """Smallest visible parent containing the screenshot-grounded controls."""
+    for depth in range(1, 13):
+        parent = control.locator(f"xpath=ancestor::*[{depth}]")
+        if parent.count() != 1 or not parent.is_visible():
             continue
-        for depth in range(1, 10):
-            container = heading.locator(f"xpath=ancestor::*[{depth}]")
-            if container.count() != 1 or not container.is_visible():
-                continue
-            if (container.locator('input[type="radio"]').count() >= 2
-                    and container.get_by_role(
-                        "button", name=re.compile(r"^Export$", re.I)).count() >= 1
-                    and container.get_by_text("Record Content:", exact=False).count() >= 1):
-                return container
-    raise ExportError(
-        "WoS export heading is visible, but its two range radios, Record Content "
-        "and final Export button are not in one visible panel. Stop before download.")
+        radios = parent.locator('input[type="radio"]')
+        exports = parent.get_by_role("button", name=re.compile(r"^Export$", re.I))
+        record_content = parent.get_by_text(re.compile(r"Record Content", re.I))
+        ranges = parent.get_by_text(re.compile(r"Records from", re.I))
+        if (radios.count() >= 2 and exports.count() >= 1
+                and record_content.count() >= 1 and ranges.count() >= 1):
+            return parent
+    return None
 
 
-def resolve_cookie_consent(page, *, input_fn=input, output_fn=print):
-    """Resolve real OneTrust cookie UI *before* clicking WoS Export.
+def locate_export_panel(page, *, timeout_ms=4000):
+    """Return screenshot-verified export controls, not an assumed dialog tag.
 
-    The owner's live Playwright trace identified
-    #onetrust-consent-sdk .onetrust-pc-dark-filter intercepting Export.
-    The owner chooses the normal visible OneTrust preference controls.
-    We never consent, suppress the overlay, or force clicks in their name.
+    Accept modal heading OR Record Content anchors. Some WoS builds have
+    localized, delayed or hidden headings but ordinary form controls.
     """
-    sdk = page.locator("#onetrust-consent-sdk")
-    if sdk.count() == 0:
-        return
-    overlay = sdk.locator(".onetrust-pc-dark-filter")
-    banner = sdk.locator("#onetrust-banner-sdk")
-    preferences = sdk.locator("#onetrust-pc-sdk")
+    anchors = [
+        page.get_by_text(re.compile(r"Export Records to Plain Text File", re.I)),
+        page.get_by_text(re.compile(r"Record Content", re.I)),
+        page.get_by_text(re.compile(r"Records from", re.I)),
+    ]
+    for source in [page] + list(getattr(page, "frames", [])):
+        if source is not page:
+            anchors = [
+                source.get_by_text(re.compile(r"Export Records to Plain Text File", re.I)),
+                source.get_by_text(re.compile(r"Record Content", re.I)),
+                source.get_by_text(re.compile(r"Records from", re.I)),
+            ]
+        for anchor in anchors:
+            for i in range(min(anchor.count(), 4)):
+                entry = anchor.nth(i)
+                if not entry.is_visible():
+                    continue
+                parent = _panel_from_control(source, entry)
+                if parent is not None:
+                    return parent
+    # The popup may mount asynchronously. Poll ordinary DOM only.
+    if timeout_ms > 0:
+        import time as _time
+        deadline = _time.monotonic() + timeout_ms / 1000
+        while _time.monotonic() < deadline:
+            _time.sleep(0.2)
+            result = locate_export_panel(page, timeout_ms=0)
+            if result is not None:
+                return result
+    return None
 
-    def blocked():
-        return visible(overlay) or visible(banner) or visible(preferences)
 
-    if not blocked():
-        return
+def export_ui_state(page):
+    """Print only limited interface diagnostics, never article/user content."""
+    terms = re.compile(
+        r"export|plain text|record options|record content|records from|"
+        r"one.?trust|download|cited references", re.I)
+    found = []
+    for selector in ("button", "[role=menuitem]", "[role=dialog]", "h1", "h2"):
+        loc = page.locator(selector)
+        for i in range(min(loc.count(), 150)):
+            el = loc.nth(i)
+            try:
+                if el.is_visible():
+                    txt = " ".join(el.inner_text(timeout=2000).split())
+                    if terms.search(txt) and len(txt) < 110 and txt not in found:
+                        found.append(txt[:100])
+            except Exception:
+                continue
+    return found[:12]
 
-    # Cookie consent is a user preference. Do NOT choose Reject/Accept
-    # automatically; wait for the account holder to use the site controls.
-    # There is deliberately no force click, DOM removal or injection.
-    while blocked():
-        output_fn("COOKIE_CHOICE_REQUIRED: OneTrust is covering the WoS Export button.")
-        output_fn("In automated Chrome, choose Reject All or your preferred")
-        output_fn("cookie option in the visible OneTrust dialog. Do not click")
-        output_fn("through the dark overlay or enter account passwords here.")
-        answer = input_fn("After cookie dialog closes press Enter; Q to stop: ").strip().lower()
-        if answer in {"q", "quit", "stop", "выход"}:
-            raise ExportError("Stopped: OneTrust cookie choice still pending")
-    output_fn("ONETRUST_CLEARED: Export is no longer covered by cookie consent.")
 
+def open_modal(page, *, input_fn=input, output_fn=print):
+    """Normal WoS menu, then manual recovery if the real popup differs.
 
-def open_modal(page):
-    """Open the site's ordinary Export > Plain text file menu, then wait."""
-    resolve_cookie_consent(page)
-    option = page.get_by_text("Plain text file", exact=True)
-    if not visible(option):
-        button = page.get_by_role("button", name=re.compile(r"^Export$", re.I))
-        if not visible(button):
-            raise ExportError("Results-page Export button not found")
-        button.first.click(timeout=15000)
+    NEVER click through an overlay, force interactions or repeatedly close
+    the browser after an unknown UI. A user can open the dialog manually
+    in the same authenticated Chrome, without redownloading any batch.
+    """
+    resolve_cookie_consent(page, input_fn=input_fn, output_fn=output_fn)
+    existing = locate_export_panel(page, timeout_ms=0)
+    if existing is not None:
+        return existing
+    try:
         option = page.get_by_text("Plain text file", exact=True)
-        try:
+        if not visible(option):
+            button = page.get_by_role("button", name=re.compile(r"^Export$", re.I))
+            if not visible(button):
+                raise ExportError("Results-page Export button not found")
+            button.first.click(timeout=15000)
+            option = page.get_by_text("Plain text file", exact=True)
             option.first.wait_for(state="visible", timeout=15000)
-        except Exception as exc:
-            raise ExportError("Plain text file option did not open") from exc
-    option.first.click(timeout=15000)
-    return locate_export_panel(page)
+        option.first.click(timeout=15000)
+    except Exception as exc:
+        output_fn("AUTOMATED_EXPORT_MENU_FAILED: " + type(exc).__name__)
+    panel = locate_export_panel(page, timeout_ms=6000)
+    if panel is not None:
+        return panel
+
+    # The real site does not match a guessed menu implementation.
+    # Keep the browser alive and let the user open its built-in dialog.
+    while True:
+        found = export_ui_state(page)
+        output_fn("EXPORT_PANEL_NOT_FOUND: no download was started.")
+        output_fn("VISIBLE_EXPORT_CONTROLS: " + (
+            " | ".join(found) if found else "(not detected)"))
+        output_fn("In THIS automated Chrome, manually click Export > Plain text file.")
+        output_fn("Leave the 'Export Records to Plain Text File' window OPEN.")
+        answer = input_fn("When that export window is visible press Enter; Q to stop: ").strip().lower()
+        if answer in {"q", "quit", "stop", "выход"}:
+            raise ExportError("Owner stopped: export window could not be verified")
+        panel = locate_export_panel(page, timeout_ms=5000)
+        if panel is not None:
+            output_fn("EXPORT_PANEL_VERIFIED: continuing without resetting the search.")
+            return panel
+
 
 def select_record_content(page, modal):
     """Fail closed unless Full Record and Cited References visibly selected."""
