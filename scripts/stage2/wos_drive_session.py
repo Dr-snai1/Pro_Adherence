@@ -15,6 +15,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import sys
 import time
 from zipfile import ZipFile, ZIP_DEFLATED
@@ -283,6 +284,9 @@ def run(output: Path, *, max_batches=0, delay_seconds=12.0):
             print("DO NOT DELETE C: folder until independent Drive SHA256 verification.")
         finally:
             context.close()
+            # Chromium auth profile is disposable runtime/cache, not research
+            # evidence. Never retain signed-in session cookies on the C: disk.
+            shutil.rmtree(profile_dir, ignore_errors=True)
 
 
 def main(argv=None):
