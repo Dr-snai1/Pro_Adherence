@@ -269,6 +269,7 @@ def run(output: Path, *, max_batches=0, delay_seconds=12.0):
             scripts = [Path(__file__).resolve(),
                        Path(__file__).with_name("wos_ui_export.py"),
                        Path(__file__).with_name("wos_search_plan.py"),
+                       Path(__file__).with_name("medication-adherence-SELECTED.v1.json"),
                        Path(__file__).with_name("start_wos_export_windows.ps1")]
             package = output / "WOS_STAGE2_20261029_REPRO_SCRIPTS.zip"
             make_repro_package(scripts, package)
