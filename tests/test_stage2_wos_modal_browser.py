@@ -261,9 +261,10 @@ class TestWosModalLiveDom(unittest.TestCase):
                     "<h1>Export Records to Plain Text File</h1>",
                     "<h1>Save records</h1>").replace(
                         'id="panel" style="display:none;', 'id="panel" style="display:block;'))
-                self.assertEqual(
-                    wos.locate_export_panel(page, timeout_ms=0).get_attribute("id"),
-                    "panel")
+                panel = wos.locate_export_panel(page, timeout_ms=0)
+                self.assertIsNotNone(panel)
+                self.assertEqual(panel.locator('input[type="radio"]').count(), 2)
+                self.assertEqual(panel.locator('input[type="number"]').count(), 2)
             finally:
                 browser.close()
 
