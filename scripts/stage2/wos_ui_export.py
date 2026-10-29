@@ -115,30 +115,58 @@ def visible(locator):
     return locator.count() > 0 and locator.first.is_visible()
 
 
+def locate_export_panel(page):
+    """Find the real WoS export panel without assuming ARIA dialog or CSS class.
+
+    Screenshot from the owner shows the distinctive heading, two radio
+    choices, Record Content, and a final Export button. Some WoS builds
+    render this as an ordinary DIV, and menu selection is asynchronous.
+    Identify the *smallest visible ancestor* that contains these controls.
+    """
+    title = page.get_by_text(re.compile(r"^Export Records to Plain Text File$", re.I))
+    try:
+        title.first.wait_for(state="visible", timeout=15000)
+    except Exception as exc:
+        raise ExportError("WoS export heading did not appear after Plain text file selection") from exc
+
+    dialog = page.get_by_role("dialog").filter(
+        has_text=re.compile(r"Export Records to Plain Text File", re.I))
+    if visible(dialog) and dialog.first.locator('input[type="radio"]').count() >= 2:
+        return dialog.first
+
+    for i in range(min(title.count(), 3)):
+        heading = title.nth(i)
+        if not heading.is_visible():
+            continue
+        for depth in range(1, 10):
+            container = heading.locator(f"xpath=ancestor::*[{depth}]")
+            if container.count() != 1 or not container.is_visible():
+                continue
+            if (container.locator('input[type="radio"]').count() >= 2
+                    and container.get_by_role(
+                        "button", name=re.compile(r"^Export$", re.I)).count() >= 1
+                    and container.get_by_text("Record Content:", exact=False).count() >= 1):
+                return container
+    raise ExportError(
+        "WoS export heading is visible, but its two range radios, Record Content "
+        "and final Export button are not in one visible panel. Stop before download.")
+
+
 def open_modal(page):
-    """Interact only with the regular, visible WoS export menu."""
-    import re as regex
+    """Open the site's ordinary Export > Plain text file menu, then wait."""
     option = page.get_by_text("Plain text file", exact=True)
     if not visible(option):
-        button = page.get_by_role("button", name=regex.compile(r"^Export$", regex.I))
+        button = page.get_by_role("button", name=re.compile(r"^Export$", re.I))
         if not visible(button):
             raise ExportError("Results-page Export button not found")
         button.first.click(timeout=15000)
         option = page.get_by_text("Plain text file", exact=True)
-    if not visible(option):
-        raise ExportError("Plain text file is not offered by this subscription/UI")
+        try:
+            option.first.wait_for(state="visible", timeout=15000)
+        except Exception as exc:
+            raise ExportError("Plain text file option did not open") from exc
     option.first.click(timeout=15000)
-    modal = page.get_by_role("dialog").filter(
-        has_text=regex.compile(r"Export Records to Plain Text File", regex.I))
-    if not visible(modal):
-        # Some WoS UI versions do not expose role=dialog. Ground this
-        # fallback in the screenshot's exact modal title and input labels.
-        modal = page.locator("[class*=modal], [class*=Modal], [role=alertdialog]")\
-                    .filter(has_text=regex.compile("Export Records to Plain Text File", regex.I))
-    if not visible(modal):
-        raise ExportError("Cannot identify WoS export modal; request a screenshot")
-    return modal.first
-
+    return locate_export_panel(page)
 
 def select_record_content(page, modal):
     """Fail closed unless Full Record and Cited References visibly selected."""
