@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-"""Web of Science 501..N batches -> private Google Drive UI, with C: fail-safe.
+"""Web of Science 501..N authorized export -> ONE private-Drive deliverable ZIP.
 
-First 1-500 is already archived in the project Drive; never re-download it.
-Use normal authenticated Chrome UI for *both* WoS export and Drive upload.
-No private API, no tokens, no scraping, no hidden browser auth.
-All transient downloads are kept on C: until an independent Drive verification.
-Not tested against the owner's live HTML; stop on unexpected UI.
+Owner's first 1–500 WoS TXT already exists on private Google Drive; never repeat it.
+Google blocks sign-in from software-controlled Chrome, so this script NEVER opens
+Google sign-in or Drive inside Playwright. For WoS only, use authorized browser UI.
+It stores complete source batches + manifest + exact scripts in one ZIP on the
+owner-approved C: workspace. Upload ONE ZIP with user's normal signed-in Chrome
+to the already-approved private Google Drive folder, then independently verify
+Drive bytes via connected ChatGPT Drive before cleaning C:. NO automatic cleanup.
+No sign-in bypass, auth token access, API license assumption or private Git data.
 """
 from __future__ import annotations
 
@@ -16,6 +19,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import webbrowser
 import sys
 import time
 from zipfile import ZipFile, ZIP_DEFLATED
@@ -29,7 +33,6 @@ DRIVE_FOLDER_ID = "1h9Y-wjhpl3gc1wog0VP_qPaCxBWoeVyV"
 FIRST_SOURCE_ID = "1_s3NXcNniPGS21L9BtzUWvZCeiddRMTP"
 FIRST_SOURCE_SHA = "3247ec52dabe2ab3a156df6b57bfdd38b4e0496861458e70d0de0f5fe59ce020"
 EXPECTED_TOTAL = 30635
-QUERY_MARKER = "TS=("
 NAME_PREFIX = "WOS_CORE_20261029_FULL180_ARTICLE_ENGLISH_"
 
 
@@ -65,7 +68,7 @@ def manifest_default() -> dict:
         },
         "source_query_url": None,
         "new_batches": [],
-        "drive_receipt_status": "UI_ONLY_RECEIPTS_PENDING_INDEPENDENT_READBACK",
+        "delivery_status": "LOCAL_ARCHIVE_PENDING_OWNER_DRIVE_UPLOAD",
         "all_files_public": False,
         "cleanup_allowed": False,
     }
@@ -100,62 +103,7 @@ def preflight_wos(page) -> None:
         raise ExportError("Required Article refinement is missing")
     if not re.search(r"Languages:\s*English\b", txt, re.I):
         raise ExportError("Required English refinement is missing")
-    if QUERY_MARKER not in txt:
-        raise ExportError("TS full query not visible; stop (do not use six-term pilot)")
 
-
-def verify_drive_folder(page) -> None:
-    if not re.match(
-        r"^https://drive\.google\.com/drive/(?:u/\d+/)?folders/"
-        + re.escape(DRIVE_FOLDER_ID) + r"(?:[/?#]|$)", page.url, re.I
-    ):
-        raise ExportError("Google Drive browser page is not the approved private folder")
-    body = page.locator("body").inner_text(timeout=20000)
-    if "Request access" in body or "Запросить доступ" in body:
-        raise ExportError("Wrong Google account; no access to target folder")
-
-
-def drive_upload(page, source: Path, *, timeout_sec=240) -> dict:
-    """Upload through Google Drive's native New->File upload chooser.
-
-    The source remains on C: even after a positive UI receipt; independent
-    byte-readback via project connector is a separate gate before cleanup.
-    """
-    name = source.name
-    verify_drive_folder(page)
-    # Do not overwrite or guess identity when the same named file already shows.
-    exact = page.get_by_text(name, exact=True)
-    if visible(exact):
-        raise ExportError(f"Drive folder already shows {name}; verify before resuming")
-    # Visible menu ensures the upload is user-authorized UI operation.
-    new_button = page.get_by_role("button", name=re.compile(r"^(New|Создать)$", re.I))
-    if not visible(new_button):
-        raise ExportError("Google Drive New button not found; no files uploaded")
-    new_button.first.click(timeout=20000)
-    item = page.get_by_role("menuitem", name=re.compile(r"^(File upload|Загрузить файлы|Загрузка файлов)$", re.I))
-    if not visible(item):
-        item = page.get_by_text(re.compile(r"^(File upload|Загрузить файлы|Загрузка файлов)$", re.I))
-    if not visible(item):
-        raise ExportError("Google Drive File upload menu item not visible")
-    with page.expect_file_chooser(timeout=20000) as chooser:
-        item.first.click(timeout=20000)
-    chooser.value.set_files(str(source))
-    # Both completion receipt and locally preserved bytes are required.
-    complete = re.compile(r"(upload complete|uploaded|загруз(?:ка завершена|ено|ен)|загружен)", re.I)
-    deadline = time.monotonic() + timeout_sec
-    while time.monotonic() < deadline:
-        try:
-            body = page.locator("body").inner_text(timeout=10000)
-            if complete.search(body) and name in body:
-                # May be a generic toast; never infer remote byte-identity here.
-                return {"filename": name, "ui_upload_receipt": True,
-                        "remote_bytes_verified": False,
-                        "sha256": sha(source), "size_bytes": source.stat().st_size}
-        except Exception:
-            pass
-        time.sleep(3)
-    raise ExportError(f"Drive did not confirm completed upload of {name}; "
-                      "keep C: file and do not continue automatically")
 
 
 def make_repro_package(paths: list[Path], outpath: Path) -> None:
@@ -174,9 +122,9 @@ def run(output: Path, *, max_batches=0, delay_seconds=12.0):
     except ImportError as exc:
         raise ExportError("Python Playwright not installed") from exc
     output.mkdir(parents=True, exist_ok=True)
-    batch_dir = output / "exports"
+    batch_dir = output / "DELIVER_TO_PRIVATE_GOOGLE_DRIVE"
     batch_dir.mkdir(exist_ok=True)
-    manifest_path = output / "WOS_STAGE2_20261029_MANIFEST.json"
+    manifest_path = batch_dir / "WOS_STAGE2_20261029_MANIFEST.json"
     state = read_state(manifest_path)
     seen = set()
     for row in state["new_batches"]:
@@ -197,14 +145,28 @@ def run(output: Path, *, max_batches=0, delay_seconds=12.0):
             wos = context.pages[0] if context.pages else context.new_page()
             wos.goto("https://www.webofscience.com/wos/woscc/basic-search",
                      wait_until="domcontentloaded", timeout=90000)
-            drive = context.new_page()
-            drive.goto("https://drive.google.com/drive/folders/" + DRIVE_FOLDER_ID,
-                       wait_until="domcontentloaded", timeout=90000)
-            print("Sign into WoS and Google Drive in the opened Chrome windows.")
-            print("In WoS, open full 180-term query results with 30,635 English Articles.")
-            input("When BOTH pages are ready, press Enter in console: ")
-            preflight_wos(wos)
-            verify_drive_folder(drive)
+            print("ONLY WoS will open in Playwright; do NOT sign into Google here.")
+            print("In this browser, open the full WoS 180-term result page (30,635; Article+English).")
+            print("Press Enter ONLY when you see the actual WoS results (not a sign-in page).")
+            input("WoS results ready? Press Enter (or Ctrl+C to stop): ")
+            # The user may have opened the results in another tab while signing
+            # in: never insist on the original blank tab.
+            pages = [page for page in context.pages
+                     if SAFE_HOST.match(page.url) and "/wos/woscc/" in page.url]
+            if not pages:
+                raise ExportError("No WoS Core Collection tab open. No exports started.")
+            errors = []
+            for candidate in pages:
+                try:
+                    preflight_wos(candidate)
+                    wos = candidate
+                    break
+                except Exception as exc:
+                    errors.append(str(exc))
+            else:
+                raise ExportError(
+                    "No tab has the 30,635 English Article results. "
+                    + " ; ".join(errors[:3]) + ". No exports started.")
             state["source_query_url"] = wos.url
             persist_state(manifest_path, state)
             for start, end in ranges(EXPECTED_TOTAL, start_from=501):
@@ -212,9 +174,7 @@ def run(output: Path, *, max_batches=0, delay_seconds=12.0):
                 done = next((x for x in state["new_batches"]
                              if x["range_start"] == start and x["range_end"] == end), None)
                 if done:
-                    if not done["drive_ui_receipt"]:
-                        raise ExportError("Batch without Drive receipt; resolve before resume")
-                    print(f"SKIP already archived via UI: {fname}")
+                    print(f"SKIP existing C: validated batch: {fname}")
                     continue
                 if max_batches and started >= max_batches:
                     break
@@ -243,7 +203,6 @@ def run(output: Path, *, max_batches=0, delay_seconds=12.0):
                 if seen.intersection(audit["uids"]):
                     raise ExportError(f"WoS UT overlap in {start}-{end}; stop")
                 seen.update(audit["uids"])
-                receipt = drive_upload(drive, dest)
                 row = {
                     "range_start": start, "range_end": end, "filename": fname,
                     "records": audit["records"], "sha256": audit["sha256"],
@@ -251,13 +210,12 @@ def run(output: Path, *, max_batches=0, delay_seconds=12.0):
                     "first_uid": audit["first_uid"], "last_uid": audit["last_uid"],
                     "uids": audit["uids"], "cited_references": audit["cited_references"],
                     "nr_anomalies": audit["nr_anomalies"],
-                    "drive_ui_receipt": receipt["ui_upload_receipt"],
                     "drive_file_id": None, "cloud_sha256_confirmed": False,
                 }
                 state["new_batches"].append(row)
                 persist_state(manifest_path, state)
                 started += 1
-                print(f"UPLOADED_BY_UI {start}-{end} records={audit['records']} "
+                print(f"VALIDATED_C_SOURCE {start}-{end} records={audit['records']} "
                       f"SHA256={audit['sha256']} NR_flags={audit['nr_anomaly_count']}")
                 time.sleep(delay_seconds)
             if max_batches and started >= max_batches:
@@ -272,16 +230,39 @@ def run(output: Path, *, max_batches=0, delay_seconds=12.0):
                        Path(__file__).with_name("wos_search_plan.py"),
                        Path(__file__).with_name("medication-adherence-SELECTED.v1.json"),
                        Path(__file__).with_name("start_wos_export_windows.ps1")]
-            package = output / "WOS_STAGE2_20261029_REPRO_SCRIPTS.zip"
+            package = batch_dir / "WOS_STAGE2_20261029_REPRO_SCRIPTS.zip"
             make_repro_package(scripts, package)
-            # Last: archive exact scripts and manifest used to create all outputs.
-            drive_upload(drive, package)
             state["script_bundle_filename"] = package.name
             state["script_bundle_sha256"] = sha(package)
+            state["delivery_status"] = "LOCAL_ARCHIVE_PENDING_OWNER_DRIVE_UPLOAD"
+            state["cleanup_allowed"] = False
             persist_state(manifest_path, state)
-            drive_upload(drive, manifest_path)
-            print("UPLOADS_UI_COMPLETE: 61 new batches + manifest + reproducibility scripts.")
-            print("DO NOT DELETE C: folder until independent Drive SHA256 verification.")
+            archive_path = output / "WOS_STAGE2_ALL_REMAINING_501-30635.zip"
+            # ZIP has all 61 source TXT files, manifest and exact scripts/config.
+            # Re-create safely only after all recorded source files are checked.
+            pending_zip = archive_path.with_suffix(".pending")
+            if pending_zip.exists():
+                pending_zip.unlink()
+            with ZipFile(pending_zip, "w", compression=ZIP_DEFLATED,
+                         compresslevel=6, allowZip64=True) as zf:
+                for p in sorted(batch_dir.iterdir()):
+                    if p.is_file() and p.suffix in {".txt", ".json", ".zip"}:
+                        zf.write(p, arcname=p.name)
+            with ZipFile(pending_zip, "r") as zf:
+                expected = {p.name for p in batch_dir.iterdir() if p.is_file()
+                            and p.suffix in {".txt", ".json", ".zip"}}
+                if set(zf.namelist()) != expected or len(expected) != 63:
+                    raise ExportError("Final archive inventory must be 61 TXT + manifest + script ZIP")
+                for name in expected:
+                    if zf.read(name) != (batch_dir / name).read_bytes():
+                        raise ExportError(f"Archive byte validation failed for {name}")
+            pending_zip.replace(archive_path)
+            print(f"ARCHIVE_READY_ON_C: {archive_path}")
+            print(f"ARCHIVE_SHA256: {sha(archive_path)}; bytes={archive_path.stat().st_size}")
+            print("Open the private Drive folder in your NORMAL signed-in Chrome.")
+            print("Upload ONE ZIP file using Google Drive: New -> File upload.")
+            print("Remote archive hash/contents will be checked independently before cleanup.")
+            webbrowser.open("https://drive.google.com/drive/folders/" + DRIVE_FOLDER_ID)
         finally:
             context.close()
             # Chromium auth profile is disposable runtime/cache, not research
