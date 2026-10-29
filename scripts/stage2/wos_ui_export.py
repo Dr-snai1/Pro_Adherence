@@ -152,8 +152,59 @@ def locate_export_panel(page):
         "and final Export button are not in one visible panel. Stop before download.")
 
 
+def resolve_cookie_consent(page, *, input_fn=input, output_fn=print):
+    """Resolve real OneTrust cookie UI *before* clicking WoS Export.
+
+    The owner's live Playwright trace identified
+    #onetrust-consent-sdk .onetrust-pc-dark-filter intercepting Export.
+    We only use visible consent controls, prefer explicitly Reject All
+    optional cookies (privacy preserving), and never remove the overlay
+    using JS/CSS or use force=True. If no rejection choice is available,
+    the owner makes the choice on the visible banner.
+    """
+    sdk = page.locator("#onetrust-consent-sdk")
+    if sdk.count() == 0:
+        return
+    overlay = sdk.locator(".onetrust-pc-dark-filter")
+    banner = sdk.locator("#onetrust-banner-sdk, #onetrust-pc-sdk")
+    if not visible(overlay) and not visible(banner):
+        return
+
+    # OneTrust supports this ID for reject-optional cookies on many sites.
+    # Other versions expose a reject button in the visible preference dialog.
+    reject = sdk.locator("#onetrust-reject-all-handler, "
+                         ".ot-pc-refuse-all-handler, #onetrust-pc-reject-all-handler")
+    if not visible(reject):
+        reject = sdk.get_by_role(
+            "button",
+            name=re.compile(r"^(Reject All|Reject Optional|"
+                            r"Отклонить все|Отказаться от всех|Alles ablehnen)$",
+                            re.I))
+    if visible(reject):
+        output_fn("ONETRUST: rejecting optional cookies through the normal UI.")
+        reject.first.click(timeout=15000)
+        try:
+            overlay.first.wait_for(state="hidden", timeout=15000) if overlay.count() else None
+            banner.first.wait_for(state="hidden", timeout=15000) if banner.count() else None
+        except Exception:
+            # Some consent dialogs remain after pressing Reject All and
+            # require a further Save; let the owner decide on site controls.
+            pass
+
+    while visible(overlay) or visible(banner):
+        output_fn("COOKIE_CHOICE_REQUIRED: OneTrust is covering the WoS Export button.")
+        output_fn("In automated Chrome, choose Reject All or your preferred")
+        output_fn("cookie option in the visible OneTrust dialog. Do not click")
+        output_fn("through the dark overlay or enter account passwords here.")
+        answer = input_fn("After cookie dialog closes press Enter; Q to stop: ").strip().lower()
+        if answer in {"q", "quit", "stop", "выход"}:
+            raise ExportError("Stopped: OneTrust cookie choice still pending")
+    output_fn("ONETRUST_CLEARED: Export is no longer covered by cookie consent.")
+
+
 def open_modal(page):
     """Open the site's ordinary Export > Plain text file menu, then wait."""
+    resolve_cookie_consent(page)
     option = page.get_by_text("Plain text file", exact=True)
     if not visible(option):
         button = page.get_by_role("button", name=re.compile(r"^Export$", re.I))
