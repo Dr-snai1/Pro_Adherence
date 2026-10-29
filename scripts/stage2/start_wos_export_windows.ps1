@@ -57,7 +57,7 @@ New-Item -ItemType Directory -Path $env:TEMP -Force | Out-Null
 
 # Immutable GitHub commit after the new Drive session implementation landed.
 # Script source is public code only, never private research data.
-$codeCommit = '354c947fde8ce41d5cb14cda54f8e2290f5ec0ab'
+$codeCommit = '93a16c168d37de6c3553a48751b0f6b7deda8d8a'
 $baseUrl = "https://raw.githubusercontent.com/Dr-snai1/Pro_Adherence/$codeCommit"
 $names = @(
     'wos_drive_session.py',
@@ -91,7 +91,8 @@ Write-Host 'IMPORTANT: Smart Search is NOT the required results page.'
 Write-Host 'Open the existing 30,635-result page in that Chrome (or paste its address into the console).'
 Write-Host 'Early Enter will now show open tabs and ask again, instead of stopping.'
 Write-Host 'If OneTrust cookies block Export, choose your preference in the visible Chrome dialog.'
-Write-Host 'Otherwise choose your cookies in the visible Chrome dialog and press Enter in PowerShell.'
+Write-Host 'If WoS Export does not open automatically, the Chrome window stays OPEN.'
+Write-Host 'Then click Export -> Plain text file once manually and press Enter in PowerShell.'
 Write-Host 'Do not enter a Clarivate personal login or sign into Google there.'
 Write-Host 'Final results+manifest+scripts will be packed into ONE ZIP on C:.'
 Write-Host 'Then use your NORMAL Chrome to upload that ZIP into the project Google Drive.'
