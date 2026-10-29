@@ -102,9 +102,14 @@ class Stage2SourcesTests(unittest.TestCase):
         self.assertEqual(len(view["citation_links"]), 3)
         self.assertEqual([x["raw_reference_ordinal"] for x in view["citation_links"]],
                          [1, 2, 3])
-        with self.assertRaisesRegex(SourceFormatError,
-                                    "CITED_REFERENCES_COUNT_MISMATCH"):
-            parse_wos_tagged_export(fixture.replace(b"NR 3", b"NR 4"))
+        exported = parse_wos_tagged_export(fixture.replace(b"NR 3", b"NR 4"))
+        self.assertEqual(exported["record_count"], 1)
+        self.assertEqual(exported["nr_anomaly_count"], 1)
+        self.assertTrue(exported["records"][0]["cited_references_count_anomaly"])
+        self.assertEqual(exported["records"][0]["cited_references_declared"], 4)
+        self.assertEqual(exported["records"][0]["cited_references_exported"], 3)
+        with self.assertRaisesRegex(SourceFormatError, "MISSING_OR_INVALID_WOS_NR"):
+            parse_wos_tagged_export(fixture.replace(b"NR 3", b"NR ?"))
 
     def test_doi_validation_does_not_invent_identity(self):
         self.assertEqual(normalize_doi("https://doi.org/10.1234/ABC"), "10.1234/abc")
