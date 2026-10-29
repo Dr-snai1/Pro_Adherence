@@ -106,6 +106,62 @@ def preflight_wos(page) -> None:
 
 
 
+def choose_wos_results_page(pages):
+    """Return the verified result tab, not the Library or Smart Search tab.
+
+    WoS normally opens in a new tab after institutional login. Do not assume
+    the initial Library tab is the active result. No automatic search is run.
+    """
+    failures = []
+    for page in pages:
+        url = page.url
+        if not SAFE_HOST.match(url) or "/wos/woscc/" not in url:
+            continue
+        try:
+            preflight_wos(page)
+            return page, failures
+        except Exception as exc:
+            failures.append(str(exc))
+    return None, failures
+
+
+def wait_for_wos_results(context, *, input_fn=input, output_fn=print):
+    """Remain live until the owner navigates to the *existing* 30,635 result.
+
+    Enter without the right page never terminates the session. Alternatively,
+    paste an existing WoS result URL copied from normal Chrome; the program
+    opens it within the institution-authenticated automated Chrome.
+    """
+    from urllib.parse import urlsplit
+    while True:
+        page, failures = choose_wos_results_page(context.pages)
+        if page is not None:
+            output_fn("VERIFIED_WOS_RESULTS_TAB: 30,635; English + Article.")
+            return page
+        output_fn("RESULTS_NOT_OPEN: WoS 30,635 English/Article results not visible")
+        for candidate in context.pages:
+            target = urlsplit(candidate.url)
+            # Do not print URL parameters, tokens, fragments or personal data.
+            output_fn(f"OPEN_TAB: {target.hostname or '(blank)'}{target.path or '/'}")
+        if failures:
+            output_fn("REASON: " + " | ".join(failures[:2]))
+        output_fn("In the AUTOMATED Chrome, open the saved 30,635-result WoS page.")
+        output_fn("If it is in normal Chrome, COPY ITS ADDRESS and paste here.")
+        entry = input_fn("After opening results press Enter; paste WoS URL; or Q to stop: ").strip()
+        if entry.lower() in {"q", "quit", "stop", "выход"}:
+            raise ExportError("Owner stopped before any new export")
+        if entry:
+            if not SAFE_HOST.match(entry):
+                output_fn("Only HTTPS webofscience.com URLs are accepted. Nothing opened.")
+                continue
+            target = next(
+                (p for p in context.pages
+                 if SAFE_HOST.match(p.url)), None)
+            if target is None:
+                target = context.new_page()
+            target.goto(entry, wait_until="domcontentloaded", timeout=90000)
+
+
 def make_repro_package(paths: list[Path], outpath: Path) -> None:
     with ZipFile(outpath, "w", compression=ZIP_DEFLATED) as archive:
         for p in paths:
@@ -189,27 +245,10 @@ def run(output: Path, *, max_batches=0, delay_seconds=12.0):
             print("then Web of Science. Use Brunel Sign In if university login is requested.")
             print("DO NOT enter personal credentials into a direct Clarivate sign-in")
             print("and do NOT sign into Google inside this automated Chrome.")
-            print("Once WoS opens, use the full 180-term result page (30,635; Article+English).")
-            print("Press Enter ONLY when you see the actual WoS results (not a sign-in page).")
-            input("WoS results ready? Press Enter (or Ctrl+C to stop): ")
-            # The user may have opened the results in another tab while signing
-            # in: never insist on the original blank tab.
-            pages = [page for page in context.pages
-                     if SAFE_HOST.match(page.url) and "/wos/woscc/" in page.url]
-            if not pages:
-                raise ExportError("No WoS Core Collection tab open. No exports started.")
-            errors = []
-            for candidate in pages:
-                try:
-                    preflight_wos(candidate)
-                    wos = candidate
-                    break
-                except Exception as exc:
-                    errors.append(str(exc))
-            else:
-                raise ExportError(
-                    "No tab has the 30,635 English Article results. "
-                    + " ; ".join(errors[:3]) + ". No exports started.")
+            print("Open the existing 30,635 English/Article search results.")
+            print("Smart Search home is NOT the results page. If needed, copy the")
+            print("RESULTS URL from your normal Chrome into this console.")
+            wos = wait_for_wos_results(context)
             state["source_query_url"] = wos.url
             persist_state(manifest_path, state)
             for start, end in ranges(EXPECTED_TOTAL, start_from=501):
