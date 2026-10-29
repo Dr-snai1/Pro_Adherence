@@ -105,7 +105,7 @@ def preflight_wos(page) -> None:
 
 def verify_drive_folder(page) -> None:
     if not re.match(
-        r"^https://drive\\.google\\.com/drive/(?:u/\\d+/)?folders/"
+        r"^https://drive\.google\.com/drive/(?:u/\d+/)?folders/"
         + re.escape(DRIVE_FOLDER_ID) + r"(?:[/?#]|$)", page.url, re.I
     ):
         raise ExportError("Google Drive browser page is not the approved private folder")
