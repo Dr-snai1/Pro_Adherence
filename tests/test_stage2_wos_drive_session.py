@@ -108,6 +108,8 @@ class DriveArchivePlanTests(unittest.TestCase):
         self.assertNotIn('drive_upload(', source)
         self.assertIn('webbrowser.open(', source)
         self.assertIn('start_from=501', source)
+        self.assertIn('https://libguides.brunel.ac.uk/az/databases?a=w', source)
+        self.assertNotIn('wos.goto("https://www.webofscience.com/wos/woscc/basic-search"', source)
 
     def test_repro_scripts_are_archived_exactly(self):
         with tempfile.TemporaryDirectory() as temp:
