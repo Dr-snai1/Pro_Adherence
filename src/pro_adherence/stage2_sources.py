@@ -55,9 +55,10 @@ def _convert(tags: dict[str, list[str]], ordinal: int, digest: str) -> dict[str,
     if doi_raw and not doi:
         raise SourceFormatError("INVALID_DOI")
     declared_refs = _single(tags, "NR")
-    if declared_refs is not None:
-        if not declared_refs.isdecimal() or len(_values(tags, "CR")) != int(declared_refs):
-            raise SourceFormatError("CITED_REFERENCES_COUNT_MISMATCH")
+    if declared_refs is None or not declared_refs.isdecimal():
+        raise SourceFormatError("MISSING_OR_INVALID_WOS_NR")
+    exported_refs = len(_values(tags, "CR"))
+    declared_count = int(declared_refs)
     return {
         "source_id": _SOURCE,
         "source_native_id": uid,
@@ -77,6 +78,9 @@ def _convert(tags: dict[str, list[str]], ordinal: int, digest: str) -> dict[str,
         "affiliations_raw": _values(tags, "C3"),
         "keywords_raw": _values(tags, "DE") + _values(tags, "ID"),
         "cited_references_raw": _values(tags, "CR"),
+        "cited_references_declared": declared_count,
+        "cited_references_exported": exported_refs,
+        "cited_references_count_anomaly": declared_count != exported_refs,
         "access_class": "restricted-license",
         "publication_authorized": False,
     }
@@ -153,7 +157,9 @@ def parse_wos_tagged_export(payload: bytes) -> dict[str, Any]:
         raise SourceFormatError("NO_RECORDS")
     return {"schema": "stage2-wos-tagged-export/v1", "source_id": _SOURCE,
             "raw_export_sha256": digest, "records": result,
-            "record_count": len(result), "access_class": "restricted-license",
+            "record_count": len(result),
+            "nr_anomaly_count": sum(r["cited_references_count_anomaly"] for r in result),
+            "access_class": "restricted-license",
             "publication_authorized": False}
 
 
