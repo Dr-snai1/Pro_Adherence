@@ -77,6 +77,35 @@ class Stage2SourcesTests(unittest.TestCase):
         with self.assertRaises(SourceFormatError):
             parse_wos_tagged_export(SAMPLE.replace(b"PM 12345", b"PM invalid"))
 
+    def test_wos_multi_reference_lines_and_nr_integrity(self):
+        fixture = (
+            "FN Clarivate Analytics Web of Science\n"
+            "VR 1.0\n"
+            "PT J\n"
+            "TI Test medication adherence\n"
+            "   methods\n"
+            "CR First A, 2020, JOURNAL, DOI 10.1000/first\n"
+            "   Second B, 2022, JOURNAL, DOI 10.1000/second\n"
+            "   Third C, 2023, JOURNAL\n"
+            "NR 3\n"
+            "UT WOS:fixture003\n"
+            "ER\n"
+            "EF\n"
+        ).encode("utf-8")
+        r = parse_wos_tagged_export(fixture)["records"][0]
+        self.assertEqual(r["title"], "Test medication adherence methods")
+        self.assertEqual(len(r["cited_references_raw"]), 3)
+        self.assertIn("First A", r["cited_references_raw"][0])
+        self.assertIn("Second B", r["cited_references_raw"][1])
+        self.assertIn("Third C", r["cited_references_raw"][2])
+        view = reconcile_sources([r])
+        self.assertEqual(len(view["citation_links"]), 3)
+        self.assertEqual([x["raw_reference_ordinal"] for x in view["citation_links"]],
+                         [1, 2, 3])
+        with self.assertRaisesRegex(SourceFormatError,
+                                    "CITED_REFERENCES_COUNT_MISMATCH"):
+            parse_wos_tagged_export(fixture.replace(b"NR 3", b"NR 4"))
+
     def test_doi_validation_does_not_invent_identity(self):
         self.assertEqual(normalize_doi("https://doi.org/10.1234/ABC"), "10.1234/abc")
         self.assertIsNone(normalize_doi("unknown"))
