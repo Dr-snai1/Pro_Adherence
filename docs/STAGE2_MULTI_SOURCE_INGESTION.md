@@ -32,3 +32,17 @@ No authentication bypass, commercial API purchase, public restricted data upload
 ## Checks
 
 Synthetic tests: PYTHONPATH=src python -m unittest discover -s tests -p test_stage2_sources.py (does not access network). Developer verification requires targeted test run and independent readback of committed file+tests+docs from GitHub. No actual WoS/PsycINFO user records, paid API credential, signed-in entitlement or complete source mapping have been established. No Stage 2 release or new public promotion is claimed.
+
+## First owner-supplied WoS export: bounded local pilot (2026-10-29)
+
+The owner uploaded a legitimate-looking WoS Core Collection plain-text export named savedrecs.txt to the active private conversation. This is NOT independent confirmation of subscription scope, transfer rights or completeness of the full retrieval. The raw text (including names, emails, abstracts and references) is NOT published to GitHub. The exact uploaded raw byte content is preserved only as the conversation attachment, not yet in the long-term restricted research store.
+
+- Uploaded file bytes: 38,127; SHA-256 a05af1f6ec9f338d3f94a136eb639e0540e42d44156d1ebcf928bb61f80bffa7.
+- FN/VR header and EF end marker present; 10 complete ER records; 10 distinct WOS: UT; 10 English.
+- Source DT distribution: Article 7, Meeting Abstract 2, Editorial Material 1. Article-only filtering is a DERIVED, not destructive, view. This pilot cannot be described as 10 eligible journal articles.
+- DOI 8 (all distinct), PMID 4, abstract 7; 191 individual CR cited references with each record's NR count exactly matching the corresponding CR list (total NR=191). The first parser implementation erroneously concatenated all indented CR items within each article into one string; repaired in later commit and added regression for CR/NR integrity. Other indented fields remain joined as continuations.
+- Verification method A: parse the actual owner-supplied raw UTF-8 bytes with independent structural tag/continuation/record-boundary checks, UT dedupe, and per-record NR versus CR counts.
+- Verification method B: targeted CI synthetic tests against the fixed code (no raw licensed data in public CI), plus readback of exact code and test blob SHA from the branch. These two checks have different scopes; the actual uploaded file has not yet been rerun using the code inside the owner's authenticated WoS session.
+- The earlier six-term exploratory Topic search gave 35,751 hits per user screenshot and is NOT the accepted final WoS translation/frozen retrieval. It must not be treated as the complete agreed search strategy or as an approved acquisition volume.
+
+Next: versioned translation and validation of the entire accepted medication-only scientific search blocks into WoS syntax, then a minimal legitimately authorized full-record+cited-reference sample and private immutable archival, before any large-scale WoS ingestion. Publication permission stays FALSE.
