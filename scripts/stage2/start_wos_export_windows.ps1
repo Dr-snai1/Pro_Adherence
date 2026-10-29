@@ -3,22 +3,32 @@
 Stage 2 WoS batch exporter launcher. Use only for authorized WoS UI exports.
 By default, imports owner-provided verified first 500 records from Downloads
 and tests exactly ONE new chunk 501-1000. Run with -All only after approval.
-Everything is staged on D: (USB); project evidence is archived to private Drive.
+Working files use the standard per-user local app-data folder; project evidence is archived separately to private Google Drive. No drive letter is assumed.
 #>
 param([switch]$All)
 
 $ErrorActionPreference = 'Stop'
-$base = 'D:\Pro_Adherence_Stage2_WoS'
-$python = 'C:\Pro_Adherence\python-3.13.16\python.exe'
+$appData = if ($env:LOCALAPPDATA) { $env:LOCALAPPDATA } else { $env:TEMP }
+if (-not $appData) { throw 'Cannot find a per-user temporary working folder' }
+$base = Join-Path $appData 'Pro_Adherence\WoS_staging'
+# Resolve installed Python using Windows launcher or PATH, without assuming C: or D:.
+$pythonExe = $null
+$pythonArgs = @()
+if (Get-Command py.exe -ErrorAction SilentlyContinue) {
+    $pythonExe = 'py.exe'
+    $pythonArgs = @('-3')
+} elseif (Get-Command python.exe -ErrorAction SilentlyContinue) {
+    $pythonExe = 'python.exe'
+} else {
+    throw 'Python 3 is not installed or not on PATH; no files have been changed'
+}
+$ver = & $pythonExe @pythonArgs -c 'import sys; print(sys.version_info.major, sys.version_info.minor)'
+if ($LASTEXITCODE -ne 0 -or -not $ver -or -not ($ver -match '^3\s+\d+')) {
+    throw "Python 3 launch failed or version invalid: $ver"
+}
 $shaFirst = '3247EC52DABE2AB3A156DF6B57BFDD38B4E0496861458E70D0DE0F5FE59CE020'
 $codeCommit = 'de541ddca5523c722a8e526fd696fcc6228d6d79'
 $codeUrl = "https://raw.githubusercontent.com/Dr-snai1/Pro_Adherence/$codeCommit/scripts/stage2/wos_ui_export.py"
-if (!(Test-Path -LiteralPath $python)) { throw "Pinned project Python not found: $python" }
-if ((Get-Partition -DriveLetter C).DiskNumber -eq (Get-Partition -DriveLetter D).DiskNumber) {
-    throw 'D: must be the separate USB disk already selected for working exports'
-}
-$vol = Get-Volume -DriveLetter D
-if ($vol.SizeRemaining -lt 2GB) { throw 'Need at least 2 GB free on D:' }
 New-Item -ItemType Directory -Path $base -Force | Out-Null
 $exports = Join-Path $base 'exports'
 $temporary = Join-Path $base 'tmp'
@@ -59,13 +69,15 @@ if (!(Test-Path -LiteralPath $helper)) {
     Invoke-WebRequest -Uri $codeUrl -OutFile $helper -UseBasicParsing
 }
 if (!(Test-Path -LiteralPath (Join-Path $deps 'playwright\__init__.py'))) {
-    & $python -m pip install --no-cache-dir --disable-pip-version-check --target $deps 'playwright==1.55.0'
+    & $pythonExe @pythonArgs -m pip install --no-cache-dir --disable-pip-version-check --target $deps 'playwright==1.55.0'
     if ($LASTEXITCODE -ne 0) { throw 'Playwright installation failed: Python pip may be unavailable' }
 }
 $max = 1
 if ($All) { $max = 0 }
-Write-Host "Now launching authenticated Chrome. Open the FULL 180-term WoS results (30,635 English Articles), then press Enter in the console."
+Write-Host "Local staging (temporary; NOT Google Drive): $base"
+Write-Host "Now launching Chrome. Sign in and open the FULL 180-term WoS results (30,635 English Articles), then press Enter in the console."
 Write-Host "Trial new export: records 501-1000; -All = remaining records 501-30635."
-& $python $helper --total 30635 --output $base --max-batches $max --authorized-export
+& $pythonExe @pythonArgs $helper --total 30635 --output $base --max-batches $max --authorized-export
 if ($LASTEXITCODE -ne 0) { throw "WoS exporter stopped with exit $LASTEXITCODE; do not repeat 1-500" }
-Write-Host "WOS_BATCH_SESSION_FINISHED. Local files are on D:, Drive archive of new batches still PENDING."
+Write-Host "WOS_BATCH_SESSION_FINISHED. Temporary download: $base\exports"
+Write-Host 'IMPORTANT: New batches are NOT YET on Google Drive. Upload each completed batch to the project private Drive before deletion from staging.'
