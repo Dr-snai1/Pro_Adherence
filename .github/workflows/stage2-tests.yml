@@ -7,11 +7,15 @@ on:
     paths:
       - "src/pro_adherence/stage2_sources.py"
       - "tests/test_stage2_sources.py"
+      - "tests/test_stage2_wos_ui_export.py"
+      - "scripts/stage2/wos_ui_export.py"
       - ".github/workflows/stage2-tests.yml"
   pull_request:
     paths:
       - "src/pro_adherence/stage2_sources.py"
       - "tests/test_stage2_sources.py"
+      - "tests/test_stage2_wos_ui_export.py"
+      - "scripts/stage2/wos_ui_export.py"
       - ".github/workflows/stage2-tests.yml"
 
 permissions:
@@ -28,4 +32,4 @@ jobs:
       - name: Run only Stage 2 synthetic offline tests
         env:
           PYTHONPATH: src
-        run: python -m unittest discover -s tests -p 'test_stage2_sources.py' -v
+        run: python -m unittest discover -s tests -p 'test_stage2_*.py' -v
