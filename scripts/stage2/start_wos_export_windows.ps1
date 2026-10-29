@@ -57,7 +57,7 @@ New-Item -ItemType Directory -Path $env:TEMP -Force | Out-Null
 
 # Immutable GitHub commit after the new Drive session implementation landed.
 # Script source is public code only, never private research data.
-$codeCommit = '6169f78c9723713f0c6eac698c4bc2c794d0a251'
+$codeCommit = '2215c9158d45db7b6765a4eab7d3efc920666af4'
 $baseUrl = "https://raw.githubusercontent.com/Dr-snai1/Pro_Adherence/$codeCommit"
 $names = @(
     'wos_drive_session.py',
@@ -86,7 +86,8 @@ if (!(Test-Path -LiteralPath (Join-Path $deps 'playwright\__init__.py'))) {
 Write-Host "Using authorized temporary C: folder: $base"
 Write-Host "Project private Drive: https://drive.google.com/drive/folders/$folderId"
 Write-Host 'The first 500 records are already archived. Script starts at 501.'
-Write-Host 'Google sign-in in automated Chrome is blocked. Only sign in to WoS there.'
+Write-Host 'Automated Chrome opens Brunel Library; search Web of Science and use Brunel Sign In.'
+Write-Host 'Do not enter a Clarivate personal login or sign into Google there.'
 Write-Host 'Final results+manifest+scripts will be packed into ONE ZIP on C:.'
 Write-Host 'Then use your NORMAL Chrome to upload that ZIP into the project Google Drive.'
 & $python @pyFlags (Join-Path $toolDir 'wos_drive_session.py')
