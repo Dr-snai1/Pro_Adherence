@@ -114,6 +114,43 @@ def make_repro_package(paths: list[Path], outpath: Path) -> None:
             archive.write(p, arcname=p.name)
 
 
+def build_full_archive(batch_dir: Path, archive_path: Path,
+                       *, expected_file_count: int = 63) -> dict:
+    """Package *exact* source files + manifest + code. Do not delete originals.
+
+    Verification reads each archived member back and compares SHA256 to the
+    source file. The resulting ZIP is one upload in the user's normal Chrome.
+    """
+    input_files = sorted(p for p in batch_dir.iterdir()
+                         if p.is_file() and p.suffix in {".txt", ".json", ".zip"})
+    if len(input_files) != expected_file_count:
+        raise ExportError(f"Expected {expected_file_count} upload artifacts, got {len(input_files)}")
+    if len(set(p.name for p in input_files)) != len(input_files):
+        raise ExportError("Duplicate package member names")
+    pending_zip = archive_path.with_suffix(".pending")
+    if pending_zip.exists():
+        pending_zip.unlink()
+    try:
+        with ZipFile(pending_zip, "w", compression=ZIP_DEFLATED,
+                     compresslevel=6, allowZip64=True) as zf:
+            for p in input_files:
+                zf.write(p, arcname=p.name)
+        with ZipFile(pending_zip, "r") as zf:
+            if sorted(zf.namelist()) != sorted(p.name for p in input_files):
+                raise ExportError("Final ZIP inventory does not match source inventory")
+            for p in input_files:
+                h = hashlib.sha256(zf.read(p.name)).hexdigest()
+                if h != sha(p):
+                    raise ExportError(f"ZIP byte validation failed for {p.name}")
+        pending_zip.replace(archive_path)
+        return {"archive_name": archive_path.name, "sha256": sha(archive_path),
+                "bytes": archive_path.stat().st_size,
+                "member_count": len(input_files)}
+    finally:
+        if pending_zip.exists():
+            pending_zip.unlink()
+
+
 def run(output: Path, *, max_batches=0, delay_seconds=12.0):
     if delay_seconds < 8:
         raise ExportError("Must keep at least 8s between normal UI exports")
@@ -238,27 +275,9 @@ def run(output: Path, *, max_batches=0, delay_seconds=12.0):
             state["cleanup_allowed"] = False
             persist_state(manifest_path, state)
             archive_path = output / "WOS_STAGE2_ALL_REMAINING_501-30635.zip"
-            # ZIP has all 61 source TXT files, manifest and exact scripts/config.
-            # Re-create safely only after all recorded source files are checked.
-            pending_zip = archive_path.with_suffix(".pending")
-            if pending_zip.exists():
-                pending_zip.unlink()
-            with ZipFile(pending_zip, "w", compression=ZIP_DEFLATED,
-                         compresslevel=6, allowZip64=True) as zf:
-                for p in sorted(batch_dir.iterdir()):
-                    if p.is_file() and p.suffix in {".txt", ".json", ".zip"}:
-                        zf.write(p, arcname=p.name)
-            with ZipFile(pending_zip, "r") as zf:
-                expected = {p.name for p in batch_dir.iterdir() if p.is_file()
-                            and p.suffix in {".txt", ".json", ".zip"}}
-                if set(zf.namelist()) != expected or len(expected) != 63:
-                    raise ExportError("Final archive inventory must be 61 TXT + manifest + script ZIP")
-                for name in expected:
-                    if zf.read(name) != (batch_dir / name).read_bytes():
-                        raise ExportError(f"Archive byte validation failed for {name}")
-            pending_zip.replace(archive_path)
+            result = build_full_archive(batch_dir, archive_path)
             print(f"ARCHIVE_READY_ON_C: {archive_path}")
-            print(f"ARCHIVE_SHA256: {sha(archive_path)}; bytes={archive_path.stat().st_size}")
+            print(f"ARCHIVE_SHA256: {result['sha256']}; bytes={result['bytes']}")
             print("Open the private Drive folder in your NORMAL signed-in Chrome.")
             print("Upload ONE ZIP file using Google Drive: New -> File upload.")
             print("Remote archive hash/contents will be checked independently before cleanup.")
