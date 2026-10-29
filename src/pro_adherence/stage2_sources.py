@@ -54,6 +54,10 @@ def _convert(tags: dict[str, list[str]], ordinal: int, digest: str) -> dict[str,
     doi = normalize_doi(doi_raw)
     if doi_raw and not doi:
         raise SourceFormatError("INVALID_DOI")
+    declared_refs = _single(tags, "NR")
+    if declared_refs is not None:
+        if not declared_refs.isdecimal() or len(_values(tags, "CR")) != int(declared_refs):
+            raise SourceFormatError("CITED_REFERENCES_COUNT_MISMATCH")
     return {
         "source_id": _SOURCE,
         "source_native_id": uid,
@@ -135,7 +139,12 @@ def parse_wos_tagged_export(payload: bytes) -> dict[str, Any]:
             tags.setdefault(tag, []).append(value or "")
             last_tag = tag
         elif line.startswith("   ") and tags is not None and last_tag:
-            tags[last_tag][-1] += " " + line.strip()
+            if last_tag == "CR":
+                # WoS encodes each cited reference as a separate indented CR line,
+                # whereas other indented fields continue their preceding value.
+                tags[last_tag].append(line.strip())
+            else:
+                tags[last_tag][-1] += " " + line.strip()
         elif line.strip():
             raise SourceFormatError("UNKNOWN_EXPORT_LINE")
     if tags is not None or not finished:
