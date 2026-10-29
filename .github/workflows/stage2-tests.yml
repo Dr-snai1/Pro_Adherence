@@ -15,6 +15,9 @@ on:
       - "tests/test_stage2_wos_drive_session.py"
       - "scripts/stage2/wos_search_plan.py"
       - "tests/test_stage2_wos_search_plan.py"
+      - "scripts/stage2/apa_psycinfo_search_plan.py"
+      - "tests/test_stage2_apa_psycinfo_search_plan.py"
+      - "docs/stage2/APA_PSYCINFO_PREP.md"
       - "configs/pubmed/medication-adherence-SELECTED.v1.json"
       - ".github/workflows/stage2-tests.yml"
   pull_request:
@@ -29,6 +32,9 @@ on:
       - "tests/test_stage2_wos_drive_session.py"
       - "scripts/stage2/wos_search_plan.py"
       - "tests/test_stage2_wos_search_plan.py"
+      - "scripts/stage2/apa_psycinfo_search_plan.py"
+      - "tests/test_stage2_apa_psycinfo_search_plan.py"
+      - "docs/stage2/APA_PSYCINFO_PREP.md"
       - "configs/pubmed/medication-adherence-SELECTED.v1.json"
       - ".github/workflows/stage2-tests.yml"
 
