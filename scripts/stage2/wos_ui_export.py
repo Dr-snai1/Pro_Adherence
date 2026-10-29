@@ -166,8 +166,13 @@ def resolve_cookie_consent(page, *, input_fn=input, output_fn=print):
     if sdk.count() == 0:
         return
     overlay = sdk.locator(".onetrust-pc-dark-filter")
-    banner = sdk.locator("#onetrust-banner-sdk, #onetrust-pc-sdk")
-    if not visible(overlay) and not visible(banner):
+    banner = sdk.locator("#onetrust-banner-sdk")
+    preferences = sdk.locator("#onetrust-pc-sdk")
+
+    def blocked():
+        return visible(overlay) or visible(banner) or visible(preferences)
+
+    if not blocked():
         return
 
     # OneTrust supports this ID for reject-optional cookies on many sites.
@@ -184,14 +189,15 @@ def resolve_cookie_consent(page, *, input_fn=input, output_fn=print):
         output_fn("ONETRUST: rejecting optional cookies through the normal UI.")
         reject.first.click(timeout=15000)
         try:
-            overlay.first.wait_for(state="hidden", timeout=15000) if overlay.count() else None
-            banner.first.wait_for(state="hidden", timeout=15000) if banner.count() else None
+            for layer in (overlay, banner, preferences):
+                if visible(layer):
+                    layer.first.wait_for(state="hidden", timeout=15000)
         except Exception:
             # Some consent dialogs remain after pressing Reject All and
             # require a further Save; let the owner decide on site controls.
             pass
 
-    while visible(overlay) or visible(banner):
+    while blocked():
         output_fn("COOKIE_CHOICE_REQUIRED: OneTrust is covering the WoS Export button.")
         output_fn("In automated Chrome, choose Reject All or your preferred")
         output_fn("cookie option in the visible OneTrust dialog. Do not click")
