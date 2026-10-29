@@ -203,7 +203,7 @@ def run_live(args):
     try:
         from playwright.sync_api import sync_playwright
     except ImportError as exc:
-        raise ExportError("Install playwright Python package in a D: environment first") from exc
+        raise ExportError("Install playwright Python package in the selected per-user staging environment first") from exc
     output = Path(args.output).resolve()
     output.mkdir(parents=True, exist_ok=True)
     batch_dir = output / "exports"
@@ -307,7 +307,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--total", type=int, required=True, help="Exact FINAL filtered WoS result count")
     parser.add_argument("--batch-size", type=int, default=500)
-    parser.add_argument("--output", default=r"D:\Pro_Adherence_Stage2_WoS")
+    parser.add_argument("--output", default=str(Path.home() / "AppData" / "Local" / "Pro_Adherence" / "WoS_staging"))
     parser.add_argument("--chrome-exe", default=None)
     parser.add_argument("--max-batches", type=int, default=1, help="Defaults to ONE for safe UI trial; use 0 for all")
     parser.add_argument("--delay-seconds", type=float, default=12)
