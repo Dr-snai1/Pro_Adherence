@@ -157,10 +157,8 @@ def resolve_cookie_consent(page, *, input_fn=input, output_fn=print):
 
     The owner's live Playwright trace identified
     #onetrust-consent-sdk .onetrust-pc-dark-filter intercepting Export.
-    We only use visible consent controls, prefer explicitly Reject All
-    optional cookies (privacy preserving), and never remove the overlay
-    using JS/CSS or use force=True. If no rejection choice is available,
-    the owner makes the choice on the visible banner.
+    The owner chooses the normal visible OneTrust preference controls.
+    We never consent, suppress the overlay, or force clicks in their name.
     """
     sdk = page.locator("#onetrust-consent-sdk")
     if sdk.count() == 0:
@@ -175,28 +173,9 @@ def resolve_cookie_consent(page, *, input_fn=input, output_fn=print):
     if not blocked():
         return
 
-    # OneTrust supports this ID for reject-optional cookies on many sites.
-    # Other versions expose a reject button in the visible preference dialog.
-    reject = sdk.locator("#onetrust-reject-all-handler, "
-                         ".ot-pc-refuse-all-handler, #onetrust-pc-reject-all-handler")
-    if not visible(reject):
-        reject = sdk.get_by_role(
-            "button",
-            name=re.compile(r"^(Reject All|Reject Optional|"
-                            r"Отклонить все|Отказаться от всех|Alles ablehnen)$",
-                            re.I))
-    if visible(reject):
-        output_fn("ONETRUST: rejecting optional cookies through the normal UI.")
-        reject.first.click(timeout=15000)
-        try:
-            for layer in (overlay, banner, preferences):
-                if visible(layer):
-                    layer.first.wait_for(state="hidden", timeout=15000)
-        except Exception:
-            # Some consent dialogs remain after pressing Reject All and
-            # require a further Save; let the owner decide on site controls.
-            pass
-
+    # Cookie consent is a user preference. Do NOT choose Reject/Accept
+    # automatically; wait for the account holder to use the site controls.
+    # There is deliberately no force click, DOM removal or injection.
     while blocked():
         output_fn("COOKIE_CHOICE_REQUIRED: OneTrust is covering the WoS Export button.")
         output_fn("In automated Chrome, choose Reject All or your preferred")
