@@ -1,89 +1,76 @@
 #Requires -Version 5.1
 <#
-Stage 2 WoS batch exporter launcher. Use only for authorized WoS UI exports.
-By default, imports owner-provided verified first 500 records from Downloads
-and tests exactly ONE new chunk 501-1000. Run with -All only after approval.
-Working files use the standard per-user local app-data folder; project evidence is archived separately to private Google Drive. No drive letter is assumed.
+Pro_Adherence Stage2 WoS: upload 501..30635 via native Chrome UI to owner-only
+project Google Drive, retaining C: fallback until independent Drive verification.
+
+No USB/D: writes, no re-export of 1..500, no arbitrary locations.
+Outputs: raw WoS TXT batches, SHA/UT/NR manifest, exact reproducibility script ZIP.
+DO NOT delete C: staging until 03 has verified remote bytes and IDs.
 #>
-param([switch]$All)
-
-# Disabled by project owner instruction: NO local working files and NO guessed paths.
-# Current implementation necessarily stages downloads on a local filesystem.
-# Replace with a verified direct-to-private-Google-Drive workflow only after
-# agreeing to the required authorization/access method with the owner.
-throw 'DISABLED: local staging violates owner requirement. Do not use this launcher.'
-
 $ErrorActionPreference = 'Stop'
-$appData = if ($env:LOCALAPPDATA) { $env:LOCALAPPDATA } else { $env:TEMP }
-if (-not $appData) { throw 'Cannot find a per-user temporary working folder' }
-$base = Join-Path $appData 'Pro_Adherence\WoS_staging'
-# Resolve installed Python using Windows launcher or PATH, without assuming C: or D:.
-$pythonExe = $null
-$pythonArgs = @()
-if (Get-Command py.exe -ErrorAction SilentlyContinue) {
-    $pythonExe = 'py.exe'
-    $pythonArgs = @('-3')
-} elseif (Get-Command python.exe -ErrorAction SilentlyContinue) {
-    $pythonExe = 'python.exe'
-} else {
-    throw 'Python 3 is not installed or not on PATH; no files have been changed'
+$folderId = '1h9Y-wjhpl3gc1wog0VP_qPaCxBWoeVyV'
+$expectedTotal = 30635
+$root = $env:LOCALAPPDATA
+if (!$root -or !([System.IO.Path]::GetFullPath($root).StartsWith('C:\',[System.StringComparison]::OrdinalIgnoreCase))) {
+    throw 'C: LOCALAPPDATA missing; no alternative drive will be chosen'
 }
-$ver = & $pythonExe @pythonArgs -c 'import sys; print(sys.version_info.major, sys.version_info.minor)'
-if ($LASTEXITCODE -ne 0 -or -not $ver -or -not ($ver -match '^3\s+\d+')) {
-    throw "Python 3 launch failed or version invalid: $ver"
-}
-$shaFirst = '3247EC52DABE2AB3A156DF6B57BFDD38B4E0496861458E70D0DE0F5FE59CE020'
-$codeCommit = 'de541ddca5523c722a8e526fd696fcc6228d6d79'
-$codeUrl = "https://raw.githubusercontent.com/Dr-snai1/Pro_Adherence/$codeCommit/scripts/stage2/wos_ui_export.py"
-New-Item -ItemType Directory -Path $base -Force | Out-Null
-$exports = Join-Path $base 'exports'
-$temporary = Join-Path $base 'tmp'
+$base = Join-Path $root 'Pro_Adherence\WoS_Stage2_Temp'
 $deps = Join-Path $base 'python_deps'
-New-Item -ItemType Directory -Path $exports,$temporary,$deps -Force | Out-Null
-$env:TEMP = $temporary
-$env:TMP = $temporary
-$env:PYTHONDONTWRITEBYTECODE = '1'
-$env:PIP_DISABLE_PIP_VERSION_CHECK = '1'
-$env:PYTHONPATH = $deps
-$destFirst = Join-Path $exports 'wos_000001_000500.txt'
-if (Test-Path -LiteralPath $destFirst) {
-    if ((Get-FileHash -LiteralPath $destFirst -Algorithm SHA256).Hash -ne $shaFirst) {
-        throw 'Existing first batch differs; refusing to overwrite/mix search runs'
-    }
+$toolDir = Join-Path $base 'runner'
+New-Item -ItemType Directory -Path $base,$deps,$toolDir -Force | Out-Null
+
+# Search the pre-existing project Python, then installed Windows Python 3.
+$projectPython = 'C:\Pro_Adherence\python-3.13.16\python.exe'
+$python = $null
+$pyFlags = @()
+if (Test-Path -LiteralPath $projectPython) {
+    $python = $projectPython
+} elseif (Get-Command py.exe -ErrorAction SilentlyContinue) {
+    $python = 'py.exe'
+    $pyFlags = @('-3.13')
+} elseif (Get-Command python.exe -ErrorAction SilentlyContinue) {
+    $python = 'python.exe'
 } else {
-    $downloadDirs = @((Join-Path $env:USERPROFILE 'Downloads'), (Join-Path $env:USERPROFILE 'Desktop'))
-    $candidates = @()
-    foreach ($d in $downloadDirs) {
-        if (Test-Path -LiteralPath $d) {
-            $candidates += @(Get-ChildItem -LiteralPath $d -Filter 'savedrecs*.txt' -File -ErrorAction Stop)
-        }
-    }
-    $matching = @($candidates | Where-Object {
-        (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash -eq $shaFirst
-    })
-    if ($matching.Count -lt 1) {
-        throw 'Original first 500-record file not found in Downloads/Desktop. Keep it there or copy it there; SHA256 must match recorded batch'
-    }
-    Copy-Item -LiteralPath $matching[0].FullName -Destination $destFirst -ErrorAction Stop
-    if ((Get-FileHash -LiteralPath $destFirst -Algorithm SHA256).Hash -ne $shaFirst) {
-        throw 'First batch staging SHA256 mismatch'
+    throw 'Python 3.13 not found; installation and code execution stopped'
+}
+$version = & $python @pyFlags -c 'import sys; print(".".join(map(str,sys.version_info[:3])))'
+if ($LASTEXITCODE -ne 0 -or !($version -match '^3\.13\.')) {
+    throw "Project requires Python 3.13; detected: $version"
+}
+$env:PYTHONPATH = $deps
+$env:TEMP = Join-Path $base 'temporary'
+$env:TMP = $env:TEMP
+$env:PYTHONDONTWRITEBYTECODE = '1'
+New-Item -ItemType Directory -Path $env:TEMP -Force | Out-Null
+
+# Immutable GitHub commit after the new Drive session implementation landed.
+# Script source is public code only, never private research data.
+$codeCommit = 'ecf1626c35a1b51fda7ce73a73e8db8b44c5d7a0'
+$baseUrl = "https://raw.githubusercontent.com/Dr-snai1/Pro_Adherence/$codeCommit"
+$names = @(
+    'wos_drive_session.py',
+    'wos_ui_export.py',
+    'wos_search_plan.py'
+)
+foreach ($name in $names) {
+    $dst = Join-Path $toolDir $name
+    if (!(Test-Path -LiteralPath $dst)) {
+        Invoke-WebRequest "$baseUrl/scripts/stage2/$name" -OutFile $dst -UseBasicParsing
     }
 }
-Write-Host 'First batch 1-500 SHA256 verified; will NOT export it again.'
-$helper = Join-Path $base 'wos_ui_export.py'
-if (!(Test-Path -LiteralPath $helper)) {
-    Invoke-WebRequest -Uri $codeUrl -OutFile $helper -UseBasicParsing
-}
+Copy-Item -LiteralPath $PSCommandPath -Destination (Join-Path $toolDir 'start_wos_export_windows.ps1') -Force
+
 if (!(Test-Path -LiteralPath (Join-Path $deps 'playwright\__init__.py'))) {
-    & $pythonExe @pythonArgs -m pip install --no-cache-dir --disable-pip-version-check --target $deps 'playwright==1.55.0'
-    if ($LASTEXITCODE -ne 0) { throw 'Playwright installation failed: Python pip may be unavailable' }
+    & $python @pyFlags -m pip install --disable-pip-version-check --no-cache-dir --target $deps 'playwright==1.55.0'
+    if ($LASTEXITCODE -ne 0) { throw 'Playwright installation failed' }
 }
-$max = 1
-if ($All) { $max = 0 }
-Write-Host "Local staging (temporary; NOT Google Drive): $base"
-Write-Host "Now launching Chrome. Sign in and open the FULL 180-term WoS results (30,635 English Articles), then press Enter in the console."
-Write-Host "Trial new export: records 501-1000; -All = remaining records 501-30635."
-& $pythonExe @pythonArgs $helper --total 30635 --output $base --max-batches $max --authorized-export
-if ($LASTEXITCODE -ne 0) { throw "WoS exporter stopped with exit $LASTEXITCODE; do not repeat 1-500" }
-Write-Host "WOS_BATCH_SESSION_FINISHED. Temporary download: $base\exports"
-Write-Host 'IMPORTANT: New batches are NOT YET on Google Drive. Upload each completed batch to the project private Drive before deletion from staging.'
+Write-Host "Using authorized temporary C: folder: $base"
+Write-Host "Project private Drive: https://drive.google.com/drive/folders/$folderId"
+Write-Host 'The first 500 records are already archived. Script starts at 501.'
+Write-Host 'IMPORTANT: files remain on C: until Drive upload and independent remote verification.'
+& $python @pyFlags (Join-Path $toolDir 'wos_drive_session.py')
+if ($LASTEXITCODE -ne 0) {
+    throw "Export/upload stopped. Preserve C: files and console message; exit $LASTEXITCODE."
+}
+Write-Host 'WoS source batches and final manifest/scripts uploaded via Google Drive UI.'
+Write-Host 'CLEANUP PROHIBITED until independent Drive checks match SHA256 manifest.'
