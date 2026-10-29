@@ -80,6 +80,52 @@ class DriveArchivePlanTests(unittest.TestCase):
                 with self.assertRaises(runner.ExportError):
                     runner.preflight_wos(MockPage(page.url, bad))
 
+    def test_wos_hostname_is_already_valid_without_www(self):
+        # Screenshot uses bare webofscience.com. It is NOT the failure cause.
+        self.assertIsNotNone(
+            runner.SAFE_HOST.match("https://webofscience.com/wos/woscc/smart-search"))
+        self.assertIsNotNone(
+            runner.SAFE_HOST.match("https://www.webofscience.com/wos/woscc/summary/123"))
+
+    def test_find_real_result_tab_not_brunel_or_smart_search(self):
+        text = ("30,635 results from Web of Science Core Collection\n"
+                "Document Types: Article\nLanguages: English\n")
+        pages = [
+            MockPage("https://libguides.brunel.ac.uk/az/databases?a=w", "Library"),
+            MockPage("https://webofscience.com/wos/woscc/smart-search",
+                     "Your trusted path to discovery"),
+            MockPage("https://webofscience.com/wos/woscc/summary/test", text),
+        ]
+        page, failures = runner.choose_wos_results_page(pages)
+        self.assertIs(page, pages[2])
+        self.assertTrue(any("Expected 30,635" in x for x in failures))
+
+    def test_early_enter_never_exits_or_starts_an_export(self):
+        class Context:
+            pages = [MockPage("https://webofscience.com/wos/woscc/smart-search",
+                              "Your trusted path to discovery")]
+
+        calls = []
+        def user_input(prompt):
+            calls.append(prompt)
+            Context.pages[0].url = "https://webofscience.com/wos/woscc/summary/test"
+            Context.pages[0].text = (
+                "30,635 results from Web of Science Core Collection\n"
+                "Document Types: Article\nLanguages: English\n")
+            return ""
+        page = runner.wait_for_wos_results(Context(), input_fn=user_input,
+                                           output_fn=lambda x: None)
+        self.assertIs(page, Context.pages[0])
+        self.assertEqual(len(calls), 1)
+
+    def test_no_results_tabs_can_exit_without_any_export(self):
+        class Context:
+            pages = [MockPage("https://libguides.brunel.ac.uk/az/databases?a=w",
+                              "A-Z Databases")]
+        with self.assertRaisesRegex(runner.ExportError, "stopped"):
+            runner.wait_for_wos_results(Context(), input_fn=lambda _: "Q",
+                                        output_fn=lambda _: None)
+
     def test_single_zip_for_normal_chrome_contains_only_selected_files(self):
         with tempfile.TemporaryDirectory() as temp:
             d = Path(temp) / "DELIVER_TO_PRIVATE_GOOGLE_DRIVE"
