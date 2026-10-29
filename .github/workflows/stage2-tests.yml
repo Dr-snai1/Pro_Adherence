@@ -1,0 +1,33 @@
+name: Stage 2 focused offline ingestion tests
+
+on:
+  push:
+    branches:
+      - "stage2/**"
+    paths:
+      - "src/pro_adherence/stage2_sources.py"
+      - "tests/test_stage2_sources.py"
+      - "docs/STAGE2_MULTI_SOURCE_INGESTION.md"
+      - ".github/workflows/stage2-tests.yml"
+  pull_request:
+    paths:
+      - "src/pro_adherence/stage2_sources.py"
+      - "tests/test_stage2_sources.py"
+      - "docs/STAGE2_MULTI_SOURCE_INGESTION.md"
+      - ".github/workflows/stage2-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  offline-stage2:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Run only Stage 2 synthetic offline tests
+        env:
+          PYTHONPATH: src
+        run: python -m unittest discover -s tests -p 'test_stage2_sources.py' -v
