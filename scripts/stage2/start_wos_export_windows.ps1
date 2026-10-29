@@ -7,6 +7,12 @@ Working files use the standard per-user local app-data folder; project evidence 
 #>
 param([switch]$All)
 
+# Disabled by project owner instruction: NO local working files and NO guessed paths.
+# Current implementation necessarily stages downloads on a local filesystem.
+# Replace with a verified direct-to-private-Google-Drive workflow only after
+# agreeing to the required authorization/access method with the owner.
+throw 'DISABLED: local staging violates owner requirement. Do not use this launcher.'
+
 $ErrorActionPreference = 'Stop'
 $appData = if ($env:LOCALAPPDATA) { $env:LOCALAPPDATA } else { $env:TEMP }
 if (-not $appData) { throw 'Cannot find a per-user temporary working folder' }
