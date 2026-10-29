@@ -180,10 +180,16 @@ def run(output: Path, *, max_batches=0, delay_seconds=12.0):
             headless=False, accept_downloads=True)
         try:
             wos = context.pages[0] if context.pages else context.new_page()
-            wos.goto("https://www.webofscience.com/wos/woscc/basic-search",
+            # Institutional authentication via Brunel University Library,
+            # not the direct Clarivate personal-account sign-in form.
+            wos.goto("https://libguides.brunel.ac.uk/az/databases?a=w",
                      wait_until="domcontentloaded", timeout=90000)
-            print("ONLY WoS will open in Playwright; do NOT sign into Google here.")
-            print("In this browser, open the full WoS 180-term result page (30,635; Article+English).")
+            print("IN THIS automated Chrome: Brunel Library A-Z databases page.")
+            print("Type 'Web of Science' in Database Title / Keyword, click Search,")
+            print("then Web of Science. Use Brunel Sign In if university login is requested.")
+            print("DO NOT enter personal credentials into a direct Clarivate sign-in")
+            print("and do NOT sign into Google inside this automated Chrome.")
+            print("Once WoS opens, use the full 180-term result page (30,635; Article+English).")
             print("Press Enter ONLY when you see the actual WoS results (not a sign-in page).")
             input("WoS results ready? Press Enter (or Ctrl+C to stop): ")
             # The user may have opened the results in another tab while signing
