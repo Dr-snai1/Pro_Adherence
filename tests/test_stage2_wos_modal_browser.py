@@ -122,6 +122,45 @@ class TestWosModalLiveDom(unittest.TestCase):
             finally:
                 browser.close()
 
+    def test_onetrust_then_full_500_record_download_and_integrity(self):
+        from playwright.sync_api import sync_playwright
+        import tempfile
+        with sync_playwright() as driver:
+            browser = driver.chromium.launch(headless=True)
+            try:
+                page = browser.new_page(accept_downloads=True)
+                page.set_content(HTML.replace('<button id="mainExport"', ONETRUST_OVERLAY
+                                              + '<button id="mainExport"'))
+                # Synthetic tagged WoS data only; no real licensed records.
+                raw = ("FN Clarivate Analytics Web of Science\nVR 1.0\n"
+                       + "".join(f"PT J\nNR 0\nUT WOS:{n:010d}\nER\n"
+                                 for n in range(501, 1001))
+                       + "EF\n")
+                page.evaluate("""payload => {
+                    document.querySelector('#confirmExport')
+                        .addEventListener('click', () => {
+                            const blob = new Blob([payload], {type: 'text/plain'});
+                            const anchor = document.createElement('a');
+                            anchor.href = URL.createObjectURL(blob);
+                            anchor.download = 'savedrecs.txt';
+                            anchor.click();
+                        });
+                }""", raw)
+                modal = wos.open_modal(page)
+                wos.fill_range(modal, 501, 1000)
+                wos.select_record_content(page, modal)
+                with page.expect_download(timeout=10000) as item:
+                    modal.get_by_role("button", name="Export").click()
+                with tempfile.TemporaryDirectory() as tmp:
+                    dest = Path(tmp) / "wos_000501_001000.txt"
+                    item.value.save_as(dest)
+                    report = wos.audit_export(dest.read_bytes(), 500)
+                    self.assertEqual(report["records"], 500)
+                    self.assertEqual(report["nr_anomaly_count"], 0)
+                    self.assertEqual(len(set(report["uids"])), 500)
+            finally:
+                browser.close()
+
     def test_owner_choice_when_onetrust_does_not_offer_reject(self):
         from playwright.sync_api import sync_playwright
         with sync_playwright() as driver:
