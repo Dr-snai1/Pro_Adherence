@@ -264,13 +264,13 @@ def run(output: Path, *, max_batches=0, delay_seconds=12.0):
                 if dest.exists():
                     audit = audit_export(dest.read_bytes(), end - start + 1)
                 else:
-                    modal = open_modal(wos)
-                    fill_range(modal, start, end)
-                    select_record_content(wos, modal)
-                    btn = modal.get_by_role("button", name=re.compile(r"^Export$", re.I))
-                    if not visible(btn):
-                        raise ExportError("Export button in WoS dialog not found")
                     try:
+                        modal = open_modal(wos)
+                        fill_range(modal, start, end)
+                        select_record_content(wos, modal)
+                        btn = modal.get_by_role("button", name=re.compile(r"^Export$", re.I))
+                        if not visible(btn):
+                            raise ExportError("Export button in WoS dialog not found")
                         with wos.expect_download(timeout=180000) as item:
                             btn.first.click(timeout=20000)
                         download = item.value
@@ -280,8 +280,18 @@ def run(output: Path, *, max_batches=0, delay_seconds=12.0):
                         download.save_as(str(pending))
                         audit = audit_export(pending.read_bytes(), end - start + 1)
                         pending.replace(dest)
-                    except Exception:
-                        raise ExportError(f"WoS download {start}-{end} failed; no Drive upload")
+                    except Exception as exc:
+                        # Keep one diagnostic image on authorized C: only.
+                        # No screenshot or private export goes to GitHub.
+                        diagnostic = output / "LAST_WOS_EXPORT_UI_ERROR.png"
+                        try:
+                            wos.screenshot(path=str(diagnostic), full_page=False, timeout=10000)
+                            hint = f" UI screenshot saved: {diagnostic}"
+                        except Exception:
+                            hint = " UI screenshot unavailable"
+                        raise ExportError(
+                            f"Stopped {start}-{end} without marking batch complete: "
+                            f"{exc}.{hint}") from exc
                 if seen.intersection(audit["uids"]):
                     raise ExportError(f"WoS UT overlap in {start}-{end}; stop")
                 seen.update(audit["uids"])
