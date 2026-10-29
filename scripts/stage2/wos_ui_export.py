@@ -49,10 +49,12 @@ def audit_export(raw: bytes, expected_count: int) -> dict:
         raise ExportError("WoS export must terminate with EF")
     counts = {"records": 0, "refs": 0}
     ids = []
+    reference_count_anomalies = []
     in_record = False
     refs_in_record = 0
     declared = None
     last_tag = None
+    current_uid = None
     for line in lines[2:]:
         if line.startswith("PT "):
             if in_record:
@@ -61,10 +63,20 @@ def audit_export(raw: bytes, expected_count: int) -> dict:
             counts["records"] += 1
             refs_in_record = 0
             declared = None
+            current_uid = None
             last_tag = "PT"
         elif line == "ER":
-            if not in_record or declared is None or declared != refs_in_record:
-                raise ExportError("Incomplete record or cited-reference NR/CR mismatch")
+            if not in_record or declared is None or current_uid is None:
+                raise ExportError("Incomplete record; UT or NR missing")
+            if declared != refs_in_record:
+                # Real WoS export can report NR greater than actual CR lines.
+                # This MUST remain an explicit, per-record integrity anomaly.
+                # Do not invent missing cited references or discard 500 valid UTs.
+                reference_count_anomalies.append({
+                    "record_ordinal": counts["records"], "uid": current_uid,
+                    "nr_declared": declared, "cr_exported": refs_in_record,
+                    "shortfall": declared - refs_in_record,
+                })
             in_record = False
             last_tag = None
         elif line == "EF":
@@ -84,7 +96,8 @@ def audit_export(raw: bytes, expected_count: int) -> dict:
                 if len(line) >= 3 and line[2] == " ":
                     last_tag = line[:2]
             if line.startswith("UT "):
-                ids.append(line[3:].strip())
+                current_uid = line[3:].strip()
+                ids.append(current_uid)
     if counts["records"] != expected_count:
         raise ExportError(f"Expected {expected_count} records, found {counts['records']}")
     if len(ids) != expected_count or len(set(ids)) != expected_count:
@@ -92,6 +105,8 @@ def audit_export(raw: bytes, expected_count: int) -> dict:
     if not all(i.startswith("WOS:") for i in ids):
         raise ExportError("Malformed source-native UT identifier")
     return {"records": counts["records"], "cited_references": counts["refs"],
+            "nr_anomaly_count": len(reference_count_anomalies),
+            "nr_anomalies": reference_count_anomalies,
             "first_uid": ids[0], "last_uid": ids[-1], "uids": ids,
             "size_bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
 
@@ -278,7 +293,8 @@ def run_live(args):
                 state["files"].append(row)
                 report.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
                 count_done += 1
-                print(f"PASS {target.name}: {row['records']} records, {row['cited_references']} cited references, SHA {row['sha256']}")
+                status = "NR_DISCREPANCY_REVIEW" if row["nr_anomaly_count"] else "NR_MATCH"
+                print(f"PASS_RECORDS {target.name}: {row['records']} records, {row['cited_references']} cited refs, {status}={row['nr_anomaly_count']}, SHA {row['sha256']}")
                 if count_done == 1:
                     input("CHECK first downloaded file and UI; press Enter to continue or Ctrl+C to stop... ")
                 time.sleep(args.delay_seconds)
