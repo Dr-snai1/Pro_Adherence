@@ -45,7 +45,7 @@ New-Item -ItemType Directory -Path $env:TEMP -Force | Out-Null
 
 # Immutable GitHub commit after the new Drive session implementation landed.
 # Script source is public code only, never private research data.
-$codeCommit = 'ecf1626c35a1b51fda7ce73a73e8db8b44c5d7a0'
+$codeCommit = 'fb0feac14732c63b4cde94d76cb1ed13e0462b84'
 $baseUrl = "https://raw.githubusercontent.com/Dr-snai1/Pro_Adherence/$codeCommit"
 $names = @(
     'wos_drive_session.py',
