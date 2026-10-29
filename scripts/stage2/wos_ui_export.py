@@ -207,13 +207,27 @@ def run_live(args):
             if not SAFE_HOST.match(page.url) or "/wos/woscc/" not in page.url:
                 raise ExportError("Current browser page is not WoS Core Collection")
             state["query_url"] = page.url
-            if not re.search(r"(\d{1,3}(?:,\d{3})+|\d+) results? from Web of Science", page.locator("body").inner_text(), re.I):
-                print("CAUTION: cannot independently read total count from page; verify --total manually.")
+            page_text = page.locator("body").inner_text()
+            counts = re.findall(r"([\d,]+) results? from Web of Science", page_text, re.I)
+            if not counts:
+                raise ExportError("WoS result count not visible; do not guess --total")
+            actual_count = int(counts[0].replace(",", ""))
+            if actual_count != args.total:
+                raise ExportError(f"WoS page has {actual_count}, expected --total {args.total}")
+            if not re.search(r"Document Types:\s*Article\b", page_text, re.I):
+                raise ExportError("Document Types: Article refinement is missing")
+            if not re.search(r"Languages:\s*English\b", page_text, re.I):
+                raise ExportError("Languages: English refinement is missing")
+            print(f"REFINED_SEARCH_PREFLIGHT_PASS count={actual_count} English=on Article=on")
+            seen_uids = set()
             count_done = 0
             for start, end in ranges(args.total, args.batch_size):
                 target = batch_dir / f"wos_{start:06d}_{end:06d}.txt"
                 if target.exists():
                     audit = audit_export(target.read_bytes(), end - start + 1)
+                    if seen_uids.intersection(audit["uids"]):
+                        raise ExportError("Duplicate WoS UT across existing batches")
+                    seen_uids.update(audit["uids"])
                     if not any(row["filename"] == target.name for row in state["files"]):
                         row = {k: v for k, v in audit.items() if k != "uids"}
                         row.update({"range_start": start, "range_end": end, "filename": target.name})
@@ -239,6 +253,9 @@ def run_live(args):
                     staging = target.with_suffix(".partial")
                     dl.save_as(staging)
                     audit = audit_export(staging.read_bytes(), end - start + 1)
+                    if seen_uids.intersection(audit["uids"]):
+                        raise ExportError("Duplicate WoS UT across batches; abort without promotion")
+                    seen_uids.update(audit["uids"])
                     staging.replace(target)
                 except Exception as exc:
                     snapshot = output / f"FAILED_{start:06d}_{end:06d}.png"
