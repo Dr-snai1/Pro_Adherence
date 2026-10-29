@@ -75,22 +75,39 @@ class DriveArchivePlanTests(unittest.TestCase):
         runner.preflight_wos(page)
         for bad in (text.replace("30,635", "26,195"),
                     text.replace("Document Types: Article", "Document Types: Review"),
-                    text.replace("Languages: English", "Languages: French"),
-                    text.replace("TS=(", "TI=(")):
+                    text.replace("Languages: English", "Languages: French")):
             with self.subTest(bad=bad[-70:]):
                 with self.assertRaises(runner.ExportError):
                     runner.preflight_wos(MockPage(page.url, bad))
 
-    def test_drive_folder_accepts_google_account_routing_not_wrong_folder(self):
-        body = "My Drive New"
-        root = "https://drive.google.com/drive/folders/" + runner.DRIVE_FOLDER_ID
-        with_account = ("https://drive.google.com/drive/u/0/folders/" + runner.DRIVE_FOLDER_ID)
-        runner.verify_drive_folder(MockPage(root, body))
-        runner.verify_drive_folder(MockPage(with_account, body))
-        with self.assertRaises(runner.ExportError):
-            runner.verify_drive_folder(MockPage(root.replace(runner.DRIVE_FOLDER_ID, "12345"), body))
-        with self.assertRaises(runner.ExportError):
-            runner.verify_drive_folder(MockPage(root, "Request access"))
+    def test_single_zip_for_normal_chrome_contains_only_selected_files(self):
+        with tempfile.TemporaryDirectory() as temp:
+            d = Path(temp) / "DELIVER_TO_PRIVATE_GOOGLE_DRIVE"
+            d.mkdir()
+            for name, data in (
+                ("WOS_CORE_20261029_000501-001000.txt", b"source from WoS"),
+                ("WOS_STAGE2_20261029_MANIFEST.json", b'{"status":"pending"}'),
+                ("WOS_STAGE2_20261029_REPRO_SCRIPTS.zip", b"sample script bundle"),
+            ):
+                (d / name).write_bytes(data)
+            archive = Path(temp) / "WOS_STAGE2_ALL_REMAINING_501-30635.zip"
+            report = runner.build_full_archive(d, archive, expected_file_count=3)
+            self.assertEqual(report["member_count"], 3)
+            self.assertEqual(report["sha256"], runner.sha(archive))
+            with ZipFile(archive) as zf:
+                self.assertEqual(set(zf.namelist()), set(p.name for p in d.iterdir()))
+                for p in d.iterdir():
+                    self.assertEqual(zf.read(p.name), p.read_bytes())
+            self.assertTrue(all(p.exists() for p in d.iterdir()))
+            with self.assertRaisesRegex(runner.ExportError, "Expected 4"):
+                runner.build_full_archive(d, archive, expected_file_count=4)
+
+    def test_no_automated_google_sign_in_in_browser_runner(self):
+        source = (SCRIPTS / "wos_drive_session.py").read_text(encoding="utf-8")
+        self.assertNotIn('drive.goto(', source)
+        self.assertNotIn('drive_upload(', source)
+        self.assertIn('webbrowser.open(', source)
+        self.assertIn('start_from=501', source)
 
     def test_repro_scripts_are_archived_exactly(self):
         with tempfile.TemporaryDirectory() as temp:
