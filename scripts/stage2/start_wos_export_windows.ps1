@@ -1,10 +1,12 @@
 #Requires -Version 5.1
 <#
-Pro_Adherence Stage2 WoS: upload 501..30635 via native Chrome UI to owner-only
-project Google Drive, retaining C: fallback until independent Drive verification.
+Pro_Adherence Stage2: 501..30635 WoS batch export, one verified ZIP
+for private Google Drive. Google sign-in is NEVER attempted in Playwright.
+Owner uploads ONE ZIP using ordinary signed-in Chrome after the batch run.
 
 No USB/D: writes, no re-export of 1..500, no arbitrary locations.
-Outputs: raw WoS TXT batches, SHA/UT/NR manifest, exact reproducibility script ZIP.
+Outputs: one all-batches ZIP containing 61 raw TXT, SHA/UT/NR manifest, exact scripts.
+The original first 500 are ALREADY in owner-only Drive; do not duplicate them.
 DO NOT delete C: staging until 03 has verified remote bytes and IDs.
 #>
 param([switch]$PreflightOnly)
@@ -55,7 +57,7 @@ New-Item -ItemType Directory -Path $env:TEMP -Force | Out-Null
 
 # Immutable GitHub commit after the new Drive session implementation landed.
 # Script source is public code only, never private research data.
-$codeCommit = '90d1e47f06f2bef9d0f850e72c44e0bbaa866bcd'
+$codeCommit = 'ddcfff563aff992c791244e57c1d41c8ef0e037b'
 $baseUrl = "https://raw.githubusercontent.com/Dr-snai1/Pro_Adherence/$codeCommit"
 $names = @(
     'wos_drive_session.py',
@@ -64,16 +66,14 @@ $names = @(
 )
 foreach ($name in $names) {
     $dst = Join-Path $toolDir $name
-    if (!(Test-Path -LiteralPath $dst)) {
-        Invoke-WebRequest "$baseUrl/scripts/stage2/$name" -OutFile $dst -UseBasicParsing
-    }
+    # Always fetch this immutable code revision. Cached previous Python had
+    # broken Google automation and MUST NEVER run again.
+    Invoke-WebRequest "$baseUrl/scripts/stage2/$name" -OutFile $dst -UseBasicParsing
 }
 # Immutable frozen scientific source used by the WoS search planner.
 $configName = 'medication-adherence-SELECTED.v1.json'
 $configPath = Join-Path $toolDir $configName
-if (!(Test-Path -LiteralPath $configPath)) {
-    Invoke-WebRequest "$baseUrl/configs/pubmed/$configName" -OutFile $configPath -UseBasicParsing
-}
+Invoke-WebRequest "$baseUrl/configs/pubmed/$configName" -OutFile $configPath -UseBasicParsing
 $selfInBundle = Join-Path $toolDir 'start_wos_export_windows.ps1'
 if ([System.IO.Path]::GetFullPath($PSCommandPath) -ine [System.IO.Path]::GetFullPath($selfInBundle)) {
     Copy-Item -LiteralPath $PSCommandPath -Destination $selfInBundle -Force
@@ -86,10 +86,12 @@ if (!(Test-Path -LiteralPath (Join-Path $deps 'playwright\__init__.py'))) {
 Write-Host "Using authorized temporary C: folder: $base"
 Write-Host "Project private Drive: https://drive.google.com/drive/folders/$folderId"
 Write-Host 'The first 500 records are already archived. Script starts at 501.'
-Write-Host 'IMPORTANT: files remain on C: until Drive upload and independent remote verification.'
+Write-Host 'Google sign-in in automated Chrome is blocked. Only sign in to WoS there.'
+Write-Host 'Final results+manifest+scripts will be packed into ONE ZIP on C:.'
+Write-Host 'Then use your NORMAL Chrome to upload that ZIP into the project Google Drive.'
 & $python @pyFlags (Join-Path $toolDir 'wos_drive_session.py')
 if ($LASTEXITCODE -ne 0) {
     throw "Export/upload stopped. Preserve C: files and console message; exit $LASTEXITCODE."
 }
-Write-Host 'WoS source batches and final manifest/scripts uploaded via Google Drive UI.'
+Write-Host 'Archive is prepared on C: for one manual Google Drive upload in normal Chrome; NOT uploaded yet.'
 Write-Host 'CLEANUP PROHIBITED until independent Drive checks match SHA256 manifest.'
