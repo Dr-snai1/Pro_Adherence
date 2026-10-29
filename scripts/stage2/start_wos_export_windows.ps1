@@ -45,7 +45,7 @@ New-Item -ItemType Directory -Path $env:TEMP -Force | Out-Null
 
 # Immutable GitHub commit after the new Drive session implementation landed.
 # Script source is public code only, never private research data.
-$codeCommit = 'fb0feac14732c63b4cde94d76cb1ed13e0462b84'
+$codeCommit = '31feca64c82e4dd932add82efc590f3401c5eac6'
 $baseUrl = "https://raw.githubusercontent.com/Dr-snai1/Pro_Adherence/$codeCommit"
 $names = @(
     'wos_drive_session.py',
@@ -57,6 +57,12 @@ foreach ($name in $names) {
     if (!(Test-Path -LiteralPath $dst)) {
         Invoke-WebRequest "$baseUrl/scripts/stage2/$name" -OutFile $dst -UseBasicParsing
     }
+}
+# Immutable frozen scientific source used by the WoS search planner.
+$configName = 'medication-adherence-SELECTED.v1.json'
+$configPath = Join-Path $toolDir $configName
+if (!(Test-Path -LiteralPath $configPath)) {
+    Invoke-WebRequest "$baseUrl/configs/pubmed/$configName" -OutFile $configPath -UseBasicParsing
 }
 Copy-Item -LiteralPath $PSCommandPath -Destination (Join-Path $toolDir 'start_wos_export_windows.ps1') -Force
 
