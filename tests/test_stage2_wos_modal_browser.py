@@ -46,6 +46,37 @@ HTML = """
 """
 
 
+# Reproduces the owner's actual Playwright trace:
+# #onetrust-consent-sdk .onetrust-pc-dark-filter intercepts Export clicks.
+ONETRUST_OVERLAY = """
+<div id="onetrust-consent-sdk">
+ <div class="onetrust-pc-dark-filter" style="
+  position:fixed;inset:0;z-index:998;background:rgba(0,0,0,.5)"></div>
+ <div id="onetrust-pc-sdk" style="
+  position:fixed;left:10%;top:20%;width:80%;padding:30px;
+  z-index:999;background:white">
+   <h2>Cookie Preferences</h2>
+   <button id="onetrust-reject-all-handler" onclick="
+     document.querySelector('#onetrust-consent-sdk').remove()">
+      Reject All</button>
+ </div>
+</div>
+"""
+
+ONETRUST_OWNER_CHOICE = """
+<div id="onetrust-consent-sdk">
+ <div class="onetrust-pc-dark-filter" style="
+  position:fixed;inset:0;z-index:998;background:rgba(0,0,0,.5)"></div>
+ <div id="onetrust-pc-sdk" style="
+  position:fixed;left:10%;top:20%;z-index:999;background:white;padding:20px">
+  <h2>Cookie Preferences</h2>
+  <button id="onetrust-accept-btn-handler" onclick="
+    document.querySelector('#onetrust-consent-sdk').remove()">Accept All</button>
+ </div>
+</div>
+"""
+
+
 @unittest.skipUnless(os.environ.get("WOS_MODAL_BROWSER_TEST") == "1",
                      "Set WOS_MODAL_BROWSER_TEST=1 for real Chromium smoke")
 class TestWosModalLiveDom(unittest.TestCase):
@@ -66,6 +97,68 @@ class TestWosModalLiveDom(unittest.TestCase):
                 self.assertEqual(modal.locator("select").input_value(),
                                  "Full Record and Cited References")
                 self.assertTrue(modal.get_by_role("button", name="Export").is_visible())
+            finally:
+                browser.close()
+
+    def test_real_onetrust_dark_filter_is_resolved_before_export(self):
+        from playwright.sync_api import sync_playwright, TimeoutError as BrowserTimeout
+        with sync_playwright() as driver:
+            browser = driver.chromium.launch(headless=True)
+            try:
+                page = browser.new_page()
+                page.set_content(HTML.replace('<button id="mainExport"', ONETRUST_OVERLAY
+                                              + '<button id="mainExport"'))
+                # Reproduce the owner's exact blocking symptom before fix.
+                with self.assertRaises(BrowserTimeout):
+                    page.locator("#mainExport").click(timeout=750)
+                modal = wos.open_modal(page)
+                self.assertEqual(modal.get_attribute("id"), "panel")
+                self.assertEqual(page.locator("#onetrust-consent-sdk").count(), 0)
+                wos.fill_range(modal, 501, 1000)
+                wos.select_record_content(page, modal)
+                self.assertEqual(modal.locator('input[type="number"]').nth(0).input_value(), "501")
+                self.assertEqual(modal.locator('input[type="number"]').nth(1).input_value(), "1000")
+                self.assertTrue(modal.get_by_role("button", name="Export").is_visible())
+            finally:
+                browser.close()
+
+    def test_owner_choice_when_onetrust_does_not_offer_reject(self):
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as driver:
+            browser = driver.chromium.launch(headless=True)
+            try:
+                page = browser.new_page()
+                page.set_content(HTML.replace('<button id="mainExport"', ONETRUST_OWNER_CHOICE
+                                              + '<button id="mainExport"'))
+                prompts = []
+                def owner_choice(question):
+                    prompts.append(question)
+                    self.assertTrue(page.locator(
+                        "#onetrust-consent-sdk .onetrust-pc-dark-filter").is_visible())
+                    # Only the owner chooses this visible site option.
+                    page.locator("#onetrust-accept-btn-handler").click()
+                    return ""
+                wos.resolve_cookie_consent(page, input_fn=owner_choice,
+                                           output_fn=lambda _: None)
+                self.assertEqual(len(prompts), 1)
+                self.assertEqual(page.locator("#onetrust-consent-sdk").count(), 0)
+                modal = wos.open_modal(page)
+                self.assertEqual(modal.get_attribute("id"), "panel")
+            finally:
+                browser.close()
+
+    def test_owner_can_stop_without_cookie_consent(self):
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as driver:
+            browser = driver.chromium.launch(headless=True)
+            try:
+                page = browser.new_page()
+                page.set_content(HTML.replace('<button id="mainExport"', ONETRUST_OWNER_CHOICE
+                                              + '<button id="mainExport"'))
+                with self.assertRaisesRegex(wos.ExportError, "cookie choice still pending"):
+                    wos.resolve_cookie_consent(page, input_fn=lambda _: "Q",
+                                               output_fn=lambda _: None)
+                self.assertFalse(page.locator("#panel").is_visible())
             finally:
                 browser.close()
 
