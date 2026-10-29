@@ -64,7 +64,7 @@ def manifest_default() -> dict:
         },
         "source_query_url": None,
         "new_batches": [],
-        "drive_receipt_status": "UPLOADED_IN_UI_NOT_YET_INDEPENDENTLY_REHASHED",
+        "drive_receipt_status": "UI_ONLY_RECEIPTS_PENDING_INDEPENDENT_READBACK",
         "all_files_public": False,
         "cleanup_allowed": False,
     }
@@ -104,7 +104,10 @@ def preflight_wos(page) -> None:
 
 
 def verify_drive_folder(page) -> None:
-    if not page.url.startswith("https://drive.google.com/drive/folders/" + DRIVE_FOLDER_ID):
+    if not re.match(
+        r"^https://drive\\.google\\.com/drive/(?:u/\\d+/)?folders/"
+        + re.escape(DRIVE_FOLDER_ID) + r"(?:[/?#]|$)", page.url, re.I
+    ):
         raise ExportError("Google Drive browser page is not the approved private folder")
     body = page.locator("body").inner_text(timeout=20000)
     if "Request access" in body or "Запросить доступ" in body:
@@ -230,10 +233,12 @@ def run(output: Path, *, max_batches=0, delay_seconds=12.0):
                         download = item.value
                         if not download.suggested_filename.lower().endswith(".txt"):
                             raise ExportError("WoS exported non-TXT payload")
-                        download.save_as(str(dest))
+                        pending = dest.with_suffix(".pending")
+                        download.save_as(str(pending))
+                        audit = audit_export(pending.read_bytes(), end - start + 1)
+                        pending.replace(dest)
                     except Exception:
                         raise ExportError(f"WoS download {start}-{end} failed; no Drive upload")
-                    audit = audit_export(dest.read_bytes(), end - start + 1)
                 if seen.intersection(audit["uids"]):
                     raise ExportError(f"WoS UT overlap in {start}-{end}; stop")
                 seen.update(audit["uids"])
