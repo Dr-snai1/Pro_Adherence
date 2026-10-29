@@ -196,6 +196,12 @@ def fill_range(modal, start: int, end: int):
 
 
 def run_live(args):
+    # Owner's explicit acquisition rule (2026-10-29): do NOT create temporary
+    # research export files on a local disk, or choose device/storage paths.
+    # This legacy Playwright implementation saves downloads on local storage;
+    # it MUST remain disabled until a verified direct-to-private-Drive method
+    # is implemented with owner-approved access and no local staging.
+    raise ExportError("DISABLED_LOCAL_STAGING: direct-to-private-Google-Drive implementation required")
     if not args.authorized_export:
         raise ExportError("Need --authorized-export: only run within your subscribed export rights")
     if args.delay_seconds < 8:
