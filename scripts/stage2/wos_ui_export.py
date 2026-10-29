@@ -113,11 +113,13 @@ def open_modal(page):
     if not visible(option):
         raise ExportError("Plain text file is not offered by this subscription/UI")
     option.first.click(timeout=15000)
-    modal = page.get_by_role("dialog")
+    modal = page.get_by_role("dialog").filter(
+        has_text=regex.compile(r"Export Records to Plain Text File", regex.I))
     if not visible(modal):
-        # Some WoS UI versions do not expose role=dialog.
+        # Some WoS UI versions do not expose role=dialog. Ground this
+        # fallback in the screenshot's exact modal title and input labels.
         modal = page.locator("[class*=modal], [class*=Modal], [role=alertdialog]")\
-                    .filter(has_text=regex.compile("Record (Options|Content)", regex.I))
+                    .filter(has_text=regex.compile("Export Records to Plain Text File", regex.I))
     if not visible(modal):
         raise ExportError("Cannot identify WoS export modal; request a screenshot")
     return modal.first
@@ -146,15 +148,21 @@ def select_record_content(page, modal):
 
 
 def fill_range(modal, start: int, end: int):
-    text = modal.get_by_text(re.compile(r"Records from", re.I))
-    if visible(text):
-        text.first.click()
+    """Screenshot-verified WoS export UI: All records on page vs Records from.
+
+    Select the range *radio*, not just its text. Never export page-only by
+    accident when requesting record indices outside the current page.
+    """
+    radios = modal.locator("input[type=radio]")
+    named_radio = modal.get_by_role("radio", name=re.compile(r"Records from", re.I))
+    if visible(named_radio):
+        named_radio.first.check()
+    elif radios.count() == 2:
+        radios.nth(1).check()
     else:
-        radios = modal.locator("input[type=radio]")
-        if radios.count() >= 2:
-            radios.last.check()
-        else:
-            raise ExportError("Cannot verify Records from range option")
+        raise ExportError("Cannot identify 'Records from' radio; stop before export")
+    if radios.count() == 2 and not radios.nth(1).is_checked():
+        raise ExportError("'Records from' radio not selected")
     # Input fields that can hold numeric ranges (radio inputs excluded).
     numeric = modal.locator('input[type="number"], input[inputmode="numeric"]')
     if numeric.count() < 2:
@@ -166,6 +174,10 @@ def fill_range(modal, start: int, end: int):
     numeric.nth(1).fill(str(end))
     if numeric.nth(0).input_value() != str(start) or numeric.nth(1).input_value() != str(end):
         raise ExportError("Range entry failed")
+    if (not numeric.nth(0).is_enabled()) or (not numeric.nth(1).is_enabled()):
+        raise ExportError("WoS range inputs disabled; range radio selection failed")
+    if (end - start + 1) > 500:
+        raise ExportError("WoS Full Record and Cited References export max is 500")
 
 
 def run_live(args):
