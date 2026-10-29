@@ -9,6 +9,9 @@ on:
       - "tests/test_stage2_sources.py"
       - "tests/test_stage2_wos_ui_export.py"
       - "scripts/stage2/wos_ui_export.py"
+      - "scripts/stage2/wos_search_plan.py"
+      - "tests/test_stage2_wos_search_plan.py"
+      - "configs/pubmed/medication-adherence-SELECTED.v1.json"
       - ".github/workflows/stage2-tests.yml"
   pull_request:
     paths:
@@ -16,6 +19,9 @@ on:
       - "tests/test_stage2_sources.py"
       - "tests/test_stage2_wos_ui_export.py"
       - "scripts/stage2/wos_ui_export.py"
+      - "scripts/stage2/wos_search_plan.py"
+      - "tests/test_stage2_wos_search_plan.py"
+      - "configs/pubmed/medication-adherence-SELECTED.v1.json"
       - ".github/workflows/stage2-tests.yml"
 
 permissions:
