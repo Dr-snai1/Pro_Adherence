@@ -57,7 +57,7 @@ New-Item -ItemType Directory -Path $env:TEMP -Force | Out-Null
 
 # Immutable GitHub commit after the new Drive session implementation landed.
 # Script source is public code only, never private research data.
-$codeCommit = '6e60d8cc70ed2495256874949f5f8caa6c792787'
+$codeCommit = 'd4ef1ff7faa9bc11113ba90dc8c72f2355242240'
 $baseUrl = "https://raw.githubusercontent.com/Dr-snai1/Pro_Adherence/$codeCommit"
 $names = @(
     'wos_drive_session.py',
@@ -90,6 +90,8 @@ Write-Host 'Automated Chrome opens Brunel Library; search Web of Science and use
 Write-Host 'IMPORTANT: Smart Search is NOT the required results page.'
 Write-Host 'Open the existing 30,635-result page in that Chrome (or paste its address into the console).'
 Write-Host 'Early Enter will now show open tabs and ask again, instead of stopping.'
+Write-Host 'If OneTrust cookie preferences block Export, the runner will reject OPTIONAL cookies via the site UI if offered.'
+Write-Host 'Otherwise choose your cookies in the visible Chrome dialog and press Enter in PowerShell.'
 Write-Host 'Do not enter a Clarivate personal login or sign into Google there.'
 Write-Host 'Final results+manifest+scripts will be packed into ONE ZIP on C:.'
 Write-Host 'Then use your NORMAL Chrome to upload that ZIP into the project Google Drive.'
