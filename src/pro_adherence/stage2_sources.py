@@ -194,23 +194,37 @@ def reconcile_sources(records: list[dict[str, Any]], omit_sources: set[str] | No
     groups: dict[int, list[dict[str, Any]]] = defaultdict(list)
     for i, r in enumerate(kept):
         groups[root(i)].append(r)
+    # Exact identifiers can be contradictory across disconnected components.
+    # An ambiguous DOI/PMID must neither give two articles the same canonical ID
+    # nor silently resolve a citation to whichever component was iterated last.
+    components = sorted(groups.values(), key=lambda xs: min(x["source_record_id"] for x in xs))
+    doi_owners: dict[str, int] = defaultdict(int)
+    pmid_owners: dict[str, int] = defaultdict(int)
+    for group in components:
+        for d in {x["doi"] for x in group if x.get("doi")}:
+            doi_owners[d] += 1
+        for p in {str(x["pmid"]) for x in group if x.get("pmid")}:
+            pmid_owners[p] += 1
     articles: list[dict[str, Any]] = []
     doi_to_article: dict[str, str] = {}
-    for group in sorted(groups.values(), key=lambda xs: min(x["source_record_id"] for x in xs)):
+    for group in components:
         source_ids = sorted(x["source_record_id"] for x in group)
         doi_set = {x["doi"] for x in group if x.get("doi")}
         pmid_set = {str(x["pmid"]) for x in group if x.get("pmid")}
-        token = ("doi:" + min(doi_set) if doi_set else
-                 "pmid:" + min(pmid_set) if pmid_set else
+        unique_dois = sorted(d for d in doi_set if doi_owners[d] == 1)
+        unique_pmids = sorted(p for p in pmid_set if pmid_owners[p] == 1)
+        token = ("doi:" + unique_dois[0] if unique_dois else
+                 "pmid:" + unique_pmids[0] if unique_pmids else
                  "source:" + source_ids[0])
         article_id = "article:" + sha256(token.encode("utf-8"))[:24]
         article = {"canonical_article_id": article_id, "source_record_ids": source_ids,
                    "source_ids": sorted({x["source_id"] for x in group}),
                    "doi": min(doi_set) if doi_set else None,
                    "pmid": min(pmid_set) if pmid_set else None,
+                   "ambiguous_doi": bool(doi_set and not unique_dois),
                    "identity_method": "exact_doi_or_pmid" if len(group) > 1 else "source_only"}
         articles.append(article)
-        for d in doi_set:
+        for d in unique_dois:
             doi_to_article[d] = article_id
     links: list[dict[str, Any]] = []
     unresolved = 0
