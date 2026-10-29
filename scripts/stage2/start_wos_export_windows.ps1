@@ -64,7 +64,10 @@ $configPath = Join-Path $toolDir $configName
 if (!(Test-Path -LiteralPath $configPath)) {
     Invoke-WebRequest "$baseUrl/configs/pubmed/$configName" -OutFile $configPath -UseBasicParsing
 }
-Copy-Item -LiteralPath $PSCommandPath -Destination (Join-Path $toolDir 'start_wos_export_windows.ps1') -Force
+$selfInBundle = Join-Path $toolDir 'start_wos_export_windows.ps1'
+if ([System.IO.Path]::GetFullPath($PSCommandPath) -ine [System.IO.Path]::GetFullPath($selfInBundle)) {
+    Copy-Item -LiteralPath $PSCommandPath -Destination $selfInBundle -Force
+}
 
 if (!(Test-Path -LiteralPath (Join-Path $deps 'playwright\__init__.py'))) {
     & $python @pyFlags -m pip install --disable-pip-version-check --no-cache-dir --target $deps 'playwright==1.55.0'
