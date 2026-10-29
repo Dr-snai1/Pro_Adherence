@@ -50,6 +50,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
       - name: Parse owner-approved Windows launcher (syntax only, NO execution)
         shell: pwsh
         run: |
@@ -61,3 +64,9 @@ jobs:
             exit 1
           }
           Write-Host "POWER_SHELL_SYNTAX_PASS (no WoS/Drive session started)"
+
+      - name: Execute Windows PowerShell 5.1 version preflight (NO WoS/Drive)
+        shell: pwsh
+        run: |
+          & "$env:WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PWD\scripts\stage2\start_wos_export_windows.ps1" -PreflightOnly
+          if ($LASTEXITCODE -ne 0) { throw "PowerShell 5.1 Python version preflight failed" }
