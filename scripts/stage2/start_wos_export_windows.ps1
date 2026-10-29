@@ -7,6 +7,7 @@ No USB/D: writes, no re-export of 1..500, no arbitrary locations.
 Outputs: raw WoS TXT batches, SHA/UT/NR manifest, exact reproducibility script ZIP.
 DO NOT delete C: staging until 03 has verified remote bytes and IDs.
 #>
+param([switch]$PreflightOnly)
 $ErrorActionPreference = 'Stop'
 $folderId = '1h9Y-wjhpl3gc1wog0VP_qPaCxBWoeVyV'
 $expectedTotal = 30635
@@ -42,6 +43,10 @@ if ($versionExit -ne 0 -or $versionText -notmatch '^Python 3\.13(?:\.\d+)?(?:\s|
     throw "Project requires Python 3.13; command: $python $($pyFlags -join ' '); status: $versionExit; output: $versionText"
 }
 Write-Host "PYTHON_VERSION_OK: $versionText"
+if ($PreflightOnly) {
+    Write-Host "PYTHON_PREFLIGHT_ONLY_PASS: no browser, internet, export or upload started"
+    return
+}
 $env:PYTHONPATH = $deps
 $env:TEMP = Join-Path $base 'temporary'
 $env:TMP = $env:TEMP
