@@ -217,6 +217,56 @@ class TestWosModalLiveDom(unittest.TestCase):
             finally:
                 browser.close()
 
+    def test_real_browser_recover_manual_export_dialog_without_restart(self):
+        from playwright.sync_api import sync_playwright
+        # Site menu click works but does not reveal the popup, as reported by
+        # owner. The owner can open it manually inside the SAME browser.
+        with sync_playwright() as driver:
+            browser = driver.chromium.launch(headless=True)
+            try:
+                page = browser.new_page()
+                broken = HTML.replace(
+                    "document.querySelector('#panel').style.display='block';",
+                    "document.querySelector('#panel').style.display='none';")
+                page.set_content(broken)
+                prompts = []
+                def choose_real_ui(prompt):
+                    prompts.append(prompt)
+                    self.assertFalse(page.locator("#panel").is_visible())
+                    page.locator("#panel").evaluate(
+                        "(el) => el.style.display='block'")
+                    return ""
+                panel = wos.open_modal(page, input_fn=choose_real_ui,
+                                       output_fn=lambda _: None)
+                self.assertEqual(len(prompts), 1)
+                self.assertEqual(panel.get_attribute("id"), "panel")
+                wos.fill_range(panel, 501, 1000)
+                wos.select_record_content(page, panel)
+                self.assertEqual(
+                    panel.locator('input[type="number"]').nth(0).input_value(),
+                    "501")
+                self.assertEqual(
+                    panel.locator('input[type="number"]').nth(1).input_value(),
+                    "1000")
+            finally:
+                browser.close()
+
+    def test_export_popup_without_title_uses_controls_not_heading(self):
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as driver:
+            browser = driver.chromium.launch(headless=True)
+            try:
+                page = browser.new_page()
+                page.set_content(HTML.replace(
+                    "<h1>Export Records to Plain Text File</h1>",
+                    "<h1>Save records</h1>").replace(
+                        'id="panel" style="display:none;', 'id="panel" style="display:block;'))
+                self.assertEqual(
+                    wos.locate_export_panel(page, timeout_ms=0).get_attribute("id"),
+                    "panel")
+            finally:
+                browser.close()
+
     def test_no_modal_without_required_controls(self):
         from playwright.sync_api import sync_playwright
         with sync_playwright() as driver:
@@ -226,8 +276,7 @@ class TestWosModalLiveDom(unittest.TestCase):
                 page.set_content(
                     "<h1>Export Records to Plain Text File</h1>"
                     "<p>Missing range controls and export button</p>")
-                with self.assertRaisesRegex(wos.ExportError, "not in one visible panel"):
-                    wos.locate_export_panel(page)
+                self.assertIsNone(wos.locate_export_panel(page, timeout_ms=0))
             finally:
                 browser.close()
 
