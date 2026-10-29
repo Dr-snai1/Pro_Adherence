@@ -33,10 +33,15 @@ if (Test-Path -LiteralPath $projectPython) {
 } else {
     throw 'Python 3.13 not found; installation and code execution stopped'
 }
-$version = & $python @pyFlags -c 'import sys; print(".".join(map(str,sys.version_info[:3])))'
-if ($LASTEXITCODE -ne 0 -or !($version -match '^3\.13\.')) {
-    throw "Project requires Python 3.13; detected: $version"
+# Windows PowerShell 5.1 can strip quotes in python -c; use a real CLI
+# version flag instead of passing a fragile Python expression through shells.
+$versionOutput = & $python @pyFlags --version 2>&1
+$versionExit = $LASTEXITCODE
+$versionText = ($versionOutput | Out-String).Trim()
+if ($versionExit -ne 0 -or $versionText -notmatch '^Python 3\.13(?:\.\d+)?(?:\s|$)') {
+    throw "Project requires Python 3.13; command: $python $($pyFlags -join ' '); status: $versionExit; output: $versionText"
 }
+Write-Host "PYTHON_VERSION_OK: $versionText"
 $env:PYTHONPATH = $deps
 $env:TEMP = Join-Path $base 'temporary'
 $env:TMP = $env:TEMP
