@@ -43,12 +43,25 @@ class BatchExportTests(unittest.TestCase):
         self.assertEqual(report["cited_references"], 2)
         self.assertEqual(report["sha256"], hashlib.sha256(FIXTURE).hexdigest())
         self.assertEqual(report["uids"], ["WOS:111", "WOS:222"])
+        self.assertEqual(report["nr_anomaly_count"], 0)
+        self.assertEqual(report["nr_anomalies"], [])
+
+    def test_real_world_nr_mismatch_retained_not_silenced(self):
+        # WoS sample 500/500 records can contain valid ER/UT but NR > CR.
+        # Preserve source file and report it instead of fabricating a citation.
+        report = wos.audit_export(FIXTURE.replace(b"NR 2", b"NR 3"), 2)
+        self.assertEqual(report["records"], 2)
+        self.assertEqual(report["cited_references"], 2)
+        self.assertEqual(report["nr_anomaly_count"], 1)
+        self.assertEqual(report["nr_anomalies"], [{
+            "record_ordinal": 1, "uid": "WOS:111", "nr_declared": 3,
+            "cr_exported": 2, "shortfall": 1,
+        }])
 
     def test_fail_closed_truncation_and_duplicate(self):
         for data, count in [
             (FIXTURE, 3),
             (FIXTURE.replace(b"EF\n", b""), 2),
-            (FIXTURE.replace(b"NR 2", b"NR 3"), 2),
             (FIXTURE.replace(b"WOS:222", b"WOS:111"), 2),
             (FIXTURE.replace(b"WOS:222", b"INVALID"), 2),
         ]:
