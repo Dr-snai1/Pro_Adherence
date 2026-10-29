@@ -7,13 +7,11 @@ on:
     paths:
       - "src/pro_adherence/stage2_sources.py"
       - "tests/test_stage2_sources.py"
-      - "docs/STAGE2_MULTI_SOURCE_INGESTION.md"
       - ".github/workflows/stage2-tests.yml"
   pull_request:
     paths:
       - "src/pro_adherence/stage2_sources.py"
       - "tests/test_stage2_sources.py"
-      - "docs/STAGE2_MULTI_SOURCE_INGESTION.md"
       - ".github/workflows/stage2-tests.yml"
 
 permissions:
