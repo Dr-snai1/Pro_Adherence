@@ -189,6 +189,41 @@ def export_ui_state(page):
     return found[:12]
 
 
+def resolve_cookie_consent(page, *, input_fn=input, output_fn=print):
+    """Resolve real OneTrust cookie UI *before* clicking WoS Export.
+
+    The owner's live Playwright trace identified
+    #onetrust-consent-sdk .onetrust-pc-dark-filter intercepting Export.
+    The owner chooses the normal visible OneTrust preference controls.
+    We never consent, suppress the overlay, or force clicks in their name.
+    """
+    sdk = page.locator("#onetrust-consent-sdk")
+    if sdk.count() == 0:
+        return
+    overlay = sdk.locator(".onetrust-pc-dark-filter")
+    banner = sdk.locator("#onetrust-banner-sdk")
+    preferences = sdk.locator("#onetrust-pc-sdk")
+
+    def blocked():
+        return visible(overlay) or visible(banner) or visible(preferences)
+
+    if not blocked():
+        return
+
+    # Cookie consent is a user preference. Do NOT choose Reject/Accept
+    # automatically; wait for the account holder to use the site controls.
+    # There is deliberately no force click, DOM removal or injection.
+    while blocked():
+        output_fn("COOKIE_CHOICE_REQUIRED: OneTrust is covering the WoS Export button.")
+        output_fn("In automated Chrome, choose Reject All or your preferred")
+        output_fn("cookie option in the visible OneTrust dialog. Do not click")
+        output_fn("through the dark overlay or enter account passwords here.")
+        answer = input_fn("After cookie dialog closes press Enter; Q to stop: ").strip().lower()
+        if answer in {"q", "quit", "stop", "выход"}:
+            raise ExportError("Stopped: OneTrust cookie choice still pending")
+    output_fn("ONETRUST_CLEARED: Export is no longer covered by cookie consent.")
+
+
 def open_modal(page, *, input_fn=input, output_fn=print):
     """Normal WoS menu, then manual recovery if the real popup differs.
 
