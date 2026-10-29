@@ -111,6 +111,14 @@ class TestWosModalLiveDom(unittest.TestCase):
                 # Reproduce the owner's exact blocking symptom before fix.
                 with self.assertRaises(BrowserTimeout):
                     page.locator("#mainExport").click(timeout=750)
+                choices = []
+                def owner_rejects(prompt):
+                    choices.append(prompt)
+                    page.locator("#onetrust-reject-all-handler").click()
+                    return ""
+                wos.resolve_cookie_consent(page, input_fn=owner_rejects,
+                                           output_fn=lambda _: None)
+                self.assertEqual(len(choices), 1)
                 modal = wos.open_modal(page)
                 self.assertEqual(modal.get_attribute("id"), "panel")
                 self.assertEqual(page.locator("#onetrust-consent-sdk").count(), 0)
@@ -146,6 +154,14 @@ class TestWosModalLiveDom(unittest.TestCase):
                             anchor.click();
                         });
                 }""", raw)
+                choices = []
+                def owner_rejects(prompt):
+                    choices.append(prompt)
+                    page.locator("#onetrust-reject-all-handler").click()
+                    return ""
+                wos.resolve_cookie_consent(page, input_fn=owner_rejects,
+                                           output_fn=lambda _: None)
+                self.assertEqual(len(choices), 1)
                 modal = wos.open_modal(page)
                 wos.fill_range(modal, 501, 1000)
                 wos.select_record_content(page, modal)
