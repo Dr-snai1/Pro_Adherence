@@ -116,8 +116,10 @@ def parse_pubmed_batch(raw: bytes, filename: str) -> list[dict]:
         if not pmid or not pmid.isdecimal():
             raise SourceFormatError("V05_MISSING_PMID")
         dois = {
-            normalize_doi(x.text) for x in node.findall(".//ArticleIdList/ArticleId")
-            if x.attrib.get("IdType") == "doi"
+            normalize_doi(x.text) for x in node.findall(
+                "./PubmedData/ArticleIdList/ArticleId" if family == "journal"
+                else "./PubmedBookData/ArticleIdList/ArticleId")
+            if x.attrib.get("IdType") == "doi" and x.text
         } - {None}
         if len(dois) > 1:
             raise SourceFormatError("V05_MULTIPLE_DOI")
