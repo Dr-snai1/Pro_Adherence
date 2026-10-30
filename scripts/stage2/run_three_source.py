@@ -11,6 +11,8 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pubmed-raw-dir", type=Path, required=True,
                         help="accepted V05 extracted stage1-v05-private/<run_id>/raw, 250 XML")
+    parser.add_argument("--pubmed-uid-file", type=Path, required=True,
+                        help="accepted V05 source pmids/SELECTED/union.txt with frozen SHA-256")
     parser.add_argument("--wos-first", type=Path, required=True,
                         help="original 000001-000500 tagged TXT")
     parser.add_argument("--wos-zip", type=Path, required=True,
@@ -20,7 +22,8 @@ def main(argv=None) -> int:
     parser.add_argument("--out", type=Path, required=True,
                         help="NEW EMPTY PRIVATE location; not a public Git checkout")
     args = parser.parse_args(argv)
-    records = load_sources(args.pubmed_raw_dir, args.wos_first, args.wos_zip, args.apa_ris)
+    records = load_sources(args.pubmed_raw_dir, args.wos_first, args.wos_zip, args.apa_ris,
+                           args.pubmed_uid_file)
     manifest = save_private_candidate(records, args.out)
     print("STAGE2_PRIVATE_PROVISIONAL_CANDIDATE",
           json.dumps({"source_record_count": manifest["source_record_count"],
