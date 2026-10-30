@@ -23,6 +23,7 @@ from pro_adherence.stage2_sources import (
 WOS_TXT_SHA = "3247ec52dabe2ab3a156df6b57bfdd38b4e0496861458e70d0de0f5fe59ce020"
 WOS_ZIP_SHA = "513e5837858801f72bc4063ca03cb482223b4b07a569276e1a1796cc1286d6bf"
 APA_SHA = "dfc9d2902459f068b5492e79d73ab57694a04647a56c2a2d7abd95e59c19a462"
+V05_UID_SHA = "bbb34a0b69872c235d897d844b0338be4aa06adf167e090ae73e0d7e3ddcfe2b"
 RIS_TAG = re.compile(r"^([A-Z0-9]{2})  - ?(.*)$")
 
 
@@ -157,7 +158,8 @@ def parse_pubmed_batch(raw: bytes, filename: str) -> list[dict]:
     return result
 
 
-def load_sources(pubmed_dir: Path, wos_first: Path, wos_zip: Path, apa_ris: Path) -> list[dict]:
+def load_sources(pubmed_dir: Path, wos_first: Path, wos_zip: Path, apa_ris: Path,
+                 pubmed_uid_file: Path) -> list[dict]:
     files = sorted(pubmed_dir.glob("*.xml"))
     if [f.name for f in files] != [f"{i:06}.xml" for i in range(1, 251)]:
         raise SourceFormatError("V05_ACCEPTED_250_BATCHES_REQUIRED")
@@ -168,6 +170,12 @@ def load_sources(pubmed_dir: Path, wos_first: Path, wos_zip: Path, apa_ris: Path
         raise SourceFormatError("V05_ACCEPTED_PMID_COUNT_MISMATCH")
     if Counter(r["record_family"] for r in records) != Counter({"journal": 49912, "book": 86}):
         raise SourceFormatError("V05_ACCEPTED_FAMILY_MISMATCH")
+    uid_bytes = pubmed_uid_file.read_bytes()
+    if digest(uid_bytes) != V05_UID_SHA:
+        raise SourceFormatError("V05_ACCEPTED_UID_SHA_MISMATCH")
+    uid_lines = [x.strip() for x in uid_bytes.decode("utf-8-sig").splitlines() if x.strip()]
+    if len(uid_lines) != 49998 or set(uid_lines) != {r["pmid"] for r in records}:
+        raise SourceFormatError("V05_SOURCE_UID_MEMBERSHIP_MISMATCH")
 
     text = wos_first.read_bytes()
     zipped = wos_zip.read_bytes()
