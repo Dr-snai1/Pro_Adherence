@@ -253,7 +253,10 @@ def reconcile_sources(records: list[dict[str, Any]], omit_sources: set[str] | No
         for p in {str(x["pmid"]) for x in group if x.get("pmid")}:
             pmid_owners[p] += 1
     articles: list[dict[str, Any]] = []
-    doi_to_article: dict[str, str] = {}
+    # Preserve every DOI owner, including intentionally unresolved conflicts.
+    # A DOI that labels multiple canonical groups is an ambiguous citation,
+    # never an ordinary unresolved reference and never an arbitrary target.
+    doi_to_articles: dict[str, list[str]] = defaultdict(list)
     for group in components:
         source_ids = sorted(x["source_record_id"] for x in group)
         doi_set = {x["doi"] for x in group if x.get("doi")}
@@ -271,21 +274,24 @@ def reconcile_sources(records: list[dict[str, Any]], omit_sources: set[str] | No
                    "ambiguous_doi": bool(doi_set and not unique_dois),
                    "identity_method": "exact_doi_or_pmid" if len(group) > 1 else "source_only"}
         articles.append(article)
-        for d in unique_dois:
-            doi_to_article[d] = article_id
+        for d in sorted(doi_set):
+            doi_to_articles[d].append(article_id)
     links: list[dict[str, Any]] = []
-    unresolved = 0
+    unresolved = ambiguous = 0
     for r in kept:
         for number, raw in enumerate(r.get("cited_references_raw") or [], 1):
             found = _DOI.search(raw)
             doi = normalize_doi(found.group() if found else None)
-            target = doi_to_article.get(doi) if doi else None
-            if not target:
-                unresolved += 1
+            candidates = doi_to_articles.get(doi, []) if doi else []
+            target = candidates[0] if len(candidates) == 1 else None
+            status = ("exact_doi" if len(candidates) == 1 else
+                      "ambiguous_doi" if len(candidates) > 1 else "unresolved")
+            unresolved += status == "unresolved"
+            ambiguous += status == "ambiguous_doi"
             links.append({"citing_source_record_id": r["source_record_id"],
                           "raw_reference_ordinal": number, "cited_article_id": target,
                           "external_target_doi": doi if not target else None,
-                          "resolution_method": "exact_doi" if target else "unresolved",
+                          "resolution_method": status,
                           "raw_evidence_pointer": {"export_sha256": r.get("raw_export_sha256"),
                                                   "record_ordinal": r.get("raw_record_ordinal"),
                                                   "reference_ordinal": number}})
@@ -295,6 +301,7 @@ def reconcile_sources(records: list[dict[str, Any]], omit_sources: set[str] | No
             "source_record_count": len(kept), "canonical_article_count": len(articles),
             "articles": articles, "citation_links": links,
             "unresolved_citation_count": unresolved,
+            "ambiguous_citation_count": ambiguous,
             "blocked_identity_pairs": sorted(list(blocked)),
             "identity_decisions": decisions,
             "public_promotion": False}
