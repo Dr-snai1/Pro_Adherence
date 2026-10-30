@@ -199,8 +199,11 @@ def load_sources(pubmed_dir: Path, wos_first: Path, wos_zip: Path, apa_ris: Path
     if (len(wos), len({r["source_native_id"] for r in wos}),
         sum(r["cited_references_count_anomaly"] for r in wos)) != (30635, 30635, 413):
         raise SourceFormatError("WOS_ACCEPTED_CENSUS_MISMATCH")
+    if sum(r["cited_references_declared"] - r["cited_references_exported"] for r in wos) != 584:
+        raise SourceFormatError("WOS_NR_CR_DELTA_MISMATCH")
     apa_records = parse_apa_ris(apa)
-    if len(apa_records) != 6878 or sum(r["retracted_article"] for r in apa_records) != 3:
+    if (len(apa_records) != 6878 or sum(r["retracted_article"] for r in apa_records) != 3
+        or sum(r["peer_review_unknown"] for r in apa_records) != 19):
         raise SourceFormatError("APA_ACCEPTED_CENSUS_MISMATCH")
     records.extend(apa_records)
     if len(records) != 87511:
