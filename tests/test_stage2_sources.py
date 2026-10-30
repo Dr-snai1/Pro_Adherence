@@ -196,5 +196,42 @@ class Stage2SourcesTests(unittest.TestCase):
         self.assertEqual(separated["merges"], [])
 
 
+    def test_r01_shared_doi_citation_is_ambiguous_not_unresolved(self):
+        # QA04 R-01 minimal reproduction. Same DOI belongs to TWO distinct
+        # canonical groups, so no target is selected and ambiguity is explicit.
+        rows = [
+            {"source_id": "pubmed", "source_record_id": "pubmed:101",
+             "source_native_id": "101", "doi": "10.1234/shared",
+             "pmid": "101", "record_family": "journal"},
+            {"source_id": "pubmed", "source_record_id": "pubmed:202",
+             "source_native_id": "202", "doi": "10.1234/shared",
+             "pmid": "202", "record_family": "journal"},
+            {"source_id": "woscc", "source_record_id": "woscc:WOS:303",
+             "source_native_id": "WOS:303", "doi": "10.1234/unique",
+             "record_family": "journal",
+             "cited_references_raw": [
+                 "Authors, DOI 10.1234/shared",
+                 "Authors, DOI 10.1234/unique",
+                 "Authors, DOI 10.1234/notfound",
+             ]},
+        ]
+        result = reconcile_sources(rows)
+        self.assertEqual(result["canonical_article_count"], 3)
+        links = result["citation_links"]
+        self.assertEqual(
+            [x["resolution_method"] for x in links],
+            ["ambiguous_doi", "exact_doi", "unresolved"])
+        self.assertEqual(result["ambiguous_citation_count"], 1)
+        self.assertEqual(result["unresolved_citation_count"], 1)
+        self.assertIsNone(links[0]["cited_article_id"])
+        self.assertEqual(links[0]["external_target_doi"], "10.1234/shared")
+        self.assertIsNotNone(links[1]["cited_article_id"])
+        self.assertIsNone(links[2]["cited_article_id"])
+        self.assertEqual(
+            [x["resolution_method"] for x in reconcile_sources(list(reversed(rows)))["citation_links"]],
+            ["ambiguous_doi", "exact_doi", "unresolved"])
+
+
+
 if __name__ == "__main__":
     unittest.main()
