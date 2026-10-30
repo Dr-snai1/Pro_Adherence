@@ -167,6 +167,20 @@ class Stage2SourcesTests(unittest.TestCase):
         with self.assertRaises(SourceFormatError):
             reconcile_sources([rec, dict(rec)])
 
+    def test_indexed_full_scale_safety_and_family_veto(self):
+        records = [synthetic("pubmed", str(i), doi=f"10.9999/{i}") for i in range(3000)]
+        records.append(synthetic("woscc", "WOS:match", doi="10.9999/10"))
+        records[10]["record_family"] = "journal"
+        records[-1]["record_family"] = "journal"
+        v = reconcile_sources(records)
+        self.assertEqual(v["source_record_count"], 3001)
+        self.assertEqual(v["canonical_article_count"], 3000)
+        self.assertTrue(any(d["action"] == "merge_exact_identifier" for d in v["identity_decisions"]))
+        records[-1]["record_family"] = "book"
+        v = reconcile_sources(records)
+        self.assertEqual(v["canonical_article_count"], 3001)
+        self.assertTrue(any(d["action"] == "ambiguous_key" for d in v["identity_decisions"]))
+
 
 if __name__ == "__main__":
     unittest.main()
