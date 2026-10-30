@@ -317,10 +317,12 @@ def resolution_version_delta(previous: dict[str, Any], current: dict[str, Any]) 
     return {
         "schema": "stage2-identity-version-delta/v1",
         "shared_source_record_count": len(shared),
-        "splits": sorted({"previous_id": old_id, "successor_ids": sorted(targets)}
-                         for old_id, targets in successors.items() if len(targets) > 1),
-        "merges": sorted({"current_id": new_id, "predecessor_ids": sorted(origins)}
-                         for new_id, origins in predecessors.items() if len(origins) > 1),
+        "splits": sorted(({"previous_id": old_id, "successor_ids": sorted(targets)}
+                          for old_id, targets in successors.items() if len(targets) > 1),
+                         key=lambda x: x["previous_id"]),
+        "merges": sorted(({"current_id": new_id, "predecessor_ids": sorted(origins)}
+                          for new_id, origins in predecessors.items() if len(origins) > 1),
+                         key=lambda x: x["current_id"]),
     }
 
 
