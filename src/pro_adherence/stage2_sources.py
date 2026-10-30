@@ -14,6 +14,9 @@ from typing import Any
 _SOURCE = "woscc"
 _TAG = re.compile(r"^([A-Z][A-Z0-9])(?: (.*))?$")
 _DOI = re.compile(r"10\.\d{4,9}/[^\s;,\]]+", re.IGNORECASE)
+# Reference-only DOI tokenization, pinned to the accepted research execution.
+# Closing XML/HTML delimiters are not part of a cited DOI.
+_REF_DOI = re.compile(r"10\.\d{4,9}/[^\s;,\]\}\>]+", re.IGNORECASE)
 _PMID = re.compile(r"^[1-9][0-9]*$")
 
 
@@ -280,7 +283,7 @@ def reconcile_sources(records: list[dict[str, Any]], omit_sources: set[str] | No
     unresolved = ambiguous = 0
     for r in kept:
         for number, raw in enumerate(r.get("cited_references_raw") or [], 1):
-            found = _DOI.search(raw)
+            found = _REF_DOI.search(raw)
             doi = normalize_doi(found.group() if found else None)
             candidates = doi_to_articles.get(doi, []) if doi else []
             target = candidates[0] if len(candidates) == 1 else None
