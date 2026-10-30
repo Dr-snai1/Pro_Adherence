@@ -1,39 +1,29 @@
-# Stage 2 · APA PsycINFO via Brunel / EBSCOhost — current acquisition prep
+# Stage 2 · APA PsycINFO / EBSCOhost — verified source acquisition contract
 
-**STATE: SOURCE-DERIVED SEARCH CANDIDATE; LIVE APA SEARCH AND EXPORT NOT YET EXECUTED.** Stage 2 OPEN. Do not promote to a validated query or start a full export until a small live test establishes database, field behavior, record type, permitted export volume, and preserved metadata.
+**CURRENT 2026-10-30: COMPLETE ORIGINAL RIS + SEARCH HISTORY VERIFIED.** Stage 2 OPEN for one integrated PubMed V05 + WoS + APA corpus. No re-export or user login is required for accepted APA source. This file supersedes obsolete pilot procedures.
 
-## Source lineage
-The immutable [PubMed SELECTED v1](https://github.com/Dr-snai1/Pro_Adherence/blob/cc2fca04057dd886968c250d64283940f81a4575/configs/pubmed/medication-adherence-SELECTED.v1.json) contains the 180 original lexical expressions in six blocks with counts **2 + 54 + 15 + 69 + 36 + 4**. The new [APA candidate generator](../../scripts/stage2/apa_psycinfo_search_plan.py) imports the existing audited [WoS source-lexicon extractor](../../scripts/stage2/wos_search_plan.py); it cannot modify the frozen PubMed source. Source/payload SHA256 and the exact generated queries are included in its manifest.
+## Exact search and frozen source
+- Database: APA PsycInfo only, via Brunel University / EBSCOhost Research Databases; search mode Proximity («Близость»).
+- Original immutable [PubMed SELECTED](https://github.com/Dr-snai1/Pro_Adherence/blob/cc2fca04057dd886968c250d64283940f81a4575/configs/pubmed/medication-adherence-SELECTED.v1.json): 180 distinct lexical terms in 6 blocks (2 + 54 + 15 + 69 + 36 + 4); no changes.
+- Actual search is full TI (all 180 original lexical terms OR) OR AB (all 180 original lexical terms OR), quoted multiword phrases. An extra KW sensitivity search exists but was NOT run as primary. [Offline deterministic generator](../../scripts/stage2/apa_psycinfo_search_plan.py), [full search document](https://docs.google.com/document/d/1jc7cSY18S-03Q5CjvUG-RR_s7gvcQvM55AXMmVvJ1zo/edit).
+- Limiters English, Document Type Journal Article; no equivalence with Publication Type All Journals or Peer Reviewed toggle.
+- Original [Search History CSV S8](https://drive.google.com/file/d/1seXLu8ny4hpzFyjWq2ZFx_5J762uJssL/view) on restricted Drive: timestamp 2026-10-30T20:22:07.000Z, 6,878 results, ONE APA PsycInfo database, English/Journal Article, Proximity. 23,733 bytes, SHA256 54c2f7e0395ea28649250658e839b4fa12ec94b19244ea2c0316817fb42e73a3.
+- Submitted 10,874-character EBSCO string equals expanded/displayed query and deterministic frozen source TI/AB search character-for-character. No silent truncation in observed expanded query. CSV does not encode each expander checkbox state, so those off-states cannot be inferred from it.
 
-**Primary lexical translation (not yet empirically validated):** for each frozen block, search its original lexicon as `(TI (term1 OR ...) OR AB (term1 OR ...))`; combine the **six** individual EBSCOhost Advanced Search history results using OR, or use the equivalent generated one-line candidate if the live UI accepts it. Verify the exact interpreted search, including quote expansion, against Search History export. **KW is not in primary.** An extra `KW` clause is generated separately for *sensitivity investigation only*. Never silently introduce APA Thesaurus headings or replace PubMed MeSH with an imagined heading. A new APA Thesaurus/controlled-vocabulary strategy or modified inclusion rule requires scientific acceptance under project contracts.
+## Immutable original corpus and verified format
+- [Restricted APA original RIS](https://drive.google.com/file/d/1cY8c7K2YiP6rtKZh8dgDQtEjsCJEA0dD/view): 6,878 source records, 17,682,335 bytes SHA256 dfc9d2902459f068b5492e79d73ab57694a04647a56c2a2d7abd95e59c19a462. Source EBSCO UUID filename changed only as Drive metadata.
+- [Private Drive folder](https://drive.google.com/drive/folders/1uEhBAv0biSAxviRqsdWLn2N4-TiA36mb): shared=false, no licensed records in public GitHub.
+- Independent original byte readback and strict RIS parser: 6,878 TY/ER, 6,878 unique AN, AN=ID, source DB APA PsycInfo, eng/JOUR/Journal Article for all, no malformed records.
+- 6,522 unique nonempty DOI; 356 DOI missing. Full title, abstract, author, journal, date and keywords coverage in all 6,878.
+- Extra Retracted Article marker in 3 records, Peer-Reviewed Status-Unknown in 19; keep as original provenance and do not silently exclude.
+- No cited-reference lists in this RIS (0/6,878); do not treat missing reference coverage as absence of citations, or manufacture CR.
+- Original 10-record pilot compared with full RIS: 10/10 accession IDs present and 110/110 paired metadata fields match; never double-ingest sample.
+- Original EBSCO Search History S8 count 6,878 equals full RIS 6,878; official count delta ZERO, so do not discard any records.
+- [Full independent RIS + Search History readback report](https://docs.google.com/document/d/17dYGqhJ9y62ptoSbxeA-ej4coJecKvnair25NaI1AZk/edit).
 
-Run offline from repository root:
-```powershell
-py -3.13 scripts/stage2/apa_psycinfo_search_plan.py --out "$env:LOCALAPPDATA\Pro_Adherence\APA_Stage2_Temp\search_candidate"
-```
-The command is optional for research staff because the developer can materialize its outputs into the restricted Drive. It creates **15 files**: 6 primary block queries, 6 keyword sensitivity block queries, 2 full queries, manifest. It refuses to overwrite populated folders. No sign-in, network access or API token is used.
-
-## Live pilot — only after institutional access
-1. Start at [Brunel A–Z Databases](https://libguides.brunel.ac.uk/az/databases), select **APA PsycInfo**, and sign in using the institution-supported login. Ensure search scope is **APA PsycINFO only**, not APA PsycARTICLES/PsycTests, MEDLINE or EBSCO Discovery Service. Verify platform display (EBSCOhost) rather than assuming it based only on the library link.
-2. In Advanced Search test small rare-term block `(TI (pharmacoadherence OR pharmionics) OR AB (pharmacoadherence OR pharmionics))`; verify no parser error. Then try each original six-block primary query, keep searches as separate lines, and combine them by OR through Search History; if the interface allows the single full query, verify its count against the six-OR history result. Do **not** report a hit count until the actual APA-only live UI shows one.
-3. Confirm language **English** and the precise journal/article publication-type selections actually available. **Peer reviewed ≠ journal article**; do not substitute a peer-reviewed-only facet or a generic all-sources “Articles” label without field audit. Record actual facet names, time, selected database, search mode, expanders, resulting count and the full expanded query. EBSCO can export Search History including database, results, filters, expanders and interpreted query.
-4. Export **a tiny sample (e.g. 10 records)** in available native citation format, preferably RIS where supported. Inspect actual first export for stable APA/EBSCO source ID (e.g. accession number), title/author/year, DOI and PMID if present, language, publication type, abstract and cited reference metadata **if present**. RIS usually does not guarantee a full cited-reference list. Record format, retention of abstracts and actual per-batch caps in the live interface.
-5. Only after pilot integrity and permitted export limits are confirmed, implement/checkpoint the full APA export path using owner-authenticated UI, stage on authorized C:, upload original files plus manifest to a restricted Google Drive folder, and independently read back/verify source counts, IDs and SHA256. No licensed records in public GitHub, no scripted credentials, no speculative use of bulk-export facilities.
-
-**Bulk export conditional:** EBSCO documents an optional `Export results (Up to 25,000)` feature requiring institution enablement, a *personal* MyEBSCO account, a short-lived emailed download link, and provider-defined usage caps. This is not proof that the Brunel account enables it, and not a reason to create accounts without the owner's choice. If absent, establish live normal export limits before writing any 500-record-batch assumptions.
-
-## Methodological non-equivalence and science gates
-- PubMed `[mh:noexp]` has no automatic APA Thesaurus equivalent.
-- PubMed `[tiab:~0/1]` is not necessarily equivalent to EBSCOhost quoted exact-adjacency phrases.
-- EBSCOhost unqualified keyword search may include authors and other unintended fields; use explicitly `TI` and `AB` for main translation. `KW` (and controlled `SU`) change retrieval and require separate analysis/decision.
-- Source record types (article, chapter, book, dissertation, retraction) must be preserved and audited; do not infer journal-article eligibility from a proxy facet without owner-approved mapping.
-- No premature PubMed+WoS two-source canonical deduplication. One consolidated three-source merge/deduplication only after APA source is archived and verified.
-
-## References
-- [Brunel A–Z APA PsycInfo](https://libguides.brunel.ac.uk/az/databases) and [Brunel EBSCOhost exports](https://www.brunel.ac.uk/life/library/SubjectSupport/EndNote-Fusion-formerly-RefWorks).
-- [APA EBSCOhost quick reference guide: field codes](https://www.apa.org/pubs/databases/training/ebsco.pdf); Premji & Kraus, *Research Synthesis Methods* 2025, [translation methodology](https://pmc.ncbi.nlm.nih.gov/articles/PMC12527542/).
-- [EBSCOhost Searching Tips](https://connect.ebsco.com/s/article/EBSCOhost-Searching-Tips?language=en_US).
-- [EBSCO Search History export](https://connect.ebsco.com/s/article/Downloading-your-Search-History-in-the-New-EBSCO-User-Interfaces?language=en_US).
-- [EBSCO conditional bulk export guidance](https://connect.ebsco.com/s/article/Exporting-up-to-25-000-Results?language=en_US).
-
-**NEXT REQUIRED LIVE EVIDENCE:** A screenshot of the APA PsycINFO-only authenticated Advanced Search page (plus results/search-history after the small test). The owner alone authenticates; the assistant then refines and tests the supported export code against observed UI rather than predicting it.
+## Reproducibility and scientific boundary
+- [Offline RIS auditor](../../scripts/stage2/apa_ris_audit.py) fails closed on malformed blocks, duplicate AN, wrong source database/count; publishes metadata/digests only.
+- [Offline EBSCO Search History auditor](../../scripts/stage2/apa_search_history_audit.py) checks frozen exact submitted/expanded query, APA-only source, filters, mode, count; synthetic negative tests include dropped terms and hidden expansions.
+- Branch stage2/multisource-wos-ingest-20261029; [CI PASS at SHA ae5290c4d77a7e5ce378ff7dc50e93471ef399df](https://github.com/Dr-snai1/Pro_Adherence/actions/runs/41124323359).
+- PubMed MeSH/noexp and tiab proximity, WoS TS and EBSCO quoted TI/AB are not automatically scientifically equivalent; controlled vocabulary expansion or altered inclusion criteria requires owner scientific decision.
+- Next under [07_STAGE_STATUS](https://docs.google.com/document/d/1GhQfnsbxK8lilvpnZqWeFu99w67DwWKJmY5OTthxvhM/edit): source-specific ingestion, one full PubMed V05 + WoS + APA conservative resolution, provenance, citation/author linkage, source sensitivity and leave-one-source-out. No intermediate PubMed+WoS canonical release. Stage 2 OPEN; QA04 on integrated major milestone only.
