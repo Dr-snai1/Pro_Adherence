@@ -6,7 +6,10 @@ on:
       - "stage2/**"
     paths:
       - "src/pro_adherence/stage2_sources.py"
+      - "src/pro_adherence/stage2_integrate.py"
       - "tests/test_stage2_sources.py"
+      - "tests/test_stage2_integrate.py"
+      - "scripts/stage2/run_three_source.py"
       - "tests/test_stage2_wos_ui_export.py"
       - "tests/test_stage2_wos_modal_browser.py"
       - "scripts/stage2/wos_ui_export.py"
@@ -27,7 +30,10 @@ on:
   pull_request:
     paths:
       - "src/pro_adherence/stage2_sources.py"
+      - "src/pro_adherence/stage2_integrate.py"
       - "tests/test_stage2_sources.py"
+      - "tests/test_stage2_integrate.py"
+      - "scripts/stage2/run_three_source.py"
       - "tests/test_stage2_wos_ui_export.py"
       - "tests/test_stage2_wos_modal_browser.py"
       - "scripts/stage2/wos_ui_export.py"
