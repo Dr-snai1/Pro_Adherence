@@ -44,6 +44,23 @@ class ThreeSourceIntegrationTests(unittest.TestCase):
         self.assertFalse(r[1]["scientific_article_only_eligible"])
         self.assertEqual(r[1]["exclusion_reason"], "book_family_not_journal_article")
 
+    def test_pubmed_doi_comes_only_from_article_not_cited_references(self):
+        # A real V05 batch can contain dozens of ArticleIdList elements
+        # under cited references, including empty DOI elements.
+        xml = PUBMED.replace(
+            b"</ArticleIdList></PubmedData></PubmedArticle>",
+            b"</ArticleIdList><ReferenceList><Reference>"
+            b"<Citation>Other article</Citation><ArticleIdList>"
+            b'<ArticleId IdType="doi">10.9999/cited</ArticleId>'
+            b'<ArticleId IdType="doi" />'
+            b"</ArticleIdList></Reference></ReferenceList>"
+            b"</PubmedData></PubmedArticle>",
+        )
+        parsed = parse_pubmed_batch(xml, "000001.xml")
+        self.assertEqual(parsed[0]["doi"], "10.1234/a")
+        self.assertEqual(len(parsed[0]["cited_references_raw"]), 1)
+        self.assertIn("10.9999/cited", parsed[0]["cited_references_raw"][0])
+
     def test_apa_preserves_retraction_and_nonobserved_references(self):
         x = parse_apa_ris(RIS)[0]
         self.assertTrue(x["retracted_article"])
