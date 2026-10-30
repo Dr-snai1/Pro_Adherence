@@ -54,7 +54,7 @@ class TestHistoryAudit(unittest.TestCase):
         self.assertEqual(report["search_mode"], "Близость")
 
     def test_silent_term_drop_fails(self):
-        q = QUERY.replace('"MMAS adherence" OR ', '', 1)
+        q = QUERY.replace('"MPR adherence" OR ', '', 1)
         with self.assertRaisesRegex(audit.SearchHistoryAuditError,
                                     "FROZEN_180_TERM_QUERY_MISMATCH"):
             audit.audit(example(query=q, expanded=q), SOURCE)
