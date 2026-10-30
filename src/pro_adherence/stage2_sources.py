@@ -183,6 +183,7 @@ def reconcile_sources(records: list[dict[str, Any]], omit_sources: set[str] | No
     members = [{i} for i in range(len(kept))]
     dois = [{r["doi"]} if r.get("doi") else set() for r in kept]
     pmids = [{str(r["pmid"])} if r.get("pmid") else set() for r in kept]
+    families_by_component = [{r["record_family"]} if r.get("record_family") else set() for r in kept]
     def root(i: int) -> int:
         while parent[i] != i:
             i = parent[i]
@@ -221,6 +222,7 @@ def reconcile_sources(records: list[dict[str, Any]], omit_sources: set[str] | No
                 continue
             if (not _compatible(dois[a], dois[b]) or
                     not _compatible(pmids[a], pmids[b]) or
+                    not _compatible(families_by_component[a], families_by_component[b]) or
                     source_members[a] & source_members[b]):
                 blocked.add(tuple(sorted((keys[indices[0]], keys[i]))))
                 decisions.append({"key_kind": kind, "key_value": value,
@@ -231,6 +233,7 @@ def reconcile_sources(records: list[dict[str, Any]], omit_sources: set[str] | No
             members[a] |= members[b]
             dois[a] |= dois[b]
             pmids[a] |= pmids[b]
+            families_by_component[a] |= families_by_component[b]
             source_members[a] |= source_members[b]
             decisions.append({"key_kind": kind, "key_value": value,
                               "action": "merge_exact_identifier",
