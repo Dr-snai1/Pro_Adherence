@@ -79,6 +79,38 @@ class ThreeSourceIntegrationTests(unittest.TestCase):
             with self.assertRaises(SourceFormatError):
                 save_private_candidate(parse_pubmed_batch(PUBMED, "000001.xml"), Path(tmp)/"candidate")
 
+    def test_reproducible_private_candidate_and_manifest(self):
+        from hashlib import sha256
+        import gzip
+        import json
+        pm = parse_pubmed_batch(PUBMED, "000001.xml")
+        apa = parse_apa_ris(RIS)
+        wos = {
+            "source_id": "woscc", "source_native_id": "WOS:1",
+            "source_record_id": "woscc:WOS:1", "doi": "10.1234/a",
+            "pmid": "1234", "record_family": "journal",
+            "cited_references_raw": ["REF, DOI 10.5678/book"],
+            "reference_coverage": "exposed",
+            "authors_raw": ["Lee, A"], "addresses_raw": ["University A"],
+        }
+        rows = pm + apa + [wos]
+        with tempfile.TemporaryDirectory() as tmp:
+            first = save_private_candidate(rows, Path(tmp) / "a")
+            second = save_private_candidate(list(reversed(rows)), Path(tmp) / "b")
+            self.assertEqual(first["source_counts"], {"apa_psycinfo": 1, "pubmed": 2, "woscc": 1})
+            self.assertEqual(first["source_record_count"], 4)
+            self.assertEqual(first["canonical_article_count"], 2)
+            self.assertFalse(first["public_promotion"])
+            self.assertEqual(first["artifacts"], second["artifacts"])
+            for info in first["artifacts"].values():
+                self.assertEqual(sha256((Path(tmp) / "a" / info["file"]).read_bytes()).hexdigest(), info["sha256"])
+            with gzip.open(Path(tmp) / "a" / "three_source.json.gz", "rb") as stream:
+                view = json.load(stream)
+            self.assertEqual(view["reference_coverage"]["apa_psycinfo:not_exposed"], 1)
+            self.assertEqual(len(view["retracted_apa_source_ids"]), 1)
+            self.assertEqual(len(view["source_records"]), 4)
+            self.assertEqual(len(view["citation_links"]), 1)
+
 
 if __name__ == "__main__":
     unittest.main()
