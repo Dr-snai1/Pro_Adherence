@@ -297,6 +297,33 @@ def reconcile_sources(records: list[dict[str, Any]], omit_sources: set[str] | No
             "public_promotion": False}
 
 
+
+def resolution_version_delta(previous: dict[str, Any], current: dict[str, Any]) -> dict[str, Any]:
+    """Explicit merge/split aliases between two pinned resolution versions.
+
+    Comparison is scoped to source records in BOTH versions. For the first
+    three-source candidate, no predecessor exists: do not invent splits.
+    """
+    old = {sid: art["canonical_article_id"]
+           for art in previous["articles"] for sid in art["source_record_ids"]}
+    new = {sid: art["canonical_article_id"]
+           for art in current["articles"] for sid in art["source_record_ids"]}
+    shared = sorted(set(old) & set(new))
+    successors: dict[str, set[str]] = defaultdict(set)
+    predecessors: dict[str, set[str]] = defaultdict(set)
+    for sid in shared:
+        successors[old[sid]].add(new[sid])
+        predecessors[new[sid]].add(old[sid])
+    return {
+        "schema": "stage2-identity-version-delta/v1",
+        "shared_source_record_count": len(shared),
+        "splits": sorted({"previous_id": old_id, "successor_ids": sorted(targets)}
+                         for old_id, targets in successors.items() if len(targets) > 1),
+        "merges": sorted({"current_id": new_id, "predecessor_ids": sorted(origins)}
+                         for new_id, origins in predecessors.items() if len(origins) > 1),
+    }
+
+
 def leave_one_source_out(records: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     """Deterministically recompute all source partitions without hand edits."""
     return {source: reconcile_sources(records, {source})
