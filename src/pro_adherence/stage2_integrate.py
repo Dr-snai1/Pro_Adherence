@@ -231,6 +231,7 @@ def save_private_candidate(records: list[dict], directory: Path) -> dict:
     if directory.exists() and any(directory.iterdir()):
         raise SourceFormatError("OUTPUT_NOT_EMPTY")
     directory.mkdir(parents=True, exist_ok=True)
+    records = sorted(records, key=lambda r: r["source_record_id"])
     full = reconcile_sources(records)
     full["source_records"] = records
     full["reference_coverage"] = dict(sorted(Counter(
