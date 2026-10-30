@@ -1,0 +1,110 @@
+name: Stage 2 focused offline ingestion tests
+
+on:
+  push:
+    branches:
+      - "stage2/**"
+    paths:
+      - "src/pro_adherence/stage2_sources.py"
+      - "src/pro_adherence/stage2_integrate.py"
+      - "tests/test_stage2_sources.py"
+      - "tests/test_stage2_integrate.py"
+      - "scripts/stage2/run_three_source.py"
+      - "tests/test_stage2_wos_ui_export.py"
+      - "tests/test_stage2_wos_modal_browser.py"
+      - "scripts/stage2/wos_ui_export.py"
+      - "scripts/stage2/wos_drive_session.py"
+      - "scripts/stage2/start_wos_export_windows.ps1"
+      - "tests/test_stage2_wos_drive_session.py"
+      - "scripts/stage2/wos_search_plan.py"
+      - "tests/test_stage2_wos_search_plan.py"
+      - "scripts/stage2/apa_psycinfo_search_plan.py"
+      - "tests/test_stage2_apa_psycinfo_search_plan.py"
+      - "scripts/stage2/apa_ris_audit.py"
+      - "tests/test_stage2_apa_ris_audit.py"
+      - "scripts/stage2/apa_search_history_audit.py"
+      - "tests/test_stage2_apa_search_history_audit.py"
+      - "docs/stage2/APA_PSYCINFO_PREP.md"
+      - "configs/pubmed/medication-adherence-SELECTED.v1.json"
+      - ".github/workflows/stage2-tests.yml"
+  pull_request:
+    paths:
+      - "src/pro_adherence/stage2_sources.py"
+      - "src/pro_adherence/stage2_integrate.py"
+      - "tests/test_stage2_sources.py"
+      - "tests/test_stage2_integrate.py"
+      - "scripts/stage2/run_three_source.py"
+      - "tests/test_stage2_wos_ui_export.py"
+      - "tests/test_stage2_wos_modal_browser.py"
+      - "scripts/stage2/wos_ui_export.py"
+      - "scripts/stage2/wos_drive_session.py"
+      - "scripts/stage2/start_wos_export_windows.ps1"
+      - "tests/test_stage2_wos_drive_session.py"
+      - "scripts/stage2/wos_search_plan.py"
+      - "tests/test_stage2_wos_search_plan.py"
+      - "scripts/stage2/apa_psycinfo_search_plan.py"
+      - "tests/test_stage2_apa_psycinfo_search_plan.py"
+      - "scripts/stage2/apa_ris_audit.py"
+      - "tests/test_stage2_apa_ris_audit.py"
+      - "scripts/stage2/apa_search_history_audit.py"
+      - "tests/test_stage2_apa_search_history_audit.py"
+      - "docs/stage2/APA_PSYCINFO_PREP.md"
+      - "configs/pubmed/medication-adherence-SELECTED.v1.json"
+      - ".github/workflows/stage2-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  offline-stage2:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Run only Stage 2 synthetic offline tests
+        env:
+          PYTHONPATH: src
+        run: python -m unittest discover -s tests -p 'test_stage2_*.py' -v
+
+  windows-launcher-syntax:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Parse owner-approved Windows launcher (syntax only, NO execution)
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile("$PWD/scripts/stage2/start_wos_export_windows.ps1", [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.ToString() }
+            exit 1
+          }
+          Write-Host "POWER_SHELL_SYNTAX_PASS (no WoS/Drive session started)"
+
+      - name: Execute Windows PowerShell 5.1 version preflight (NO WoS/Drive)
+        shell: pwsh
+        run: |
+          & "$env:WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PWD\scripts\stage2\start_wos_export_windows.ps1" -PreflightOnly
+          if ($LASTEXITCODE -ne 0) { throw "PowerShell 5.1 Python version preflight failed" }
+
+  browser-modal-dom-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install browser test dependency only (no WoS data)
+        run: |
+          python -m pip install playwright==1.55.0
+          python -m playwright install --with-deps chromium
+      - name: Drive screenshot-derived export modal with real Chromium
+        env:
+          WOS_MODAL_BROWSER_TEST: "1"
+        run: python -m unittest discover -s tests -p 'test_stage2_wos_modal_browser.py' -v
