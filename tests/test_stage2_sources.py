@@ -211,7 +211,7 @@ class Stage2SourcesTests(unittest.TestCase):
              "record_family": "journal",
              "cited_references_raw": [
                  "Authors, DOI 10.1234/shared",
-                 "Authors, DOI 10.1234/unique",
+                 "Authors, DOI 10.1234/unique}",
                  "Authors, DOI 10.1234/notfound",
              ]},
         ]
