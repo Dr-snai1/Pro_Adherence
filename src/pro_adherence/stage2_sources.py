@@ -187,25 +187,54 @@ def reconcile_sources(records: list[dict[str, Any]], omit_sources: set[str] | No
         while parent[i] != i:
             i = parent[i]
         return i
-    blocked: set[tuple[str, str]] = set()
+    # Indexed candidate buckets replace the O(N^2) all-pairs walk.
+    # A key with contradictory identifiers must not merge an arbitrary subset
+    # based on input ordering; veto the whole bucket deterministically.
+    index: dict[tuple[str, str], list[int]] = defaultdict(list)
     for i, r in enumerate(kept):
-        for j in range(i):
-            q = kept[j]
-            a, b = root(i), root(j)
+        if r.get("doi"):
+            index[("doi", r["doi"])].append(i)
+        if r.get("pmid"):
+            index[("pmid", str(r["pmid"]))].append(i)
+    blocked: set[tuple[str, str]] = set()
+    decisions: list[dict[str, Any]] = []
+    source_members = [{r["source_id"]} for r in kept]
+    for (kind, value), indices in sorted(index.items()):
+        if len(indices) < 2:
+            continue
+        key_dois = {kept[i]["doi"] for i in indices if kept[i].get("doi")}
+        key_pmids = {str(kept[i]["pmid"]) for i in indices if kept[i].get("pmid")}
+        source_ids = [kept[i]["source_id"] for i in indices]
+        families = {kept[i].get("record_family") for i in indices if kept[i].get("record_family")}
+        if len(key_dois) > 1 or len(key_pmids) > 1 or len(set(source_ids)) < len(source_ids) or len(families) > 1:
+            decisions.append({"key_kind": kind, "key_value": value,
+                              "action": "ambiguous_key",
+                              "source_record_ids": sorted(keys[i] for i in indices)})
+            for a in indices:
+                for b in indices:
+                    if a < b:
+                        blocked.add(tuple(sorted((keys[a], keys[b]))))
+            continue
+        for i in indices[1:]:
+            a, b = root(indices[0]), root(i)
             if a == b:
                 continue
-            same = ((r.get("doi") and r["doi"] == q.get("doi")) or
-                    (r.get("pmid") and str(r["pmid"]) == str(q.get("pmid"))))
-            if not same:
-                continue
             if (not _compatible(dois[a], dois[b]) or
-                    not _compatible(pmids[a], pmids[b])):
-                blocked.add(tuple(sorted((r["source_record_id"], q["source_record_id"]))))
+                    not _compatible(pmids[a], pmids[b]) or
+                    source_members[a] & source_members[b]):
+                blocked.add(tuple(sorted((keys[indices[0]], keys[i]))))
+                decisions.append({"key_kind": kind, "key_value": value,
+                                  "action": "blocked_component_conflict",
+                                  "source_record_ids": sorted((keys[indices[0]], keys[i]))})
                 continue
             parent[b] = a
             members[a] |= members[b]
             dois[a] |= dois[b]
             pmids[a] |= pmids[b]
+            source_members[a] |= source_members[b]
+            decisions.append({"key_kind": kind, "key_value": value,
+                              "action": "merge_exact_identifier",
+                              "source_record_ids": sorted((keys[indices[0]], keys[i]))})
     groups: dict[int, list[dict[str, Any]]] = defaultdict(list)
     for i, r in enumerate(kept):
         groups[root(i)].append(r)
@@ -264,6 +293,7 @@ def reconcile_sources(records: list[dict[str, Any]], omit_sources: set[str] | No
             "articles": articles, "citation_links": links,
             "unresolved_citation_count": unresolved,
             "blocked_identity_pairs": sorted(list(blocked)),
+            "identity_decisions": decisions,
             "public_promotion": False}
 
 
