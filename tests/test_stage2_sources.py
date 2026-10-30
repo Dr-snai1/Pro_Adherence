@@ -9,6 +9,7 @@ from pro_adherence.stage2_sources import (
     normalize_doi,
     parse_wos_tagged_export,
     reconcile_sources,
+    resolution_version_delta,
 )
 
 
@@ -180,6 +181,19 @@ class Stage2SourcesTests(unittest.TestCase):
         v = reconcile_sources(records)
         self.assertEqual(v["canonical_article_count"], 3001)
         self.assertTrue(any(d["action"] == "ambiguous_key" for d in v["identity_decisions"]))
+
+    def test_version_delta_detects_real_merge_and_split(self):
+        a = synthetic("pubmed", "1", doi="10.1000/one")
+        b = synthetic("woscc", "WOS:2", doi="10.1000/two")
+        before = reconcile_sources([a, b])
+        together = reconcile_sources([a, dict(b, doi="10.1000/one")])
+        merged = resolution_version_delta(before, together)
+        self.assertEqual(merged["shared_source_record_count"], 2)
+        self.assertEqual(len(merged["merges"]), 1)
+        self.assertEqual(merged["splits"], [])
+        separated = resolution_version_delta(together, before)
+        self.assertEqual(len(separated["splits"]), 1)
+        self.assertEqual(separated["merges"], [])
 
 
 if __name__ == "__main__":
