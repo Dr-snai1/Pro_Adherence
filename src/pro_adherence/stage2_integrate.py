@@ -200,51 +200,83 @@ def load_sources(pubmed_dir: Path, wos_first: Path, wos_zip: Path, apa_ris: Path
     return records
 
 
+def _write_reproducible_gzip(path: Path, value: dict) -> dict:
+    """Stream sorted JSON; avoid materializing million-edge outputs as a second copy."""
+    encoder = json.JSONEncoder(ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    raw_digest = sha256()
+    pending = bytearray()
+    with path.open("xb") as stream:
+        with gzip.GzipFile(fileobj=stream, mode="wb", filename="", mtime=0) as zipped:
+            for chunk in encoder.iterencode(value):
+                pending.extend(chunk.encode("utf-8"))
+                if len(pending) >= 1024 * 1024:
+                    zipped.write(pending)
+                    raw_digest.update(pending)
+                    pending.clear()
+            pending.extend(b"\n")
+            zipped.write(pending)
+            raw_digest.update(pending)
+    h = sha256()
+    with path.open("rb") as source:
+        for block in iter(lambda: source.read(1024 * 1024), b""):
+            h.update(block)
+    return {"file": path.name, "sha256": h.hexdigest(),
+            "uncompressed_sha256": raw_digest.hexdigest(), "bytes": path.stat().st_size}
+
+
 def save_private_candidate(records: list[dict], directory: Path) -> dict:
-    """Only one three-source candidate; never creates a two-source canonical release."""
+    """One three-source integration; leave-one-out outputs are diagnostics only."""
     if set(r["source_id"] for r in records) != {"pubmed", "woscc", "apa_psycinfo"}:
         raise SourceFormatError("THREE_SOURCES_REQUIRED")
     if directory.exists() and any(directory.iterdir()):
         raise SourceFormatError("OUTPUT_NOT_EMPTY")
     directory.mkdir(parents=True, exist_ok=True)
-    views = {"three_source": reconcile_sources(records)}
-    for source in ("pubmed", "woscc", "apa_psycinfo"):
-        views["loo_" + source] = reconcile_sources(records, {source})
-    artifacts = {}
-    for name, view in views.items():
-        if name == "three_source":
-            view["source_records"] = records
-            view["reference_coverage"] = dict(sorted(Counter(
-                f'{r["source_id"]}:{r.get("reference_coverage", "unknown")}' for r in records
-            ).items()))
-            view["retracted_apa_source_ids"] = sorted(
-                r["source_record_id"] for r in records if r.get("retracted_article"))
-            view["author_observations"] = [
-                {"source_record_id": r["source_record_id"], "ordinal": i, "original": val}
-                for r in records for i, val in enumerate(r.get("authors_raw") or [], 1)
-            ]
-            view["affiliation_observations"] = [
-                {"source_record_id": r["source_record_id"], "ordinal": i, "original": val}
-                for r in records for i, val in enumerate(
-                    r.get("affiliations_raw") or r.get("addresses_raw") or [], 1)
-            ]
-        payload = canonical_json(view)
-        dest = directory / (name + ".json.gz")
-        with dest.open("xb") as stream:
-            with gzip.GzipFile(fileobj=stream, mode="wb", filename="", mtime=0) as compressor:
-                compressor.write(payload)
-        artifacts[name] = {"file": dest.name, "sha256": digest(dest.read_bytes()),
-                           "uncompressed_sha256": digest(payload), "bytes": dest.stat().st_size,
-                           "source_count": view["source_record_count"],
-                           "canonical_count": view["canonical_article_count"]}
+    full = reconcile_sources(records)
+    full["source_records"] = records
+    full["reference_coverage"] = dict(sorted(Counter(
+        f'{r["source_id"]}:{r.get("reference_coverage", "unknown")}' for r in records
+    ).items()))
+    full["retracted_apa_source_ids"] = sorted(
+        r["source_record_id"] for r in records if r.get("retracted_article"))
+    full["author_observations"] = [
+        {"source_record_id": r["source_record_id"], "ordinal": i, "original": val}
+        for r in records for i, val in enumerate(r.get("authors_raw") or [], 1)
+    ]
+    full["affiliation_observations"] = [
+        {"source_record_id": r["source_record_id"], "ordinal": i, "original": val}
+        for r in records for i, val in enumerate(
+            r.get("affiliations_raw") or r.get("addresses_raw") or [], 1)
+    ]
+    counts = full["source_counts"]
+    total = full["source_record_count"]
+    canonical = full["canonical_article_count"]
+    artifacts = {"three_source": {
+        **_write_reproducible_gzip(directory / "three_source.json.gz", full),
+        "source_count": total, "canonical_count": canonical,
+    }}
+    del full
+    for omitted in ("pubmed", "woscc", "apa_psycinfo"):
+        view = reconcile_sources(records, {omitted})
+        key = "loo_" + omitted
+        artifacts[key] = {
+            **_write_reproducible_gzip(directory / (key + ".json.gz"), view),
+            "source_count": view["source_record_count"],
+            "canonical_count": view["canonical_article_count"],
+            "omitted_source": omitted, "role": "sensitivity_only_not_a_canonical_release",
+        }
+        del view
     manifest = {
         "schema": "pro-adherence-stage2-private-candidate/v1",
         "acceptance": "PROVISIONAL_NO_STAGE_GATE",
-        "source_counts": views["three_source"]["source_counts"],
-        "source_record_count": 87511, "book_family_retained": 86,
-        "wos_nr_cr_discrepancy_records": 413, "apa_retraction_flags": 3,
+        "source_counts": counts,
+        "source_record_count": total,
+        "canonical_article_count": canonical,
+        "book_family_retained": 86,
+        "wos_nr_cr_discrepancy_records": 413,
+        "apa_retraction_flags": 3,
         "apa_reference_lists": "not_exposed_not_zero_citations",
         "artifacts": artifacts, "public_promotion": False,
+        "resolution_version_delta": "not_applicable_first_three_source_candidate",
     }
     (directory / "manifest.json").write_bytes(canonical_json(manifest))
     return manifest
