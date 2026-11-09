@@ -189,13 +189,14 @@ class Stage3PlanningContractTests(unittest.TestCase):
                          [False, False, True])
         # If only an abstract survives in a different source, do not
         # fabricate a merged title + abstract from two databases.
+        sources[6]["title"] = ""
         sources[6]["abstract"] = "APA abstract"
         choices = choose_pubmedbert_source_priority(articles, sources)
-        self.assertEqual(choices["y"], "pubmed:5")
+        self.assertEqual(choices["z"], "pubmed:9")
         planned = plan_text_inputs(articles, sources, choices,
                                    {x: True for x in choices},
                                    permitted_missing_states={"both", "title_only"})
-        self.assertEqual(planned[1]["embedding_input_status"],
+        self.assertEqual(planned[2]["embedding_input_status"],
                          "requires_source_resolution")
         with self.assertRaisesRegex(Stage3ContractError, "unsupported"):
             choose_pubmedbert_source_priority(
