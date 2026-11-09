@@ -417,6 +417,7 @@ def summarize_long_abstract_coverage(rows: list[dict], *, canonical_total: int) 
     has_abstract = 0
     long_abstract = 0
     chunked = 0
+    chunked_with_abstract = 0
     forced_sentence_splits = 0
     chunk_histogram = Counter()
     for row in rows:
@@ -455,6 +456,7 @@ def summarize_long_abstract_coverage(rows: list[dict], *, canonical_total: int) 
             if not row.get("full_content_covered"):
                 raise Stage3ContractError("truncated or untracked content")
             chunked += int(exceeds)
+            chunked_with_abstract += int(exceeds and row["has_abstract"])
             forced_sentence_splits += forced
             chunk_histogram[str(n)] += 1
     pct = lambda num, denom: None if denom == 0 else round(100.0 * num / denom, 4)
@@ -466,9 +468,10 @@ def summarize_long_abstract_coverage(rows: list[dict], *, canonical_total: int) 
         "pct_abstract_itself_over_512_of_canonical": pct(long_abstract, canonical_total),
         "pct_abstract_itself_over_512_of_eligible_abstracts": pct(long_abstract, has_abstract),
         "articles_needing_fragments": chunked,
+        "chunked_articles_with_abstract_count": chunked_with_abstract,
         "pct_all_canonical": pct(chunked, canonical_total),
         "pct_eligible_text": pct(chunked, eligible),
-        "pct_eligible_with_abstract": pct(chunked, has_abstract),
+        "pct_eligible_with_abstract": pct(chunked_with_abstract, has_abstract),
         "forced_sentence_splits_total": forced_sentence_splits,
         "fragment_count_histogram": dict(sorted(chunk_histogram.items(), key=lambda kv: int(kv[0]))),
         "status": "descriptive_postprocessing_report_not_a_method_selection",
