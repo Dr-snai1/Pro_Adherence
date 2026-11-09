@@ -23,28 +23,45 @@ ARTICLES = [
 ]
 SOURCES = [
     {"source_record_id": "pubmed:101", "title": "Medication adherence",
-     "abstract": "Synthetic adherence study", "record_family": "journal"},
+     "abstract": "Synthetic adherence study", "record_family": "journal",
+     "raw_export_sha256": "b" * 64, "raw_record_ordinal": 1,
+     "cited_references_raw": [], "reference_coverage": "unknown"},
     {"source_record_id": "apa_psycinfo:AN-202", "title": "Pill taking", "abstract": None,
-     "record_family": "journal", "reference_coverage": "not_exposed"},
+     "record_family": "journal", "reference_coverage": "not_exposed",
+     "raw_export_sha256": "c" * 64, "raw_record_ordinal": 2,
+     "cited_references_raw": []},
     {"source_record_id": "woscc:WOS:303", "title": None, "abstract": None,
-     "record_family": "journal", "reference_coverage": "incomplete"},
+     "record_family": "journal", "reference_coverage": "incomplete",
+     "raw_export_sha256": "d" * 64, "raw_record_ordinal": 3,
+     "cited_references_raw": ["synthetic ref 1", "synthetic ref 2",
+                              "synthetic ref 3", "synthetic ref 4"]},
 ]
 ELIGIBILITY = {"article:A": True, "article:B": True, "article:C": True}
 CHOICES = {"article:A": "pubmed:101", "article:B": "apa_psycinfo:AN-202",
            "article:C": "woscc:WOS:303"}
 POLICY = {"orientation": "directed", "duplicate_policy": "binary",
           "self_loop_policy": "exclude"}
-REFERENCES = [
-    {"citing_source_record_id": "woscc:WOS:303", "cited_article_id": "article:A",
-     "resolution_method": "exact_doi"},
-    {"citing_source_record_id": "woscc:WOS:303", "cited_article_id": "article:A",
-     "resolution_method": "exact_doi"},
-    {"citing_source_record_id": "woscc:WOS:303", "cited_article_id": None,
-     "resolution_method": "ambiguous_doi", "external_target_doi": "10.1234/shared"},
-    {"citing_source_record_id": "woscc:WOS:303", "cited_article_id": None,
-     "resolution_method": "unresolved"},
-]
 
+def observed_reference(ordinal, method, target):
+    return {
+        "citing_source_record_id": "woscc:WOS:303",
+        "cited_article_id": target,
+        "resolution_method": method,
+        "raw_reference_ordinal": ordinal,
+        "raw_evidence_pointer": {
+            "export_sha256": "d" * 64,
+            "record_ordinal": 3,
+            "reference_ordinal": ordinal,
+        },
+    }
+
+REFERENCES = [
+    observed_reference(1, "exact_doi", "article:A"),
+    observed_reference(2, "exact_doi", "article:A"),
+    observed_reference(3, "ambiguous_doi", None),
+    observed_reference(4, "unresolved", None),
+]
+REFERENCES[2]["external_target_doi"] = "10.1234/shared"
 
 class Stage3PlanningContractTests(unittest.TestCase):
     def test_frozen_stage2_identity_is_required(self):
@@ -96,6 +113,9 @@ class Stage3PlanningContractTests(unittest.TestCase):
         self.assertEqual(result["citation_status_counts"],
                          {"ambiguous_doi": 1, "exact_doi": 2, "unresolved": 1})
         self.assertEqual(result["article_count"], 3)
+        self.assertEqual(len(result["edges"][0]["evidence_pointers"]), 2)
+        self.assertEqual(result["nodes"][1]["isolate_reason"], "missing_reference_coverage")
+        self.assertIsNone(result["nodes"][0]["isolate_reason"])
         alternate = plan_citation_graph(
             list(reversed(ARTICLES)), list(reversed(SOURCES)),
             list(reversed(REFERENCES)), ELIGIBILITY, graph_policy=POLICY)
@@ -122,6 +142,21 @@ class Stage3PlanningContractTests(unittest.TestCase):
         bad.append(dict(SOURCES[0]))
         with self.assertRaises(Stage3ContractError):
             plan_citation_graph(ARTICLES, bad, REFERENCES, ELIGIBILITY, graph_policy=POLICY)
+
+    def test_citation_graph_requires_raw_byte_provenance_and_source_observation(self):
+        bad = deepcopy(REFERENCES)
+        bad[0]["raw_evidence_pointer"]["export_sha256"] = "0" * 64
+        with self.assertRaisesRegex(Stage3ContractError, "provenance"):
+            plan_citation_graph(ARTICLES, SOURCES, bad, ELIGIBILITY, graph_policy=POLICY)
+        bad = deepcopy(REFERENCES)
+        bad[1]["raw_reference_ordinal"] = 1
+        with self.assertRaises(Stage3ContractError):
+            plan_citation_graph(ARTICLES, SOURCES, bad, ELIGIBILITY, graph_policy=POLICY)
+        no_export = deepcopy(SOURCES)
+        no_export[2]["reference_coverage"] = "not_exposed"
+        with self.assertRaisesRegex(Stage3ContractError, "fabricated reference"):
+            plan_citation_graph(ARTICLES, no_export, REFERENCES, ELIGIBILITY,
+                                graph_policy=POLICY)
 
     def test_vector_absence_not_zero_and_all_articles_accounted_for(self):
         rows = [
