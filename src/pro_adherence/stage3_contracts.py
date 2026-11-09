@@ -84,10 +84,29 @@ def validate_model_readiness(lens: str, specification: dict) -> None:
                 raise Stage3ContractError(f"unresolved PubMedBERT methodology: {name}")
         if not SHA256.fullmatch(str(specification["model_identity_hash"])):
             raise Stage3ContractError("unverified PubMedBERT model identity")
-        if (not isinstance(specification["max_length"], int)
-            or isinstance(specification["max_length"], bool)
-            or specification["max_length"] < 1):
-            raise Stage3ContractError("invalid PubMedBERT max_length")
+        # Owner's 2026-11-09 decisions; do not broaden the scientific scope.
+        chosen = {
+            "pretraining_corpus": "pubmed_abstracts",
+            "embedding_dimension": 768,
+            "layer_selection": "last_hidden",
+            "title_abstract_format": "title_sep_abstract",
+            "max_length": 512,
+            "overflow_policy": "fragmented",
+            "fine_tuning": False,
+        }
+        for name, approved_value in chosen.items():
+            if name not in specification or specification[name] != approved_value:
+                raise Stage3ContractError(f"PubMedBERT owner decision mismatch: {name}")
+        if specification["pooling"] not in ("cls_last_hidden", "masked_mean_last_hidden"):
+            raise Stage3ContractError("PubMedBERT pooling must be CLS or masked mean")
+        # Both choices are authorised as distinct variants, NOT an arbitrary
+        # concatenation or a forced choice between them.
+        # Multi-fragment article aggregation is a further scientific variable,
+        # not specified by choosing a 512-token fragment size.
+        if specification.get("fragment_aggregation") in (None, ""):
+            raise Stage3ContractError("PubMedBERT multi-fragment aggregation is still undecided")
+        if specification.get("special_tokens_policy") in (None, ""):
+            raise Stage3ContractError("PubMedBERT special-token pooling policy is undecided")
     elif lens == "specter2":
         for name in ("base_model_ref", "base_model_identity_hash",
                      "adapter_ref", "adapter_identity_hash",
