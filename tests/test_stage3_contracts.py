@@ -16,6 +16,7 @@ from pro_adherence.stage3_contracts import (
     summarize_long_abstract_coverage,
     pack_sentence_token_groups,
     mean_pooling_content_mask,
+    summarize_pubmedbert_text_coverage,
 )
 
 HASH = "a" * 64
@@ -89,6 +90,14 @@ class Stage3PlanningContractTests(unittest.TestCase):
                          ["both", "title_only", "missing_both"])
         self.assertEqual(x[1]["source_record_id"], "apa_psycinfo:AN-202")
         self.assertEqual(x[2]["access_class"], "restricted")
+        self.assertEqual([r["title_only_vector"] for r in x],
+                         [False, True, False])
+        self.assertEqual(x[1]["abstract_available_source_record_ids"], [])
+        coverage = summarize_pubmedbert_text_coverage(x, canonical_total=3)
+        self.assertEqual(coverage["title_only_count"], 1)
+        self.assertAlmostEqual(coverage["title_only_pct_canonical"], 33.3333, places=3)
+        self.assertEqual(coverage["title_only_pct_ready"], 50.0)
+        self.assertEqual(coverage["status_counts"]["missing_input"], 1)
         self.assertEqual(
             [r["text_fields_sha256"] for r in x],
             [r["text_fields_sha256"] for r in
@@ -105,6 +114,36 @@ class Stage3PlanningContractTests(unittest.TestCase):
         with self.assertRaises(Stage3ContractError):
             plan_text_inputs(ARTICLES, SOURCES, CHOICES, ELIGIBILITY,
                              permitted_missing_states={"title_only"})
+
+    def test_alt_source_abstract_prevents_unjustified_title_only(self):
+        sources = SOURCES + [{
+            "source_record_id": "woscc:WOS:202",
+            "title": "Pill taking", "abstract": "Alternate synthetic abstract"
+        }]
+        articles = deepcopy(ARTICLES)
+        articles[1]["source_record_ids"].append("woscc:WOS:202")
+        rows = plan_text_inputs(articles, sources, CHOICES, ELIGIBILITY,
+                                permitted_missing_states={"both", "title_only"})
+        self.assertEqual(rows[1]["embedding_input_status"],
+                         "requires_source_resolution")
+        self.assertFalse(rows[1]["title_only_vector"])
+        self.assertEqual(rows[1]["abstract_available_source_record_ids"],
+                         ["woscc:WOS:202"])
+        report = summarize_pubmedbert_text_coverage(rows, canonical_total=3)
+        self.assertEqual(report["title_only_count"], 0)
+        self.assertEqual(report["status_counts"]["requires_source_resolution"], 1)
+        chosen_alt = {**CHOICES, "article:B": "woscc:WOS:202"}
+        ready = plan_text_inputs(articles, sources, chosen_alt, ELIGIBILITY,
+                                 permitted_missing_states={"both", "title_only"})
+        self.assertEqual(ready[1]["embedding_input_status"], "ready")
+        self.assertEqual(ready[1]["text_state"], "both")
+        self.assertFalse(ready[1]["title_only_vector"])
+        altered = deepcopy(ready)
+        altered[1]["title_only_vector"] = True
+        with self.assertRaisesRegex(Stage3ContractError, "incorrect title-only"):
+            summarize_pubmedbert_text_coverage(altered, canonical_total=3)
+        with self.assertRaisesRegex(Stage3ContractError, "full canonical roster"):
+            summarize_pubmedbert_text_coverage(ready[:2], canonical_total=3)
 
     def test_citation_graph_never_invents_ambiguous_target_or_absent_apa_links(self):
         result = plan_citation_graph(ARTICLES, SOURCES, REFERENCES, ELIGIBILITY,
