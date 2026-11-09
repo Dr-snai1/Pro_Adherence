@@ -171,10 +171,10 @@ def plan_citation_graph(
     *,
     graph_policy: dict,
 ) -> dict:
-    """Construct observed *candidate* edges; NOT a trained node2vec graph.
+    """Create an observed candidate graph with complete source evidence pointers.
 
-    Requires owner-selected policies. Ambiguous/unresolved DOI never produce
-    edges, and an unobserved reference list is never interpreted as degree zero.
+    No training. Exact DOI links only; APA missing references and ambiguous DOIs
+    are not turned into artificial edges. No scientific graph policy is defaulted.
     """
     articles = _unique_index(canonical_articles, "canonical_article_id", "canonical")
     sources = _unique_index(source_records, "source_record_id", "source")
@@ -190,7 +190,7 @@ def plan_citation_graph(
         raise Stage3ContractError("graph duplication policy not approved")
     if graph_policy["self_loop_policy"] not in {"retain", "exclude"}:
         raise Stage3ContractError("self-loop policy not approved")
-    source_to_article = {}
+    source_to_article: dict[str, str] = {}
     for article_id, article in articles.items():
         for sid in article.get("source_record_ids", []):
             if sid in source_to_article or sid not in sources:
@@ -201,6 +201,8 @@ def plan_citation_graph(
     status_counts = Counter()
     excluded_edges = Counter()
     edges = Counter()
+    evidence_by_edge: dict[tuple[str, str], list[dict]] = {}
+    seen_refs: set[tuple[str, int]] = set()
     for link in citation_links:
         status = link.get("resolution_method")
         if status not in ALLOWED_REFERENCE_STATUS:
@@ -209,6 +211,26 @@ def plan_citation_graph(
         source_id = link.get("citing_source_record_id")
         if source_id not in source_to_article:
             raise Stage3ContractError("citing record has no canonical article")
+        source = sources[source_id]
+        ordinal = link.get("raw_reference_ordinal")
+        pointer = link.get("raw_evidence_pointer")
+        if not isinstance(ordinal, int) or isinstance(ordinal, bool) or ordinal < 1:
+            raise Stage3ContractError("invalid raw reference ordinal")
+        if (not isinstance(pointer, dict)
+            or pointer.get("export_sha256") != source.get("raw_export_sha256")
+            or not SHA256.fullmatch(str(pointer.get("export_sha256", "")))
+            or pointer.get("record_ordinal") != source.get("raw_record_ordinal")
+            or pointer.get("reference_ordinal") != ordinal):
+            raise Stage3ContractError("citation source provenance does not match original record")
+        references = source.get("cited_references_raw")
+        if not isinstance(references, list) or ordinal > len(references):
+            raise Stage3ContractError("citation is not observed in source reference list")
+        if source.get("reference_coverage") == "not_exposed":
+            raise Stage3ContractError("fabricated reference from not_exposed source")
+        key = (source_id, ordinal)
+        if key in seen_refs:
+            raise Stage3ContractError("duplicate source reference identity")
+        seen_refs.add(key)
         target = link.get("cited_article_id")
         if status != "exact_doi":
             if target is not None:
@@ -227,18 +249,48 @@ def plan_citation_graph(
         if graph_policy["orientation"] == "undirected":
             pair = tuple(sorted(pair))
         edges[pair] += 1
+        evidence_by_edge.setdefault(pair, []).append({
+            "source_record_id": source_id,
+            "raw_reference_ordinal": ordinal,
+            "export_sha256": pointer["export_sha256"],
+            "record_ordinal": pointer["record_ordinal"],
+        })
     rows = [
         {"source_article_id": left, "target_article_id": right,
          "observation_count": count,
-         "weight": count if graph_policy["duplicate_policy"] == "observation_count" else 1}
+         "weight": count if graph_policy["duplicate_policy"] == "observation_count" else 1,
+         "evidence_pointers": sorted(evidence_by_edge[(left, right)],
+             key=lambda p: (p["source_record_id"], p["raw_reference_ordinal"]))}
         for (left, right), count in sorted(edges.items())
     ]
+    adjacent: set[str] = set()
+    for left, right in edges:
+        adjacent.update((left, right))
+    node_rows = []
+    for article_id, article in sorted(articles.items()):
+        coverage = sorted({
+            sources[sid].get("reference_coverage", "unknown")
+            for sid in article["source_record_ids"]
+        })
+        observed = article_id in adjacent
+        outgoing_observed = any(s in ("exposed", "incomplete") for s in coverage)
+        node_rows.append({
+            "article_id": article_id,
+            "eligible": eligibility[article_id],
+            "reference_coverage": coverage,
+            "has_observed_resolved_edge": observed,
+            "isolate_reason": (None if observed else
+                "excluded_by_policy" if not eligibility[article_id] else
+                "missing_reference_coverage" if not outgoing_observed else
+                "no_resolved_observed_edge"),
+        })
     return {
         "article_count": len(ids),
         "eligible_article_count": sum(eligibility.values()),
         "citation_status_counts": dict(sorted(status_counts.items())),
         "excluded_edge_observations": dict(sorted(excluded_edges.items())),
         "graph_policy": dict(graph_policy),
+        "nodes": node_rows,
         "edges": rows,
         "edge_count": len(rows),
         "edge_observation_count": sum(edges.values()),
