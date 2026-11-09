@@ -254,6 +254,23 @@ def plan_text_inputs(
     return out
 
 
+
+
+def plan_pubmedbert_text_inputs(
+    canonical_articles: list[dict], source_records: list[dict],
+    eligibility: dict[str, bool],
+) -> list[dict]:
+    """Entrypoint for the owner-approved deterministic PubMedBERT text policy.
+
+    Other representation families may use their own source selection contracts;
+    this entrypoint intentionally cannot accept arbitrary source choices.
+    """
+    choices = choose_pubmedbert_source_priority(canonical_articles, source_records)
+    return plan_text_inputs(
+        canonical_articles, source_records, choices, eligibility,
+        permitted_missing_states={"both", "title_only"},
+    )
+
 def plan_citation_graph(
     canonical_articles: list[dict],
     source_records: list[dict],
