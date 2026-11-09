@@ -14,6 +14,7 @@ from pro_adherence.stage3_contracts import (
     validate_vector_rows,
     aggregate_weighted_fragments,
     summarize_long_abstract_coverage,
+    pack_sentence_token_groups,
 )
 
 HASH = "a" * 64
@@ -277,17 +278,19 @@ class Stage3PlanningContractTests(unittest.TestCase):
     def test_full_corpus_long_abstract_denominators_and_no_silent_truncation(self):
         rows = [
             dict(article_id="a", eligible=True, has_abstract=True,
-                 fragment_count=1, full_input_exceeds_512=False,
+                 fragment_count=1, full_input_exceeds_512=False, abstract_tokens_exceeds_512=False,
                  forced_sentence_splits=0, full_content_covered=True),
             dict(article_id="b", eligible=True, has_abstract=True,
-                 fragment_count=3, full_input_exceeds_512=True,
+                 fragment_count=3, full_input_exceeds_512=True, abstract_tokens_exceeds_512=True,
                  forced_sentence_splits=1, full_content_covered=True),
             dict(article_id="c", eligible=False, has_abstract=False,
-                 fragment_count=0, full_input_exceeds_512=False,
+                 fragment_count=0, full_input_exceeds_512=False, abstract_tokens_exceeds_512=False,
                  forced_sentence_splits=0, full_content_covered=False),
         ]
         report = summarize_long_abstract_coverage(rows, canonical_total=3)
         self.assertEqual(report["articles_needing_fragments"], 1)
+        self.assertEqual(report["abstract_itself_over_512_count"], 1)
+        self.assertEqual(report["pct_abstract_itself_over_512_of_eligible_abstracts"], 50.0)
         self.assertAlmostEqual(report["pct_all_canonical"], 33.3333, places=3)
         self.assertEqual(report["pct_eligible_text"], 50.0)
         self.assertEqual(report["pct_eligible_with_abstract"], 50.0)
@@ -303,6 +306,24 @@ class Stage3PlanningContractTests(unittest.TestCase):
         bad[1]["fragment_count"] = 1
         with self.assertRaisesRegex(Stage3ContractError, "chunk count"):
             summarize_long_abstract_coverage(bad, canonical_total=3)
+
+    def test_sentence_boundary_packing_no_loss_and_long_sentence_fallback(self):
+        pack = pack_sentence_token_groups(
+            [[1, 2], [3, 4, 5], [6, 7], [8, 9, 10, 11, 12]],
+            first_content_capacity=5, subsequent_content_capacity=5)
+        self.assertEqual(pack["chunks"], [[1, 2, 3, 4, 5], [6, 7], [8, 9, 10, 11, 12]])
+        self.assertEqual(pack["forced_sentence_splits"], 0)
+        fallback = pack_sentence_token_groups(
+            [[1, 2, 3, 4, 5, 6, 7]], first_content_capacity=3,
+            subsequent_content_capacity=3)
+        self.assertEqual(fallback["chunks"], [[1, 2, 3], [4, 5, 6], [7]])
+        self.assertEqual(fallback["forced_sentence_splits"], 1)
+        with self.assertRaisesRegex(Stage3ContractError, "chunk capacity"):
+            pack_sentence_token_groups([[1, 2]], first_content_capacity=0,
+                                       subsequent_content_capacity=2)
+        with self.assertRaisesRegex(Stage3ContractError, "sentence token groups"):
+            pack_sentence_token_groups([[]], first_content_capacity=2,
+                                       subsequent_content_capacity=2)
 
 if __name__ == "__main__":
     unittest.main()
