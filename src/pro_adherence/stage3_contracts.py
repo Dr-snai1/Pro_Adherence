@@ -149,9 +149,9 @@ def plan_text_inputs(
     _exact_coverage("eligibility", eligibility, ids)
     _exact_coverage("source choices", source_choice, ids)
     if permitted_missing_states not in (
-        {"both"}, {"both", "title_only"}, {"both", "title_only", "abstract_only"},
+        {"both", "title_only"}, {"both", "title_only", "abstract_only"},
     ):
-        raise Stage3ContractError("missing-text policy is not explicitly allowed")
+        raise Stage3ContractError("owner-approved title-only policy must be allowed")
     out = []
     for article_id in sorted(ids):
         article = articles[article_id]
@@ -171,7 +171,25 @@ def plan_text_inputs(
                  "title_only" if title.strip() else
                  "abstract_only" if abstract.strip() else "missing_both")
         eligible = eligibility[article_id]
+        # A title-only vector is valid only if NO source record in this
+        # canonical group supplies an abstract. Never discard an existing
+        # abstract silently or select between conflicting sources here.
+        candidates = []
+        for member_id in article["source_record_ids"]:
+            member = sources.get(member_id)
+            if member is None:
+                raise Stage3ContractError(f"unavailable canonical source member {member_id}")
+            candidate_abstract = member.get("abstract") or ""
+            if not isinstance(candidate_abstract, str):
+                raise Stage3ContractError("invalid alternative source abstract")
+            if candidate_abstract.strip():
+                candidates.append(member_id)
+        candidates.sort()
+        needs_source_resolution = (
+            eligible and state in {"title_only", "missing_both"} and bool(candidates)
+        )
         status = ("excluded_by_policy" if not eligible else
+                  "requires_source_resolution" if needs_source_resolution else
                   "ready" if state in permitted_missing_states else
                   "missing_input")
         payload = json.dumps([title, abstract], ensure_ascii=False, separators=(",", ":")).encode("utf8")
@@ -179,9 +197,11 @@ def plan_text_inputs(
             "article_id": article_id,
             "source_record_id": selected,
             "source_record_ids": sorted(article["source_record_ids"]),
+            "abstract_available_source_record_ids": candidates,
             "text_fields_sha256": sha256(payload).hexdigest(),
             "title": title, "abstract": abstract,
             "text_state": state, "embedding_input_status": status,
+            "title_only_vector": (status == "ready" and state == "title_only"),
             "access_class": "restricted",
         })
     return out
@@ -567,3 +587,57 @@ def mean_pooling_content_mask(
     if not any(result):
         raise Stage3ContractError("no content tokens for mean pooling")
     return result
+
+
+
+def summarize_pubmedbert_text_coverage(rows: list[dict], *, canonical_total: int) -> dict:
+    """Report owner-approved title-only coverage after source reconciliation.
+
+    Do not invent a title, infer an abstract, or label an unresolved alternate
+    abstract as title-only. No raw bibliographic text is returned.
+    """
+    if not isinstance(canonical_total, int) or isinstance(canonical_total, bool) or canonical_total < 1:
+        raise Stage3ContractError("invalid canonical denominator")
+    indexed = _unique_index(rows, "article_id", "PubMedBERT text coverage")
+    if len(indexed) != canonical_total:
+        raise Stage3ContractError("full canonical roster required")
+    statuses = Counter()
+    states = Counter()
+    title_only = 0
+    eligible = 0
+    ready = 0
+    for row in rows:
+        status = row.get("embedding_input_status")
+        state = row.get("text_state")
+        if status not in {
+            "ready", "missing_input", "excluded_by_policy", "requires_source_resolution"
+        } or state not in {"both", "title_only", "abstract_only", "missing_both"}:
+            raise Stage3ContractError("unrecognized text coverage status")
+        flagged = row.get("title_only_vector")
+        if type(flagged) is not bool:
+            raise Stage3ContractError("missing explicit title-only flag")
+        if flagged != (status == "ready" and state == "title_only"):
+            raise Stage3ContractError("incorrect title-only status")
+        candidates = row.get("abstract_available_source_record_ids")
+        if not isinstance(candidates, list) or any(not isinstance(c, str) for c in candidates):
+            raise Stage3ContractError("invalid abstract provenance candidates")
+        if flagged and candidates:
+            raise Stage3ContractError("title-only assigned while abstract available")
+        statuses[status] += 1
+        states[state] += 1
+        eligible += int(status != "excluded_by_policy")
+        ready += int(status == "ready")
+        title_only += int(flagged)
+    pct = lambda n, d: None if d == 0 else round(100 * n / d, 4)
+    return {
+        "canonical_article_count": canonical_total,
+        "eligible_article_count": eligible,
+        "ready_text_article_count": ready,
+        "title_only_count": title_only,
+        "title_only_pct_canonical": pct(title_only, canonical_total),
+        "title_only_pct_eligible": pct(title_only, eligible),
+        "title_only_pct_ready": pct(title_only, ready),
+        "state_counts": dict(sorted(states.items())),
+        "status_counts": dict(sorted(statuses.items())),
+        "title_only_policy": "preserve_and_flag_do_not_penalize",
+    }
