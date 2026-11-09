@@ -71,18 +71,23 @@ def validate_model_readiness(lens: str, specification: dict) -> None:
     if not SHA256.fullmatch(str(specification.get("config_sha256", ""))):
         raise Stage3ContractError("missing immutable scientific config SHA")
     if lens == "pubmedbert":
+        # Owner decision (2026-11-09): MetSyn reproducibility is NOT a scientific
+        # requirement for Pro_Adherence. Pooling/segmentation and other choices
+        # are methodological variables; they must be recorded and approved
+        # independently, not inherited as unexamined defaults from MetSyn.
         for name in (
-            "metsyn_code_sha256", "metsyn_config_sha256", "model_ref_id",
-            "model_identity_hash", "tokenizer_identity", "title_abstract_format",
-            "pooling", "normalization", "max_length", "overflow_policy",
+            "methodology_decision_ref", "model_ref_id", "model_identity_hash",
+            "tokenizer_identity", "title_abstract_format", "pooling",
+            "normalization", "max_length", "overflow_policy",
         ):
             if specification.get(name) is None or specification.get(name) == "":
-                raise Stage3ContractError(f"unresolved MetSyn/PubMedBERT {name}")
-        for name in ("metsyn_code_sha256", "metsyn_config_sha256", "model_identity_hash"):
-            if not SHA256.fullmatch(str(specification[name])):
-                raise Stage3ContractError(f"unverified PubMedBERT {name}")
-        if not isinstance(specification["max_length"], int) or specification["max_length"] < 1:
-            raise Stage3ContractError("invalid PubMedBERT length")
+                raise Stage3ContractError(f"unresolved PubMedBERT methodology: {name}")
+        if not SHA256.fullmatch(str(specification["model_identity_hash"])):
+            raise Stage3ContractError("unverified PubMedBERT model identity")
+        if (not isinstance(specification["max_length"], int)
+            or isinstance(specification["max_length"], bool)
+            or specification["max_length"] < 1):
+            raise Stage3ContractError("invalid PubMedBERT max_length")
     elif lens == "specter2":
         for name in ("base_model_ref", "base_model_identity_hash",
                      "adapter_ref", "adapter_identity_hash",
