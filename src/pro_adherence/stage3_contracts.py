@@ -99,6 +99,12 @@ def validate_model_readiness(lens: str, specification: dict) -> None:
                 raise Stage3ContractError(f"PubMedBERT owner decision mismatch: {name}")
         if specification["pooling"] not in ("cls_last_hidden", "masked_mean_last_hidden"):
             raise Stage3ContractError("PubMedBERT pooling must be CLS or masked mean")
+        if specification["normalization"] != "l2_after_article_aggregation":
+            raise Stage3ContractError("PubMedBERT owner decision: L2 only after full article aggregation")
+        if specification.get("similarity_metric") != "cosine":
+            raise Stage3ContractError("PubMedBERT owner decision: cosine similarity required")
+        if specification.get("raw_vector_retention") is not True:
+            raise Stage3ContractError("PubMedBERT raw vector and norm must be retained")
         # Both choices are authorised as distinct variants, NOT an arbitrary
         # concatenation or a forced choice between them.
         # Multi-fragment article aggregation is a further scientific variable,
@@ -704,4 +710,37 @@ def summarize_pubmedbert_text_coverage(rows: list[dict], *, canonical_total: int
         "state_counts": dict(sorted(states.items())),
         "status_counts": dict(sorted(statuses.items())),
         "title_only_policy": "preserve_and_flag_do_not_penalize",
+    }
+
+
+def preserve_raw_and_l2_article_vector(
+    raw_article_vector: list[float], *, dimension: int = 768,
+) -> dict:
+    """Preserve owner-approved final raw vector and norm; normalize only afterward.
+
+    raw_article_vector must be the final CLS or masked-mean article vector,
+    i.e. after token-weighted fragment aggregation, before L2 normalization.
+    No token-level hidden states, weight training or corpus reads here.
+    """
+    if not isinstance(dimension, int) or isinstance(dimension, bool) or dimension < 1:
+        raise Stage3ContractError("invalid article-vector dimension")
+    if (not isinstance(raw_article_vector, (tuple, list))
+        or len(raw_article_vector) != dimension
+        or any(isinstance(v, bool) or not isinstance(v, (float, int))
+               or not math.isfinite(v) for v in raw_article_vector)):
+        raise Stage3ContractError("raw article vector invalid/nonfinite/dimension mismatch")
+    # math.hypot avoids intermediate squared-value overflow.
+    norm = math.hypot(*raw_article_vector)
+    if not math.isfinite(norm) or norm <= 1e-12:
+        raise Stage3ContractError("cannot L2-normalize a near-zero/nonfinite vector")
+    unit = [float(x / norm) for x in raw_article_vector]
+    if not all(math.isfinite(x) for x in unit):
+        raise Stage3ContractError("invalid normalized vector")
+    # Keep original input values rather than overwrite them in-place.
+    return {
+        "raw_article_vector": list(raw_article_vector),
+        "raw_l2_norm": norm,
+        "unit_article_vector": unit,
+        "normalization": "l2_after_article_aggregation",
+        "similarity_metric": "cosine",
     }
