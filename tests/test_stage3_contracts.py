@@ -199,13 +199,38 @@ class Stage3PlanningContractTests(unittest.TestCase):
             "config_sha256": HASH, "methodology_decision_ref": "synthetic-choice",
             "model_ref_id": "synthetic-biomedbert",
             "model_identity_hash": HASH, "tokenizer_identity": "synthetic-tokenizer",
-            "title_abstract_format": "synthetic-title-abstract",
-            "pooling": "masked_mean", "normalization": "l2",
-            "max_length": 512, "overflow_policy": "synthetic-truncate",
+            "title_abstract_format": "title_sep_abstract",
+            "pooling": "masked_mean_last_hidden", "normalization": "l2",
+            "max_length": 512, "overflow_policy": "fragmented",
+            "pretraining_corpus": "pubmed_abstracts",
+            "embedding_dimension": 768, "layer_selection": "last_hidden",
+            "fine_tuning": False,
+            "fragment_aggregation": "synthetic_explicit_owner_choice",
+            "special_tokens_policy": "synthetic_explicit_owner_choice",
         }
-        self.assertIsNone(validate_model_readiness("pubmedbert", pubmedbert))
-        with self.assertRaisesRegex(Stage3ContractError, "pooling"):
-            validate_model_readiness("pubmedbert", {**pubmedbert, "pooling": ""})
+        for variant in ("cls_last_hidden", "masked_mean_last_hidden"):
+            with self.subTest(pooling=variant):
+                self.assertIsNone(validate_model_readiness(
+                    "pubmedbert", {**pubmedbert, "pooling": variant}))
+        for field, bad in (
+            ("pooling", "max_pooling"),
+            ("pretraining_corpus", "pubmed_abstracts_plus_fulltext"),
+            ("embedding_dimension", 1024),
+            ("layer_selection", "middle"),
+            ("title_abstract_format", "plain_concat"),
+            ("max_length", 256),
+            ("overflow_policy", "truncate"),
+            ("fine_tuning", True),
+        ):
+            with self.subTest(field=field):
+                with self.assertRaises(Stage3ContractError):
+                    validate_model_readiness("pubmedbert", {**pubmedbert, field: bad})
+        with self.assertRaisesRegex(Stage3ContractError, "fragment"):
+            validate_model_readiness("pubmedbert", {
+                **pubmedbert, "fragment_aggregation": None})
+        with self.assertRaisesRegex(Stage3ContractError, "special-token"):
+            validate_model_readiness("pubmedbert", {
+                **pubmedbert, "special_tokens_policy": None})
         with self.assertRaisesRegex(Stage3ContractError, "adapter_ref"):
             validate_model_readiness("specter2", {
                 "scientific_parameters_status": "owner_approved",
