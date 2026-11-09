@@ -11,6 +11,7 @@ from pro_adherence.stage3_contracts import (
     plan_citation_graph,
     plan_text_inputs,
     choose_pubmedbert_source_priority,
+    plan_pubmedbert_text_inputs,
     validate_model_readiness,
     validate_vector_rows,
     aggregate_weighted_fragments,
@@ -180,9 +181,8 @@ class Stage3PlanningContractTests(unittest.TestCase):
                                    "z": "pubmed:9"})
         self.assertEqual(choices, choose_pubmedbert_source_priority(
             list(reversed(articles)), list(reversed(sources))))
-        planned = plan_text_inputs(articles, sources, choices,
-                                   {x: True for x in choices},
-                                   permitted_missing_states={"both", "title_only"})
+        planned = plan_pubmedbert_text_inputs(
+            articles, sources, {x: True for x in choices})
         self.assertEqual([x["text_state"] for x in planned],
                          ["both", "both", "title_only"])
         self.assertEqual([x["title_only_vector"] for x in planned],
