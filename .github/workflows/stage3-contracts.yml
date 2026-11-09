@@ -1,0 +1,34 @@
+name: Stage 3 planning-only contracts (synthetic data)
+
+on:
+  push:
+    branches:
+      - "stage2/**"
+      - "stage3/**"
+    paths:
+      - "src/pro_adherence/stage3_contracts.py"
+      - "tests/test_stage3_contracts.py"
+      - "docs/stage3/**"
+      - ".github/workflows/stage3-contracts.yml"
+  pull_request:
+    paths:
+      - "src/pro_adherence/stage3_contracts.py"
+      - "tests/test_stage3_contracts.py"
+      - "docs/stage3/**"
+      - ".github/workflows/stage3-contracts.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  offline-contract-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Validate Stage3 contracts without models or private corpus
+        env:
+          PYTHONPATH: src
+        run: python -m unittest discover -s tests -p 'test_stage3_*.py' -v
