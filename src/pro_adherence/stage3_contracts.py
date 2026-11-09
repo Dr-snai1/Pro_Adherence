@@ -105,8 +105,8 @@ def validate_model_readiness(lens: str, specification: dict) -> None:
         # not specified by choosing a 512-token fragment size.
         if specification.get("fragment_aggregation") != "content_token_weighted_mean":
             raise Stage3ContractError("PubMedBERT owner decision: token-weighted fragment aggregation required")
-        if specification.get("special_tokens_policy") in (None, ""):
-            raise Stage3ContractError("PubMedBERT special-token pooling policy is undecided")
+        if specification.get("special_tokens_policy") != "exclude_all_special_and_padding":
+            raise Stage3ContractError("PubMedBERT mean must exclude all special tokens and padding")
     elif lens == "specter2":
         for name in ("base_model_ref", "base_model_identity_hash",
                      "adapter_ref", "adapter_identity_hash",
@@ -542,3 +542,28 @@ def pack_sentence_token_groups(
         if not chunk or len(chunk) > limit:
             raise Stage3ContractError("packed chunk overflow")
     return {"chunks": chunks, "forced_sentence_splits": forced}
+
+def mean_pooling_content_mask(
+    attention_mask: list[int], special_tokens_mask: list[int]
+) -> list[int]:
+    """Select text tokens only for PubMedBERT masked mean (owner-approved).
+
+    1 marks real content, 0 marks all special/padding tokens. The tokenizer must
+    supply a special_tokens_mask for the final encoded input including CLS/SEP.
+    CLS-branch output remains independent and uses the last hidden CLS vector.
+    """
+    if (not isinstance(attention_mask, list)
+        or not isinstance(special_tokens_mask, list)
+        or not attention_mask
+        or len(attention_mask) != len(special_tokens_mask)):
+        raise Stage3ContractError("invalid content/special token masks")
+    if any(type(x) is not int or x not in (0, 1)
+           for x in attention_mask + special_tokens_mask):
+        raise Stage3ContractError("nonbinary token masks")
+    result = [
+        int(attended == 1 and special == 0)
+        for attended, special in zip(attention_mask, special_tokens_mask)
+    ]
+    if not any(result):
+        raise Stage3ContractError("no content tokens for mean pooling")
+    return result
