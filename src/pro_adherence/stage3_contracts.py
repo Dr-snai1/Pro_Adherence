@@ -415,6 +415,7 @@ def summarize_long_abstract_coverage(rows: list[dict], *, canonical_total: int) 
         raise Stage3ContractError("full canonical roster required for denominator")
     eligible = 0
     has_abstract = 0
+    long_abstract = 0
     chunked = 0
     forced_sentence_splits = 0
     chunk_histogram = Counter()
@@ -429,6 +430,13 @@ def summarize_long_abstract_coverage(rows: list[dict], *, canonical_total: int) 
         exceeds = row.get("full_input_exceeds_512")
         if not isinstance(exceeds, bool):
             raise Stage3ContractError("missing pinned tokenizer length threshold")
+        abstract_exceeds = row.get("abstract_tokens_exceeds_512")
+        if not isinstance(abstract_exceeds, bool):
+            raise Stage3ContractError("missing abstract-only token length threshold")
+        if abstract_exceeds and not row["has_abstract"]:
+            raise Stage3ContractError("long abstract marked for missing abstract")
+        if abstract_exceeds and not exceeds:
+            raise Stage3ContractError("abstract exceeds limit but full input does not")
         forced = row.get("forced_sentence_splits")
         if not isinstance(forced, int) or isinstance(forced, bool) or forced < 0:
             raise Stage3ContractError("invalid forced sentence split count")
@@ -437,6 +445,7 @@ def summarize_long_abstract_coverage(rows: list[dict], *, canonical_total: int) 
         if row["eligible"]:
             eligible += 1
             has_abstract += int(row["has_abstract"])
+            long_abstract += int(abstract_exceeds)
             if n < 1:
                 raise Stage3ContractError("eligible article has no processed input")
             if (n > 1) != exceeds:
@@ -453,6 +462,9 @@ def summarize_long_abstract_coverage(rows: list[dict], *, canonical_total: int) 
         "canonical_article_count": canonical_total,
         "eligible_text_article_count": eligible,
         "eligible_with_abstract_count": has_abstract,
+        "abstract_itself_over_512_count": long_abstract,
+        "pct_abstract_itself_over_512_of_canonical": pct(long_abstract, canonical_total),
+        "pct_abstract_itself_over_512_of_eligible_abstracts": pct(long_abstract, has_abstract),
         "articles_needing_fragments": chunked,
         "pct_all_canonical": pct(chunked, canonical_total),
         "pct_eligible_text": pct(chunked, eligible),
@@ -461,3 +473,69 @@ def summarize_long_abstract_coverage(rows: list[dict], *, canonical_total: int) 
         "fragment_count_histogram": dict(sorted(chunk_histogram.items(), key=lambda kv: int(kv[0]))),
         "status": "descriptive_postprocessing_report_not_a_method_selection",
     }
+
+
+def pack_sentence_token_groups(
+    sentence_token_ids: list[list[int]], *,
+    first_content_capacity: int,
+    subsequent_content_capacity: int,
+) -> dict:
+    """Greedy sentence-aware packing of ALREADY tokenized abstract sentences.
+
+    The caller reserves the 512-token model overhead (CLS/SEP and the title
+    where present) in both capacities; title is represented once in the first
+    chunk and must be included separately by the caller. No overlap or text
+    drop. If one sentence cannot fit a fresh chunk, split it by token count.
+    Re-check the final *model-encoded* total length <=512 at the model boundary.
+    """
+    if not sentence_token_ids:
+        return {"chunks": [], "forced_sentence_splits": 0}
+    if any(not isinstance(n, int) or isinstance(n, bool) or n < 1
+           for n in (first_content_capacity, subsequent_content_capacity)):
+        raise Stage3ContractError("invalid tokenizer chunk capacity")
+    if any(not isinstance(x, list) or not x
+           or any(not isinstance(t, int) or isinstance(t, bool) or t < 0 for t in x)
+           for x in sentence_token_ids):
+        raise Stage3ContractError("sentence token groups must contain token IDs")
+    chunks: list[list[int]] = []
+    buf: list[int] = []
+    forced = 0
+    for sentence in sentence_token_ids:
+        remaining = list(sentence)
+        did_split = False
+        while remaining:
+            limit = first_content_capacity if not chunks else subsequent_content_capacity
+            room = limit - len(buf)
+            if room <= 0:
+                chunks.append(buf)
+                buf = []
+                continue
+            if len(remaining) <= room:
+                buf.extend(remaining)
+                remaining = []
+                continue
+            if buf:
+                # Preserve a sentence boundary by starting a fresh chunk.
+                chunks.append(buf)
+                buf = []
+                continue
+            # Oversized single sentence: split at tokenizer boundaries, not
+            # silently discard its tail. Count one forced split per sentence.
+            if not did_split:
+                forced += 1
+                did_split = True
+            buf.extend(remaining[:room])
+            remaining = remaining[room:]
+            chunks.append(buf)
+            buf = []
+    if buf:
+        chunks.append(buf)
+    expected = [t for sentence in sentence_token_ids for t in sentence]
+    actual = [t for chunk in chunks for t in chunk]
+    if actual != expected:
+        raise Stage3ContractError("token loss or duplication during sentence packing")
+    for idx, chunk in enumerate(chunks):
+        limit = first_content_capacity if idx == 0 else subsequent_content_capacity
+        if not chunk or len(chunk) > limit:
+            raise Stage3ContractError("packed chunk overflow")
+    return {"chunks": chunks, "forced_sentence_splits": forced}
