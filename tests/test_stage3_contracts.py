@@ -294,6 +294,13 @@ class Stage3PlanningContractTests(unittest.TestCase):
         self.assertAlmostEqual(report["pct_all_canonical"], 33.3333, places=3)
         self.assertEqual(report["pct_eligible_text"], 50.0)
         self.assertEqual(report["pct_eligible_with_abstract"], 50.0)
+        title_only = [dict(x) for x in rows]
+        title_only[1]["has_abstract"] = False
+        title_only[1]["abstract_tokens_exceeds_512"] = False
+        report_no_abstract = summarize_long_abstract_coverage(title_only, canonical_total=3)
+        self.assertEqual(report_no_abstract["pct_eligible_with_abstract"], 0.0)
+        self.assertEqual(report_no_abstract["pct_eligible_text"], 50.0)
+        self.assertEqual(report_no_abstract["chunked_articles_with_abstract_count"], 0)
         self.assertEqual(report["fragment_count_histogram"], {"1": 1, "3": 1})
         self.assertEqual(report["forced_sentence_splits_total"], 1)
         with self.assertRaisesRegex(Stage3ContractError, "full canonical roster"):
