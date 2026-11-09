@@ -189,9 +189,23 @@ class Stage3PlanningContractTests(unittest.TestCase):
             with self.subTest(lens=lens):
                 with self.assertRaisesRegex(Stage3ContractError, "not owner-approved"):
                     validate_model_readiness(lens, {"scientific_parameters_status": "pending"})
-        with self.assertRaisesRegex(Stage3ContractError, "metsyn_code_sha256"):
+        with self.assertRaisesRegex(Stage3ContractError, "methodology_decision_ref"):
             validate_model_readiness("pubmedbert", {
                 "scientific_parameters_status": "owner_approved", "config_sha256": HASH})
+        # Synthetic demonstration only: no MetSyn execution files are required.
+        # The owner must still approve actual settings before real computation.
+        pubmedbert = {
+            "scientific_parameters_status": "owner_approved",
+            "config_sha256": HASH, "methodology_decision_ref": "synthetic-choice",
+            "model_ref_id": "synthetic-biomedbert",
+            "model_identity_hash": HASH, "tokenizer_identity": "synthetic-tokenizer",
+            "title_abstract_format": "synthetic-title-abstract",
+            "pooling": "masked_mean", "normalization": "l2",
+            "max_length": 512, "overflow_policy": "synthetic-truncate",
+        }
+        self.assertIsNone(validate_model_readiness("pubmedbert", pubmedbert))
+        with self.assertRaisesRegex(Stage3ContractError, "pooling"):
+            validate_model_readiness("pubmedbert", {**pubmedbert, "pooling": ""})
         with self.assertRaisesRegex(Stage3ContractError, "adapter_ref"):
             validate_model_readiness("specter2", {
                 "scientific_parameters_status": "owner_approved",
