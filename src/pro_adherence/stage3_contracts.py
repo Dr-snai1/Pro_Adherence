@@ -129,6 +129,53 @@ def validate_model_readiness(lens: str, specification: dict) -> None:
             raise Stage3ContractError("node2vec model identity not pinned")
 
 
+
+PUBMEDBERT_SOURCE_PRIORITY = ("pubmed", "woscc", "apa_psycinfo")
+
+
+def choose_pubmedbert_source_priority(
+    canonical_articles: list[dict], source_records: list[dict]
+) -> dict[str, str]:
+    """Owner-selected fixed source priority: PubMed > WoS > APA.
+
+    Prefer a complete title+abstract from ONE source record, then a title-only
+    record if no complete record exists. plan_text_inputs flags title-only as
+    pending when any other member has an abstract; NEVER combine source fields
+    silently. Source ID is a deterministic tie-breaker within one database.
+    """
+    articles = _unique_index(canonical_articles, "canonical_article_id", "canonical")
+    sources = _unique_index(source_records, "source_record_id", "source")
+    choices = {}
+    for article_id, article in sorted(articles.items()):
+        member_ids = article.get("source_record_ids")
+        if not isinstance(member_ids, list) or not member_ids:
+            raise Stage3ContractError("canonical article has no source members")
+        if len(member_ids) != len(set(member_ids)):
+            raise Stage3ContractError("duplicate canonical source members")
+        candidates = []
+        for member_id in member_ids:
+            member = sources.get(member_id)
+            if member is None:
+                raise Stage3ContractError(f"missing source record {member_id}")
+            db = member_id.split(":", 1)[0]
+            if db not in PUBMEDBERT_SOURCE_PRIORITY:
+                raise Stage3ContractError(f"unsupported PubMedBERT source prefix {db}")
+            title, abstract = member.get("title") or "", member.get("abstract") or ""
+            if not isinstance(title, str) or not isinstance(abstract, str):
+                raise Stage3ContractError("invalid PubMedBERT source text")
+            complete = bool(title.strip() and abstract.strip())
+            has_title = bool(title.strip())
+            # Completeness protects earlier title-only decision: lower-priority
+            # complete text is preferable to discarding an available abstract.
+            candidates.append((
+                0 if complete else 1 if has_title else 2,
+                PUBMEDBERT_SOURCE_PRIORITY.index(db),
+                member_id,
+            ))
+        choices[article_id] = min(candidates)[2]
+    return choices
+
+
 def plan_text_inputs(
     canonical_articles: list[dict],
     source_records: list[dict],
