@@ -12,6 +12,8 @@ from pro_adherence.stage3_contracts import (
     plan_text_inputs,
     validate_model_readiness,
     validate_vector_rows,
+    aggregate_weighted_fragments,
+    summarize_long_abstract_coverage,
 )
 
 HASH = "a" * 64
@@ -205,7 +207,7 @@ class Stage3PlanningContractTests(unittest.TestCase):
             "pretraining_corpus": "pubmed_abstracts",
             "embedding_dimension": 768, "layer_selection": "last_hidden",
             "fine_tuning": False,
-            "fragment_aggregation": "synthetic_explicit_owner_choice",
+            "fragment_aggregation": "content_token_weighted_mean",
             "special_tokens_policy": "synthetic_explicit_owner_choice",
         }
         for variant in ("cls_last_hidden", "masked_mean_last_hidden"):
@@ -228,6 +230,9 @@ class Stage3PlanningContractTests(unittest.TestCase):
         with self.assertRaisesRegex(Stage3ContractError, "fragment"):
             validate_model_readiness("pubmedbert", {
                 **pubmedbert, "fragment_aggregation": None})
+        with self.assertRaisesRegex(Stage3ContractError, "token-weighted"):
+            validate_model_readiness("pubmedbert", {
+                **pubmedbert, "fragment_aggregation": "equal_mean"})
         with self.assertRaisesRegex(Stage3ContractError, "special-token"):
             validate_model_readiness("pubmedbert", {
                 **pubmedbert, "special_tokens_policy": None})
@@ -241,6 +246,63 @@ class Stage3PlanningContractTests(unittest.TestCase):
         with self.assertRaisesRegex(Stage3ContractError, "graph_snapshot_sha256"):
             validate_model_readiness("node2vec", {
                 "scientific_parameters_status": "owner_approved", "config_sha256": HASH})
+
+    def test_weighted_fragment_both_pooling_branches_and_reject_loss(self):
+        fragments = [
+            {"content_start": 0, "content_end": 4, "content_token_count": 4,
+             "input_token_count": 6, "vector": [10.0, 20.0]},
+            {"content_start": 4, "content_end": 5, "content_token_count": 1,
+             "input_token_count": 3, "vector": [0.0, 0.0]},
+        ]
+        self.assertEqual(
+            aggregate_weighted_fragments(fragments, dimension=2), [8.0, 16.0])
+        self.assertEqual(
+            aggregate_weighted_fragments([
+                {**fragments[0], "vector": [4.0, 2.0]},
+                {**fragments[1], "vector": [9.0, 7.0]},
+            ], dimension=2), [5.0, 3.0])
+        with self.assertRaisesRegex(Stage3ContractError, "gap, overlap"):
+            aggregate_weighted_fragments([
+                fragments[0], {**fragments[1], "content_start": 3}], dimension=2)
+        with self.assertRaisesRegex(Stage3ContractError, "token-count mismatch"):
+            aggregate_weighted_fragments([
+                fragments[0], {**fragments[1], "content_token_count": 2}], dimension=2)
+        with self.assertRaisesRegex(Stage3ContractError, "model limit"):
+            aggregate_weighted_fragments([
+                {**fragments[0], "input_token_count": 513}], dimension=2)
+        with self.assertRaisesRegex(Stage3ContractError, "invalid fragment vector"):
+            aggregate_weighted_fragments([
+                {**fragments[0], "vector": [float("nan"), 0.0]}], dimension=2)
+
+    def test_full_corpus_long_abstract_denominators_and_no_silent_truncation(self):
+        rows = [
+            dict(article_id="a", eligible=True, has_abstract=True,
+                 fragment_count=1, full_input_exceeds_512=False,
+                 forced_sentence_splits=0, full_content_covered=True),
+            dict(article_id="b", eligible=True, has_abstract=True,
+                 fragment_count=3, full_input_exceeds_512=True,
+                 forced_sentence_splits=1, full_content_covered=True),
+            dict(article_id="c", eligible=False, has_abstract=False,
+                 fragment_count=0, full_input_exceeds_512=False,
+                 forced_sentence_splits=0, full_content_covered=False),
+        ]
+        report = summarize_long_abstract_coverage(rows, canonical_total=3)
+        self.assertEqual(report["articles_needing_fragments"], 1)
+        self.assertAlmostEqual(report["pct_all_canonical"], 33.3333, places=3)
+        self.assertEqual(report["pct_eligible_text"], 50.0)
+        self.assertEqual(report["pct_eligible_with_abstract"], 50.0)
+        self.assertEqual(report["fragment_count_histogram"], {"1": 1, "3": 1})
+        self.assertEqual(report["forced_sentence_splits_total"], 1)
+        with self.assertRaisesRegex(Stage3ContractError, "full canonical roster"):
+            summarize_long_abstract_coverage(rows[:2], canonical_total=3)
+        bad = [dict(x) for x in rows]
+        bad[1]["full_content_covered"] = False
+        with self.assertRaisesRegex(Stage3ContractError, "truncated"):
+            summarize_long_abstract_coverage(bad, canonical_total=3)
+        bad = [dict(x) for x in rows]
+        bad[1]["fragment_count"] = 1
+        with self.assertRaisesRegex(Stage3ContractError, "chunk count"):
+            summarize_long_abstract_coverage(bad, canonical_total=3)
 
 if __name__ == "__main__":
     unittest.main()
