@@ -103,8 +103,8 @@ def validate_model_readiness(lens: str, specification: dict) -> None:
         # concatenation or a forced choice between them.
         # Multi-fragment article aggregation is a further scientific variable,
         # not specified by choosing a 512-token fragment size.
-        if specification.get("fragment_aggregation") in (None, ""):
-            raise Stage3ContractError("PubMedBERT multi-fragment aggregation is still undecided")
+        if specification.get("fragment_aggregation") != "content_token_weighted_mean":
+            raise Stage3ContractError("PubMedBERT owner decision: token-weighted fragment aggregation required")
         if specification.get("special_tokens_policy") in (None, ""):
             raise Stage3ContractError("PubMedBERT special-token pooling policy is undecided")
     elif lens == "specter2":
@@ -356,3 +356,108 @@ def validate_vector_rows(
     return {"article_count": len(rows), "dimension": dimension,
             "status_counts": dict(sorted(counts.items())),
             "model_identity_hash": model_identity_hash}
+
+
+def aggregate_weighted_fragments(fragments: list[dict], *, dimension: int) -> list[float]:
+    """Owner-selected B: combine CLS *or* mean fragment vectors by content token count.
+
+    Each fragment must count only genuine (non-special, non-padding) tokens.
+    The list must cover the selected article input *once*, with no gaps/overlap;
+    the caller supplies fragment-local vectors from the last hidden layer.
+    This is not a claim of equivalence to a >512-token transformer context.
+    """
+    if not isinstance(dimension, int) or isinstance(dimension, bool) or dimension <= 0:
+        raise Stage3ContractError("invalid dimension")
+    if not fragments:
+        raise Stage3ContractError("missing fragments")
+    numerator = [0.0] * dimension
+    total = 0
+    expected_start = 0
+    for chunk in fragments:
+        start, end = chunk.get("content_start"), chunk.get("content_end")
+        n = chunk.get("content_token_count")
+        if any(not isinstance(x, int) or isinstance(x, bool) for x in (start, end, n)):
+            raise Stage3ContractError("invalid fragment offsets/count")
+        if start != expected_start or end <= start or end - start != n:
+            raise Stage3ContractError("fragment gap, overlap or token-count mismatch")
+        input_len = chunk.get("input_token_count")
+        if (not isinstance(input_len, int) or isinstance(input_len, bool)
+            or input_len < n or input_len > 512):
+            raise Stage3ContractError("fragment exceeds model limit or invalid token count")
+        vector = chunk.get("vector")
+        if (not isinstance(vector, (list, tuple)) or len(vector) != dimension
+            or any(isinstance(x, bool) or not isinstance(x, (int, float))
+                   or not math.isfinite(x) for x in vector)):
+            raise Stage3ContractError("invalid fragment vector")
+        for k, value in enumerate(vector):
+            numerator[k] += value * n
+        total += n
+        expected_start = end
+    if total <= 0:
+        raise Stage3ContractError("no content tokens")
+    result = [value / total for value in numerator]
+    if not all(math.isfinite(x) for x in result):
+        raise Stage3ContractError("invalid aggregate")
+    return result
+
+
+def summarize_long_abstract_coverage(rows: list[dict], *, canonical_total: int) -> dict:
+    """Aggregate no-text metrics after tokenizer-aware chunking; no raw text output.
+
+    Exact threshold is whether the pinned tokenizer yields >512 tokens for the
+    owner-approved full title+separator+abstract input, including special tokens.
+    Excluded/missing articles are represented explicitly, never silently dropped.
+    """
+    if not isinstance(canonical_total, int) or canonical_total < 1:
+        raise Stage3ContractError("invalid canonical denominator")
+    roster = _unique_index(rows, "article_id", "long-abstract coverage")
+    if len(roster) != canonical_total:
+        raise Stage3ContractError("full canonical roster required for denominator")
+    eligible = 0
+    has_abstract = 0
+    chunked = 0
+    forced_sentence_splits = 0
+    chunk_histogram = Counter()
+    for row in rows:
+        if not isinstance(row.get("eligible"), bool):
+            raise Stage3ContractError("missing eligibility status")
+        if not isinstance(row.get("has_abstract"), bool):
+            raise Stage3ContractError("missing abstract availability")
+        n = row.get("fragment_count")
+        if not isinstance(n, int) or isinstance(n, bool) or n < 0:
+            raise Stage3ContractError("invalid fragment count")
+        exceeds = row.get("full_input_exceeds_512")
+        if not isinstance(exceeds, bool):
+            raise Stage3ContractError("missing pinned tokenizer length threshold")
+        forced = row.get("forced_sentence_splits")
+        if not isinstance(forced, int) or isinstance(forced, bool) or forced < 0:
+            raise Stage3ContractError("invalid forced sentence split count")
+        if not row["eligible"] and (n or exceeds or forced):
+            raise Stage3ContractError("excluded article cannot count as processed")
+        if row["eligible"]:
+            eligible += 1
+            has_abstract += int(row["has_abstract"])
+            if n < 1:
+                raise Stage3ContractError("eligible article has no processed input")
+            if (n > 1) != exceeds:
+                raise Stage3ContractError("chunk count must match input-overflow flag")
+            if forced and n < 2:
+                raise Stage3ContractError("forced split without multiple fragments")
+            if not row.get("full_content_covered"):
+                raise Stage3ContractError("truncated or untracked content")
+            chunked += int(exceeds)
+            forced_sentence_splits += forced
+            chunk_histogram[str(n)] += 1
+    pct = lambda num, denom: None if denom == 0 else round(100.0 * num / denom, 4)
+    return {
+        "canonical_article_count": canonical_total,
+        "eligible_text_article_count": eligible,
+        "eligible_with_abstract_count": has_abstract,
+        "articles_needing_fragments": chunked,
+        "pct_all_canonical": pct(chunked, canonical_total),
+        "pct_eligible_text": pct(chunked, eligible),
+        "pct_eligible_with_abstract": pct(chunked, has_abstract),
+        "forced_sentence_splits_total": forced_sentence_splits,
+        "fragment_count_histogram": dict(sorted(chunk_histogram.items(), key=lambda kv: int(kv[0]))),
+        "status": "descriptive_postprocessing_report_not_a_method_selection",
+    }
