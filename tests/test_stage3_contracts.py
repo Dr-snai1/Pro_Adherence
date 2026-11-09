@@ -19,6 +19,7 @@ from pro_adherence.stage3_contracts import (
     pack_sentence_token_groups,
     mean_pooling_content_mask,
     summarize_pubmedbert_text_coverage,
+    preserve_raw_and_l2_article_vector,
 )
 
 HASH = "a" * 64
@@ -205,6 +206,24 @@ class Stage3PlanningContractTests(unittest.TestCase):
                 [{"source_record_id": "other:q", "title": "Title",
                   "abstract": "Abstract"}])
 
+    def test_raw_vector_norm_and_unit_vector_retained_without_overwriting(self):
+        import math
+        raw = [3.0, 4.0, 0.0]
+        result = preserve_raw_and_l2_article_vector(raw, dimension=3)
+        self.assertEqual(result["raw_article_vector"], raw)
+        self.assertEqual(raw, [3.0, 4.0, 0.0])
+        self.assertEqual(result["raw_l2_norm"], 5.0)
+        self.assertEqual(result["unit_article_vector"], [0.6, 0.8, 0.0])
+        self.assertAlmostEqual(math.hypot(*result["unit_article_vector"]), 1.0)
+        self.assertEqual(result["similarity_metric"], "cosine")
+        for bad in ([0.0, 0.0, 0.0], [float("nan"), 1.0, 0.0],
+                    [3.0, 4.0], [float("inf"), 0.0, 0.0]):
+            with self.subTest(raw=bad):
+                with self.assertRaises(Stage3ContractError):
+                    preserve_raw_and_l2_article_vector(bad, dimension=3)
+        with self.assertRaises(Stage3ContractError):
+            preserve_raw_and_l2_article_vector([True, 2.0, 3.0], dimension=3)
+
     def test_citation_graph_never_invents_ambiguous_target_or_absent_apa_links(self):
         result = plan_citation_graph(ARTICLES, SOURCES, REFERENCES, ELIGIBILITY,
                                      graph_policy=POLICY)
@@ -303,7 +322,9 @@ class Stage3PlanningContractTests(unittest.TestCase):
             "model_ref_id": "synthetic-biomedbert",
             "model_identity_hash": HASH, "tokenizer_identity": "synthetic-tokenizer",
             "title_abstract_format": "title_sep_abstract",
-            "pooling": "masked_mean_last_hidden", "normalization": "l2",
+            "pooling": "masked_mean_last_hidden",
+            "normalization": "l2_after_article_aggregation",
+            "similarity_metric": "cosine", "raw_vector_retention": True,
             "max_length": 512, "overflow_policy": "fragmented",
             "pretraining_corpus": "pubmed_abstracts",
             "embedding_dimension": 768, "layer_selection": "last_hidden",
@@ -324,6 +345,9 @@ class Stage3PlanningContractTests(unittest.TestCase):
             ("max_length", 256),
             ("overflow_policy", "truncate"),
             ("fine_tuning", True),
+            ("normalization", "l2_before_fragment_aggregation"),
+            ("similarity_metric", "euclidean"),
+            ("raw_vector_retention", False),
         ):
             with self.subTest(field=field):
                 with self.assertRaises(Stage3ContractError):
