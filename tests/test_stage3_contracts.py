@@ -15,6 +15,7 @@ from pro_adherence.stage3_contracts import (
     aggregate_weighted_fragments,
     summarize_long_abstract_coverage,
     pack_sentence_token_groups,
+    mean_pooling_content_mask,
 )
 
 HASH = "a" * 64
@@ -209,7 +210,7 @@ class Stage3PlanningContractTests(unittest.TestCase):
             "embedding_dimension": 768, "layer_selection": "last_hidden",
             "fine_tuning": False,
             "fragment_aggregation": "content_token_weighted_mean",
-            "special_tokens_policy": "synthetic_explicit_owner_choice",
+            "special_tokens_policy": "exclude_all_special_and_padding",
         }
         for variant in ("cls_last_hidden", "masked_mean_last_hidden"):
             with self.subTest(pooling=variant):
@@ -234,9 +235,12 @@ class Stage3PlanningContractTests(unittest.TestCase):
         with self.assertRaisesRegex(Stage3ContractError, "token-weighted"):
             validate_model_readiness("pubmedbert", {
                 **pubmedbert, "fragment_aggregation": "equal_mean"})
-        with self.assertRaisesRegex(Stage3ContractError, "special-token"):
+        with self.assertRaisesRegex(Stage3ContractError, "all special"):
             validate_model_readiness("pubmedbert", {
                 **pubmedbert, "special_tokens_policy": None})
+        with self.assertRaisesRegex(Stage3ContractError, "all special"):
+            validate_model_readiness("pubmedbert", {
+                **pubmedbert, "special_tokens_policy": "include_cls_sep"})
         with self.assertRaisesRegex(Stage3ContractError, "adapter_ref"):
             validate_model_readiness("specter2", {
                 "scientific_parameters_status": "owner_approved",
@@ -331,6 +335,19 @@ class Stage3PlanningContractTests(unittest.TestCase):
         with self.assertRaisesRegex(Stage3ContractError, "sentence token groups"):
             pack_sentence_token_groups([[]], first_content_capacity=2,
                                        subsequent_content_capacity=2)
+
+    def test_mean_mask_excludes_cls_sep_other_special_and_padding(self):
+        # CLS, title token, SEP, abstract tokens, SEP, padding, other special.
+        mask = mean_pooling_content_mask(
+            [1, 1, 1, 1, 1, 1, 0, 1],
+            [1, 0, 1, 0, 0, 1, 0, 1])
+        self.assertEqual(mask, [0, 1, 0, 1, 1, 0, 0, 0])
+        with self.assertRaisesRegex(Stage3ContractError, "no content"):
+            mean_pooling_content_mask([1, 1, 0], [1, 1, 0])
+        with self.assertRaisesRegex(Stage3ContractError, "invalid content"):
+            mean_pooling_content_mask([1, 1], [1])
+        with self.assertRaisesRegex(Stage3ContractError, "nonbinary"):
+            mean_pooling_content_mask([1, 2], [1, 0])
 
 if __name__ == "__main__":
     unittest.main()
