@@ -10,6 +10,7 @@ from pro_adherence.stage3_contracts import (
     freeze_snapshot_contract,
     plan_citation_graph,
     plan_text_inputs,
+    choose_pubmedbert_source_priority,
     validate_model_readiness,
     validate_vector_rows,
     aggregate_weighted_fragments,
@@ -144,6 +145,64 @@ class Stage3PlanningContractTests(unittest.TestCase):
             summarize_pubmedbert_text_coverage(altered, canonical_total=3)
         with self.assertRaisesRegex(Stage3ContractError, "full canonical roster"):
             summarize_pubmedbert_text_coverage(ready[:2], canonical_total=3)
+
+    def test_pubmed_wos_apa_priority_and_complete_abstract_fallback(self):
+        articles = [
+            {"canonical_article_id": "x", "source_record_ids": [
+                "apa_psycinfo:3", "woscc:2", "pubmed:1"]},
+            {"canonical_article_id": "y", "source_record_ids": [
+                "apa_psycinfo:4", "pubmed:5", "woscc:6"]},
+            {"canonical_article_id": "z", "source_record_ids": [
+                "apa_psycinfo:7", "woscc:8", "pubmed:9"]},
+        ]
+        sources = [
+            {"source_record_id": "pubmed:1", "title": "PubMed full",
+             "abstract": "Full abstract"},
+            {"source_record_id": "woscc:2", "title": "WoS full",
+             "abstract": "Full abstract"},
+            {"source_record_id": "apa_psycinfo:3", "title": "APA full",
+             "abstract": "Full abstract"},
+            {"source_record_id": "apa_psycinfo:4", "title": "APA full",
+             "abstract": "Full abstract"},
+            {"source_record_id": "pubmed:5", "title": "PubMed title",
+             "abstract": ""},
+            {"source_record_id": "woscc:6", "title": "WoS full",
+             "abstract": "Full abstract"},
+            {"source_record_id": "apa_psycinfo:7", "title": "APA title",
+             "abstract": ""},
+            {"source_record_id": "woscc:8", "title": "WoS title",
+             "abstract": ""},
+            {"source_record_id": "pubmed:9", "title": "PubMed title",
+             "abstract": ""},
+        ]
+        choices = choose_pubmedbert_source_priority(articles, sources)
+        self.assertEqual(choices, {"x": "pubmed:1", "y": "woscc:6",
+                                   "z": "pubmed:9"})
+        self.assertEqual(choices, choose_pubmedbert_source_priority(
+            list(reversed(articles)), list(reversed(sources))))
+        planned = plan_text_inputs(articles, sources, choices,
+                                   {x: True for x in choices},
+                                   permitted_missing_states={"both", "title_only"})
+        self.assertEqual([x["text_state"] for x in planned],
+                         ["both", "both", "title_only"])
+        self.assertEqual([x["title_only_vector"] for x in planned],
+                         [False, False, True])
+        # If only an abstract survives in a different source, do not
+        # fabricate a merged title + abstract from two databases.
+        sources[6]["abstract"] = "APA abstract"
+        choices = choose_pubmedbert_source_priority(articles, sources)
+        self.assertEqual(choices["y"], "pubmed:5")
+        planned = plan_text_inputs(articles, sources, choices,
+                                   {x: True for x in choices},
+                                   permitted_missing_states={"both", "title_only"})
+        self.assertEqual(planned[1]["embedding_input_status"],
+                         "requires_source_resolution")
+        with self.assertRaisesRegex(Stage3ContractError, "unsupported"):
+            choose_pubmedbert_source_priority(
+                [{"canonical_article_id": "q",
+                  "source_record_ids": ["other:q"]}],
+                [{"source_record_id": "other:q", "title": "Title",
+                  "abstract": "Abstract"}])
 
     def test_citation_graph_never_invents_ambiguous_target_or_absent_apa_links(self):
         result = plan_citation_graph(ARTICLES, SOURCES, REFERENCES, ELIGIBILITY,
