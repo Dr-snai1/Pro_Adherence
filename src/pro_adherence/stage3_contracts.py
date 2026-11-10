@@ -247,6 +247,93 @@ def choose_pubmedbert_source_priority(
     return choices
 
 
+def plan_stage3_canonical_eligibility(
+    canonical_articles: list[dict], source_records: list[dict],
+) -> dict:
+    """Owner's 2026-11-10 primary journal-article cohort, no corpus deletion.
+
+    Input is *explicitly normalized* source evidence. Each source must specify
+    record_family (journal/book/unknown) plus booleans for the three quality
+    flags; missing evidence is a contract error, never silently false.
+    The source archive itself is immutable and must be kept separately.
+
+    Journal evidence in any canonical member keeps a mixed book+journal group
+    eligible, unless *any* member reports retraction. Book-only groups are
+    excluded. Unknown-only family requires resolution, not auto-inclusion.
+    """
+    articles = _unique_index(canonical_articles, "canonical_article_id", "canonical")
+    sources = _unique_index(source_records, "source_record_id", "source")
+    source_to_article = {}
+    for article_id, article in articles.items():
+        members = article.get("source_record_ids")
+        if not isinstance(members, list) or not members or len(members) != len(set(members)):
+            raise Stage3ContractError("invalid canonical source membership")
+        for sid in members:
+            if sid not in sources or sid in source_to_article:
+                raise Stage3ContractError("missing or duplicate canonical source assignment")
+            source_to_article[sid] = article_id
+    _exact_coverage("Stage3 source member coverage", source_to_article, set(sources))
+
+    flag_names = ("is_retracted", "peer_review_unknown", "wos_nr_cr_mismatch")
+    families = {"journal", "book", "unknown"}
+    source_flags = Counter()
+    article_flags = Counter()
+    rows = []
+    for article_id, article in sorted(articles.items()):
+        members = [sources[sid] for sid in article["source_record_ids"]]
+        for member in members:
+            if member.get("record_family") not in families:
+                raise Stage3ContractError("explicit journal/book/unknown record_family required")
+            for flag in flag_names:
+                if type(member.get(flag)) is not bool:
+                    raise Stage3ContractError(f"explicit source-level boolean required: {flag}")
+                source_flags[flag] += int(member[flag])
+        has_journal = any(m["record_family"] == "journal" for m in members)
+        has_book = any(m["record_family"] == "book" for m in members)
+        has_unknown = any(m["record_family"] == "unknown" for m in members)
+        flags = {flag: any(m[flag] for m in members) for flag in flag_names}
+        if flags["is_retracted"]:
+            status, eligible = "excluded_retracted", False
+        elif has_journal:
+            status, eligible = "eligible_journal", True
+        elif has_unknown:
+            status, eligible = "requires_family_resolution", False
+        else:
+            status, eligible = "excluded_book_only", False
+        mixed = has_journal and has_book
+        article_flags["mixed_book_journal"] += int(mixed)
+        article_flags["peer_review_unknown"] += int(flags["peer_review_unknown"])
+        article_flags["wos_nr_cr_mismatch"] += int(flags["wos_nr_cr_mismatch"])
+        article_flags["retracted"] += int(flags["is_retracted"])
+        rows.append({
+            "article_id": article_id,
+            "source_record_ids": sorted(article["source_record_ids"]),
+            "primary_eligible": eligible,
+            "eligibility_status": status,
+            "has_journal_source": has_journal,
+            "has_book_source": has_book,
+            "has_unknown_family_source": has_unknown,
+            "mixed_book_journal": mixed,
+            **flags,
+            "access_class": "restricted",
+        })
+    statuses = Counter(row["eligibility_status"] for row in rows)
+    return {
+        "article_count": len(rows),
+        "source_record_count": len(sources),
+        "primary_eligible_count": sum(row["primary_eligible"] for row in rows),
+        "eligibility_by_article_id": {
+            row["article_id"]: row["primary_eligible"] for row in rows
+        },
+        "eligibility_status_counts": dict(sorted(statuses.items())),
+        "source_flag_counts": dict(sorted(source_flags.items())),
+        "canonical_flag_counts": dict(sorted(article_flags.items())),
+        "rows": rows,
+        "policy": "journal_if_any_exclude_retracted_book_only_flag_unknown",
+        "access_class": "restricted",
+    }
+
+
 def plan_text_inputs(
     canonical_articles: list[dict],
     source_records: list[dict],
@@ -579,17 +666,24 @@ def plan_approved_node2vec_graph(
         "orientation": "undirected", "duplicate_policy": "binary",
         "self_loop_policy": "exclude",
     }
+    # Original resolved citation evidence includes excluded/non-eligible papers:
+    # only the derived node2vec training graph applies primary cohort filtering.
+    all_source_nodes = {
+        article["canonical_article_id"]: True for article in canonical_articles
+    }
     directed = plan_citation_graph(
-        canonical_articles, source_records, citation_links, eligibility,
+        canonical_articles, source_records, citation_links, all_source_nodes,
         graph_policy=directed_policy,
     )
     training = plan_citation_graph(
         canonical_articles, source_records, citation_links, eligibility,
         graph_policy=walk_policy,
     )
-    excluded_training_self_loops = training["excluded_edge_observations"].get("self_loop_policy", 0)
+    excluded = training["excluded_edge_observations"]
     if (directed["edge_observation_count"] !=
-        training["edge_observation_count"] + excluded_training_self_loops):
+        training["edge_observation_count"] +
+        excluded.get("self_loop_policy", 0) +
+        excluded.get("excluded_policy", 0)):
         raise Stage3ContractError("node2vec graph projection lost citation observations")
     if any(edge["weight"] != 1 for edge in training["edges"]):
         raise Stage3ContractError("node2vec training graph must use unit weights")
