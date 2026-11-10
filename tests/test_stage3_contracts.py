@@ -400,8 +400,12 @@ class Stage3PlanningContractTests(unittest.TestCase):
             with self.subTest(parameter=key, value=value):
                 with self.assertRaisesRegex(Stage3ContractError, "requires p=1 and q=1"):
                     validate_model_readiness("node2vec", {**spec, key: value})
-        # Changing other scientific parameters is NOT decided by p/q.
-        validate_model_readiness("node2vec", {**spec, "dimension": 256})
+        for value in (64, 256, 128.0, True, "128"):
+            with self.subTest(dimension=value):
+                with self.assertRaisesRegex(Stage3ContractError, "requires dimension=128"):
+                    validate_model_readiness("node2vec", {**spec, "dimension": value})
+        # Walk lengths and counts are not owner-approved by dimension choice.
+        validate_model_readiness("node2vec", {**spec, "walk_length": 80})
 
     def test_weighted_fragment_both_pooling_branches_and_reject_loss(self):
         fragments = [
