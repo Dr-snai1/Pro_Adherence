@@ -1,0 +1,139 @@
+"""No-network, no-model-load synthetic gates for the Stage3 upstream preflight."""
+from __future__ import annotations
+
+from copy import deepcopy
+from hashlib import sha256
+import json
+from pathlib import Path
+import tempfile
+import unittest
+from unittest import mock
+
+from pro_adherence import stage3_preflight as pre
+
+
+CONFIG = Path(__file__).resolve().parents[1] / "configs" / "stage3" / "model_preflight_pins.json"
+
+
+class Stage3ModelPreflightTests(unittest.TestCase):
+    def setUp(self):
+        self.config = pre.load_config(CONFIG)
+
+    def test_official_full_revision_pins_and_no_publication(self):
+        self.assertEqual(set(self.config["upstream_revisions"]), set(pre.EXACT_UPSTREAM))
+        for key, (repo, revision) in pre.EXACT_UPSTREAM.items():
+            self.assertEqual(self.config["upstream_revisions"][key]["repository"], repo)
+            self.assertEqual(self.config["upstream_revisions"][key]["revision"], revision)
+            self.assertEqual(len(revision), 40)
+        self.assertEqual(self.config["owner_approved_analytical_population"]["eligible_count"], 57204)
+        self.assertFalse(self.config["publication_authorized"])
+
+    def test_refuse_mutated_science_upstream_or_private_scope(self):
+        changes = [
+            ("upstream_revisions", "pubmedbert", "revision", "main"),
+            ("upstream_revisions", "specter2_base", "repository", "allenai/specter2"),
+            ("upstream_revisions", "specter2_proximity", "revision", "a" * 40),
+        ]
+        for _, component, field, altered in changes:
+            with self.subTest(component=component, field=field):
+                cfg = deepcopy(self.config)
+                cfg["upstream_revisions"][component][field] = altered
+                with self.assertRaises(pre.Stage3PreflightError):
+                    pre.verify_static_preflight_config(cfg)
+        mutated = deepcopy(self.config)
+        mutated["publication_authorized"] = True
+        with self.assertRaisesRegex(pre.Stage3PreflightError, "cannot be published"):
+            pre.verify_static_preflight_config(mutated)
+        mutated = deepcopy(self.config)
+        mutated["owner_approved_analytical_population"]["eligible_count"] = 57207
+        with self.assertRaisesRegex(pre.Stage3PreflightError, "cohort identity"):
+            pre.verify_static_preflight_config(mutated)
+
+    def test_fail_closed_when_model_bytes_runtime_graph_or_authorization_absent(self):
+        report = pre.audit_stage3_preflight(self.config)
+        self.assertTrue(report["preflight_only"])
+        self.assertFalse(report["owner_compute_authorized"])
+        self.assertFalse(report["publication_authorized"])
+        self.assertTrue(report["upstream_commit_refs_verified"])
+        for lens, r in report["lenses"].items():
+            with self.subTest(lens=lens):
+                self.assertFalse(r["ready_for_owner_authorized_compute"])
+                self.assertIn("PRIVATE_COHORT_FILE_NOT_SUPPLIED", r["blockers"])
+                self.assertIn("OWNER_COMPUTE_GATE_NOT_GRANTED", r["blockers"])
+                self.assertIn("EXACT_COMPATIBLE_RUNTIME_NOT_VERIFIED", r["blockers"])
+        self.assertIn("CITATION_GRAPH_SNAPSHOT_NOT_VERIFIED", report["lenses"]["node2vec"]["blockers"])
+
+    def test_synthetic_ready_only_after_real_byte_hash_and_runtime_checks(self):
+        with tempfile.TemporaryDirectory() as temp:
+            folder = Path(temp)
+            cohort_bytes = b"not-a-real-private-cohort\n"
+            cohort = folder / "cohort.gz"
+            cohort.write_bytes(cohort_bytes)
+            cohort_sha = sha256(cohort_bytes).hexdigest()
+            cfg = deepcopy(self.config)
+            cfg["owner_approved_analytical_population"]["private_manifest_sha256"] = cohort_sha
+            directories = {}
+            trusted = {}
+            for component, spec in cfg["upstream_revisions"].items():
+                root = folder / component
+                root.mkdir()
+                directories[component] = root
+                trusted[component] = {}
+                for filename in spec["required_files"]:
+                    content = (component + ":" + filename).encode("ascii")
+                    (root / filename).write_bytes(content)
+                    trusted[component][filename] = sha256(content).hexdigest()
+            runtime = {
+                "python": "3.13.16",
+                "torch": "2.5.1",
+                "transformers": "4.45.0",
+                "tokenizers": "0.20.0",
+                "adapters": "1.2.0",
+                "node2vec_backend": "0.5.0",
+                "lockfile_sha256": "f" * 64,
+            }
+            graph = {
+                "source_directed_graph_sha256": "1" * 64,
+                "training_undirected_graph_sha256": "2" * 64,
+                "sorted_node_mapping_sha256": "3" * 64,
+                "eligible_node_count": 57204,
+                "training_orientation": "undirected",
+                "source_orientation": "directed",
+                "weights": "binary_unit",
+            }
+            with mock.patch.object(pre, "PRIVATE_COHORT_SHA", cohort_sha):
+                # Even fully checksummed files cannot override the Stage gate.
+                r = pre.audit_stage3_preflight(
+                    cfg, private_cohort_path=cohort,
+                    model_cache_dirs=directories,
+                    authoritative_file_hashes=trusted,
+                    exact_runtime_lock=runtime, graph_snapshot=graph,
+                )
+                for item in r["lenses"].values():
+                    self.assertFalse(item["ready_for_owner_authorized_compute"])
+                    self.assertEqual(item["blockers"], ["OWNER_COMPUTE_GATE_NOT_GRANTED"])
+                # Pure software readiness, not launching inference.
+                r = pre.audit_stage3_preflight(
+                    cfg, private_cohort_path=cohort,
+                    model_cache_dirs=directories,
+                    authoritative_file_hashes=trusted,
+                    exact_runtime_lock=runtime, graph_snapshot=graph,
+                    compute_authorized=True,
+                )
+                self.assertTrue(all(v["ready_for_owner_authorized_compute"] for v in r["lenses"].values()))
+                corrupted = folder / "pubmedbert" / "pytorch_model.bin"
+                corrupted.write_bytes(b"different untrusted bytes")
+                with self.assertRaisesRegex(pre.Stage3PreflightError, "model file checksum mismatch"):
+                    pre.audit_stage3_preflight(
+                        cfg, private_cohort_path=cohort,
+                        model_cache_dirs=directories,
+                        authoritative_file_hashes=trusted,
+                        exact_runtime_lock=runtime, graph_snapshot=graph,
+                    )
+                bad_graph = {**graph, "eligible_node_count": 57207}
+                with self.assertRaisesRegex(pre.Stage3PreflightError, "graph policy mismatch"):
+                    pre.audit_stage3_preflight(cfg, graph_snapshot=bad_graph)
+
+
+if __name__ == "__main__":
+    unittest.main()
