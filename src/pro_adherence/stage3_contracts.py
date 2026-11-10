@@ -125,8 +125,11 @@ def validate_model_readiness(lens: str, specification: dict) -> None:
                 raise Stage3ContractError(f"invalid SPECTER2 {name}")
     else:
         for name in ("graph_snapshot_sha256", "model_ref_id", "model_identity_hash",
-                     "walk_length", "walks_per_node", "window",
-                     "dimension", "p", "q", "seed", "isolate_policy"):
+                     "walk_length", "walks_per_node", "window", "epochs",
+                     "dimension", "p", "q", "seed", "isolate_policy",
+                     "graph_orientation", "source_graph_orientation",
+                     "edge_weight_policy", "self_loop_policy",
+                     "normalization", "similarity_metric", "raw_vector_retention"):
             if specification.get(name) is None:
                 raise Stage3ContractError(f"unresolved node2vec {name}")
         if not SHA256.fullmatch(str(specification["graph_snapshot_sha256"])):
@@ -143,6 +146,27 @@ def validate_model_readiness(lens: str, specification: dict) -> None:
             raise Stage3ContractError("node2vec owner decision requires p=1 and q=1")
         if type(specification["dimension"]) is not int or specification["dimension"] != 128:
             raise Stage3ContractError("node2vec owner decision requires dimension=128")
+        approved = {
+            "walk_length": 40,
+            "walks_per_node": 10,
+            "window": 10,
+            "epochs": 1,
+            "seed": 20261031,
+            "isolate_policy": "missing_structural",
+            "graph_orientation": "undirected",
+            "source_graph_orientation": "directed",
+            "edge_weight_policy": "binary_unique_unordered_pair",
+            "self_loop_policy": "exclude",
+            "normalization": "l2_after_training",
+            "similarity_metric": "cosine",
+            "raw_vector_retention": True,
+        }
+        for name, expected in approved.items():
+            value = specification[name]
+            if (value != expected or type(value) is not type(expected)):
+                raise Stage3ContractError(
+                    f"node2vec owner decision mismatch: {name}")
+
 
 
 
@@ -419,6 +443,46 @@ def plan_citation_graph(
         "edge_count": len(rows),
         "edge_observation_count": sum(edges.values()),
         "access_class": "restricted",
+    }
+
+
+def plan_approved_node2vec_graph(
+    canonical_articles: list[dict], source_records: list[dict],
+    citation_links: list[dict], eligibility: dict[str, bool],
+) -> dict:
+    """Make two verifiable projections: original directed citations and
+    owner-approved binary undirected node2vec training edges.
+
+    Uses observed exact-DOI links only, deduplicates repeated source records,
+    and excludes self-citations in the training projection. Never infers
+    unobserved references or changes the directed evidence graph.
+    """
+    directed_policy = {
+        "orientation": "directed", "duplicate_policy": "binary",
+        "self_loop_policy": "exclude",
+    }
+    walk_policy = {
+        "orientation": "undirected", "duplicate_policy": "binary",
+        "self_loop_policy": "exclude",
+    }
+    directed = plan_citation_graph(
+        canonical_articles, source_records, citation_links, eligibility,
+        graph_policy=directed_policy,
+    )
+    training = plan_citation_graph(
+        canonical_articles, source_records, citation_links, eligibility,
+        graph_policy=walk_policy,
+    )
+    if directed["edge_observation_count"] != training["edge_observation_count"]:
+        raise Stage3ContractError("node2vec graph projection lost citation observations")
+    if any(edge["weight"] != 1 for edge in training["edges"]):
+        raise Stage3ContractError("node2vec training graph must use unit weights")
+    return {
+        "directed_citation_graph": directed,
+        "node2vec_training_graph": training,
+        "node2vec_isolate_vector_status": "missing_structural",
+        "training_graph_orientation": "undirected",
+        "source_graph_orientation": "directed",
     }
 
 
@@ -754,3 +818,15 @@ def preserve_raw_and_l2_article_vector(
         "normalization": "l2_after_article_aggregation",
         "similarity_metric": "cosine",
     }
+
+def preserve_node2vec_article_vector(
+    raw_article_vector: list[float],
+) -> dict:
+    """Retain learned raw node2vec vector and norm, then L2/cosine copy."""
+    result = preserve_raw_and_l2_article_vector(
+        raw_article_vector, dimension=128,
+    )
+    result["normalization"] = "l2_after_training"
+    return result
+
+
