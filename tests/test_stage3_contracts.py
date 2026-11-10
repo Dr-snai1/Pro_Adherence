@@ -9,6 +9,8 @@ from pro_adherence.stage3_contracts import (
     Stage3ContractError,
     freeze_snapshot_contract,
     plan_citation_graph,
+    plan_approved_node2vec_graph,
+    preserve_node2vec_article_vector,
     plan_text_inputs,
     choose_pubmedbert_source_priority,
     plan_pubmedbert_text_inputs,
@@ -389,7 +391,15 @@ class Stage3PlanningContractTests(unittest.TestCase):
             "p": 1,
             "q": 1,
             "seed": 20261031,
-            "isolate_policy": "flag_missing",
+            "isolate_policy": "missing_structural",
+            "epochs": 1,
+            "graph_orientation": "undirected",
+            "source_graph_orientation": "directed",
+            "edge_weight_policy": "binary_unique_unordered_pair",
+            "self_loop_policy": "exclude",
+            "normalization": "l2_after_training",
+            "similarity_metric": "cosine",
+            "raw_vector_retention": True,
         }
         validate_model_readiness("node2vec", spec)
         for key, value in (
@@ -404,8 +414,63 @@ class Stage3PlanningContractTests(unittest.TestCase):
             with self.subTest(dimension=value):
                 with self.assertRaisesRegex(Stage3ContractError, "requires dimension=128"):
                     validate_model_readiness("node2vec", {**spec, "dimension": value})
-        # Walk lengths and counts are not owner-approved by dimension choice.
-        validate_model_readiness("node2vec", {**spec, "walk_length": 80})
+        for key, value in (
+            ("walk_length", 80), ("walk_length", "40"),
+            ("walks_per_node", 5), ("window", 5), ("epochs", 2),
+            ("seed", 1), ("isolate_policy", "fake_zero"),
+            ("graph_orientation", "directed"),
+            ("source_graph_orientation", "undirected"),
+            ("edge_weight_policy", "observation_count"),
+            ("self_loop_policy", "retain"),
+            ("normalization", "none"), ("similarity_metric", "dot"),
+            ("raw_vector_retention", False),
+        ):
+            with self.subTest(parameter=key, value=value):
+                with self.assertRaisesRegex(Stage3ContractError, f"mismatch: {key}"):
+                    validate_model_readiness("node2vec", {**spec, key: value})
+        for key in ("epochs", "graph_orientation", "raw_vector_retention"):
+            with self.subTest(missing=key):
+                changed = dict(spec)
+                del changed[key]
+                with self.assertRaisesRegex(Stage3ContractError, f"unresolved node2vec {key}"):
+                    validate_model_readiness("node2vec", changed)
+
+    def test_approved_node2vec_preserves_directed_evidence_and_unit_weights(self):
+        g = plan_approved_node2vec_graph(ARTICLES, SOURCES, REFERENCES, ELIGIBILITY)
+        directed = g["directed_citation_graph"]
+        walks = g["node2vec_training_graph"]
+        self.assertEqual(g["source_graph_orientation"], "directed")
+        self.assertEqual(g["training_graph_orientation"], "undirected")
+        self.assertEqual(directed["edges"][0]["source_article_id"], "article:C")
+        self.assertEqual(directed["edges"][0]["target_article_id"], "article:A")
+        self.assertEqual(walks["edges"][0]["source_article_id"], "article:A")
+        self.assertEqual(walks["edges"][0]["target_article_id"], "article:C")
+        self.assertEqual(directed["edge_observation_count"], 2)
+        self.assertEqual(walks["edge_observation_count"], 2)
+        self.assertEqual(walks["edges"][0]["weight"], 1)
+        self.assertEqual(walks["edges"][0]["observation_count"], 2)
+        self.assertEqual(g["node2vec_isolate_vector_status"], "missing_structural")
+        self.assertEqual(
+            plan_approved_node2vec_graph(
+                list(reversed(ARTICLES)), list(reversed(SOURCES)),
+                list(reversed(REFERENCES)), ELIGIBILITY),
+            g)
+
+    def test_node2vec_vectors_retain_originals_before_l2_cosine(self):
+        raw = [0.0] * 128
+        raw[0], raw[1] = 3.0, 4.0
+        v = preserve_node2vec_article_vector(raw)
+        self.assertEqual(v["raw_article_vector"], raw)
+        self.assertEqual(v["raw_l2_norm"], 5.0)
+        self.assertEqual(v["unit_article_vector"][:2], [0.6, 0.8])
+        self.assertEqual(v["normalization"], "l2_after_training")
+        self.assertEqual(v["similarity_metric"], "cosine")
+        self.assertEqual(raw[:2], [3.0, 4.0])
+        with self.assertRaises(Stage3ContractError):
+            preserve_node2vec_article_vector([0.0] * 128)
+        with self.assertRaises(Stage3ContractError):
+            preserve_node2vec_article_vector([3.0, 4.0])
+
 
     def test_weighted_fragment_both_pooling_branches_and_reject_loss(self):
         fragments = [
