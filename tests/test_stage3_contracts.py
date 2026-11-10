@@ -249,7 +249,7 @@ class Stage3PlanningContractTests(unittest.TestCase):
             self.assertFalse(out["publication_authorized"])
             self.assertEqual(out["access_class"], "restricted")
             self.assertEqual(
-                json.loads((private / "eligibility_summary.json").read_text())["derived_manifest_sha256"],
+                json.loads((private / "eligibility_summary_stage3_private.json").read_text())["derived_manifest_sha256"],
                 out["derived_manifest_sha256"])
             with gzip.open(file, "rt", encoding="utf8") as stream:
                 actual_rows = [json.loads(line) for line in stream]
