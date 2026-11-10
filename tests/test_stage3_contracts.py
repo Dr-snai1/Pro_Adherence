@@ -210,6 +210,7 @@ class Stage3PlanningContractTests(unittest.TestCase):
         from hashlib import sha256
         import importlib.util
         import json
+        import gzip
         import os
         from pathlib import Path
         import tempfile
@@ -250,10 +251,13 @@ class Stage3PlanningContractTests(unittest.TestCase):
             self.assertEqual(
                 json.loads((private / "eligibility_summary.json").read_text())["derived_manifest_sha256"],
                 out["derived_manifest_sha256"])
-            self.assertEqual(
-                file.read_text().splitlines()[0],
-                json.dumps(rows[0], ensure_ascii=False, sort_keys=True,
-                           separators=(",", ":")))
+            with gzip.open(file, "rt", encoding="utf8") as stream:
+                actual_rows = [json.loads(line) for line in stream]
+            self.assertEqual(len(actual_rows), 2)
+            self.assertEqual(actual_rows[0]["article_id"], "article:1")
+            self.assertEqual(actual_rows[1]["article_id"], "article:2")
+            self.assertEqual(actual_rows[0]["policy_id"], mod.POLICY_ID)
+            self.assertEqual(file.read_bytes()[4:8], b"\\x00\\x00\\x00\\x00")  # gzip mtime=0
             again = mod.write_private_artifacts(census, private)
             self.assertEqual(again["derived_manifest_sha256"], out["derived_manifest_sha256"])
 
