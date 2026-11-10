@@ -247,6 +247,62 @@ def choose_pubmedbert_source_priority(
     return choices
 
 
+def normalize_stage3_source_flags(raw_source_records: list[dict]) -> list[dict]:
+    """Preserve actual Stage2 flag-exposure semantics; never turn absent into False.
+
+    Stage2 exposes APA's retracted_article / peer_review_unknown and WoS's
+    cited_references_count_anomaly. Their absence on other source families is
+    *not_exposed*, not a negative scientific finding. True flags from any
+    additional explicitly exposed source are still preserved.
+    """
+    supported_source_fields = {
+        "pubmed": (),
+        "woscc": ("cited_references_count_anomaly",),
+        "apa_psycinfo": ("retracted_article", "peer_review_unknown"),
+    }
+    logical_to_original = {
+        "is_retracted": "retracted_article",
+        "peer_review_unknown": "peer_review_unknown",
+        "wos_nr_cr_mismatch": "cited_references_count_anomaly",
+    }
+    normalized = []
+    for raw in raw_source_records:
+        source_id = raw.get("source_id")
+        record_id = raw.get("source_record_id")
+        if source_id not in supported_source_fields:
+            raise Stage3ContractError("unrecognized Stage2 source family")
+        if not isinstance(record_id, str) or not record_id.startswith(source_id + ":"):
+            raise Stage3ContractError("source ID/prefix mismatch")
+        family = raw.get("record_family")
+        if family not in {"journal", "book", "unknown"}:
+            raise Stage3ContractError("invalid raw record_family")
+        export_sha = raw.get("raw_export_sha256")
+        ordinal = raw.get("raw_record_ordinal")
+        if not SHA256.fullmatch(str(export_sha)):
+            raise Stage3ContractError("Stage2 raw export identity required")
+        if type(ordinal) is not int or ordinal < 1:
+            raise Stage3ContractError("Stage2 raw record ordinal required")
+        flags = {}
+        for logical, original in logical_to_original.items():
+            if original in supported_source_fields[source_id] and original not in raw:
+                raise Stage3ContractError(
+                    f"missing declared Stage2 {source_id} flag: {original}")
+            value = raw.get(original) if original in raw else None
+            if value is not None and type(value) is not bool:
+                raise Stage3ContractError(f"invalid Stage2 flag value: {original}")
+            flags[logical] = value
+        normalized.append({
+            "source_record_id": record_id,
+            "source_id": source_id,
+            "record_family": family,
+            "raw_export_sha256": export_sha,
+            "raw_record_ordinal": ordinal,
+            **flags,
+        })
+    _unique_index(normalized, "source_record_id", "normalized Stage2 sources")
+    return normalized
+
+
 def plan_stage3_canonical_eligibility(
     canonical_articles: list[dict], source_records: list[dict],
 ) -> dict:
@@ -285,9 +341,14 @@ def plan_stage3_canonical_eligibility(
             if member.get("record_family") not in families:
                 raise Stage3ContractError("explicit journal/book/unknown record_family required")
             for flag in flag_names:
-                if type(member.get(flag)) is not bool:
-                    raise Stage3ContractError(f"explicit source-level boolean required: {flag}")
-                source_flags[flag] += int(member[flag])
+                if flag not in member or (member[flag] is not None
+                    and type(member[flag]) is not bool):
+                    raise Stage3ContractError(
+                        f"explicit tri-state source flag required: {flag}")
+                # None = not exposed by this source; never record as False.
+                source_flags[flag] += int(member[flag] is True)
+                if member[flag] is None:
+                    source_flags[f"{flag}_not_exposed"] += 1
         has_journal = any(m["record_family"] == "journal" for m in members)
         has_book = any(m["record_family"] == "book" for m in members)
         has_unknown = any(m["record_family"] == "unknown" for m in members)
@@ -308,6 +369,18 @@ def plan_stage3_canonical_eligibility(
         rows.append({
             "article_id": article_id,
             "source_record_ids": sorted(article["source_record_ids"]),
+            "source_evidence": [
+                {
+                    "source_record_id": member["source_record_id"],
+                    "record_family": member["record_family"],
+                    "raw_export_sha256": member.get("raw_export_sha256"),
+                    "raw_record_ordinal": member.get("raw_record_ordinal"),
+                    "is_retracted": member["is_retracted"],
+                    "peer_review_unknown": member["peer_review_unknown"],
+                    "wos_nr_cr_mismatch": member["wos_nr_cr_mismatch"],
+                }
+                for member in sorted(members, key=lambda m: m["source_record_id"])
+            ],
             "primary_eligible": eligible,
             "eligibility_status": status,
             "has_journal_source": has_journal,
