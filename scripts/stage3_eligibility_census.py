@@ -228,14 +228,14 @@ def main() -> None:
     # No identifiers, licensed content, source records or citation rows to stdout.
     print(json.dumps({
         "status": "PRIVATE_CENSUS_PASS",
-        "canonical": summary["article_count"],
+        "canonical": summary["frozen_canonical_group_count"],
         "primary_eligible": summary["primary_eligible_count"],
         "status_counts": summary["eligibility_status_counts"],
         "source_flag_counts": {
             k: v for k, v in summary["source_flag_counts"].items()
             if not k.endswith("_not_exposed")
         },
-        "archive_sha256": summary["input_archive_sha256"],
+        "archive_sha256": summary["frozen_archive_sha256"],
         "derived_manifest_sha256": summary["derived_manifest_sha256"],
     }, ensure_ascii=False, sort_keys=True))
 
