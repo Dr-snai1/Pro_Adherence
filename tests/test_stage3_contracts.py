@@ -369,7 +369,8 @@ class Stage3PlanningContractTests(unittest.TestCase):
         with self.assertRaisesRegex(Stage3ContractError, "all special"):
             validate_model_readiness("pubmedbert", {
                 **pubmedbert, "special_tokens_policy": "include_cls_sep"})
-        with self.assertRaisesRegex(Stage3ContractError, "adapter_ref"):
+        # SPECTER2 now fails earlier on the missing immutable base revision.
+        with self.assertRaisesRegex(Stage3ContractError, "base_model_revision"):
             validate_model_readiness("specter2", {
                 "scientific_parameters_status": "owner_approved",
                 "config_sha256": HASH,
