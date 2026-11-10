@@ -14,6 +14,9 @@ from pro_adherence.stage3_contracts import (
     plan_text_inputs,
     choose_pubmedbert_source_priority,
     plan_pubmedbert_text_inputs,
+    plan_specter2_text_inputs,
+    summarize_specter2_truncation,
+    preserve_specter2_article_vector,
     validate_model_readiness,
     validate_vector_rows,
     aggregate_weighted_fragments,
@@ -376,6 +379,140 @@ class Stage3PlanningContractTests(unittest.TestCase):
         with self.assertRaisesRegex(Stage3ContractError, "graph_snapshot_sha256"):
             validate_model_readiness("node2vec", {
                 "scientific_parameters_status": "owner_approved", "config_sha256": HASH})
+
+    def test_owner_approved_specter2_proximity_configuration(self):
+        revision = "b" * 40
+        spec = {
+            "scientific_parameters_status": "owner_approved",
+            "config_sha256": HASH,
+            "base_model_ref": "allenai/specter2_base",
+            "base_model_revision": revision,
+            "base_model_identity_hash": HASH,
+            "adapter_ref": "allenai/specter2",
+            "adapter_revision": revision,
+            "adapter_identity_hash": HASH,
+            "model_identity_hash": HASH,
+            "tokenizer_identity": "synthetic-pinned-tokenizer",
+            "tokenizer_revision": revision,
+            "adapter_task": "proximity",
+            "input_format": "title_sep_abstract",
+            "max_length": 512,
+            "embedding_dimension": 768,
+            "output_pooling": "last_hidden_first_token",
+            "overflow_policy": "truncate_512_report_token_loss",
+            "text_source_policy": "pubmed_wos_apa_complete_first",
+            "title_only_policy": "only_if_no_abstract_in_any_source",
+            "normalization": "l2_after_final_article_vector",
+            "similarity_metric": "cosine",
+            "raw_vector_retention": True,
+            "token_loss_report": True,
+            "fine_tuning": False,
+        }
+        validate_model_readiness("specter2", spec)
+        for key, value in (
+            ("base_model_ref", "allenai/specter2"),
+            ("adapter_ref", "allenai/specter2_classification"),
+            ("adapter_task", "classification"),
+            ("input_format", "title_abstract_plain"),
+            ("max_length", 256),
+            ("embedding_dimension", 512),
+            ("output_pooling", "masked_mean"),
+            ("overflow_policy", "fragmented"),
+            ("text_source_policy", "wos_first"),
+            ("title_only_policy", "never"),
+            ("normalization", "none"),
+            ("similarity_metric", "euclidean"),
+            ("raw_vector_retention", False),
+            ("token_loss_report", False),
+            ("fine_tuning", True),
+        ):
+            with self.subTest(key=key, value=value):
+                with self.assertRaisesRegex(Stage3ContractError, f"mismatch: {key}"):
+                    validate_model_readiness("specter2", {**spec, key: value})
+        for key in ("base_model_revision", "adapter_revision", "tokenizer_revision"):
+            with self.subTest(key=key):
+                with self.assertRaisesRegex(Stage3ContractError, "immutable HF revision"):
+                    validate_model_readiness("specter2", {**spec, key: "main"})
+        for key in ("base_model_identity_hash", "adapter_identity_hash", "model_identity_hash"):
+            with self.subTest(key=key):
+                with self.assertRaisesRegex(Stage3ContractError, f"invalid SPECTER2 {key}"):
+                    validate_model_readiness("specter2", {**spec, key: "not-a-sha"})
+        missing = dict(spec)
+        del missing["token_loss_report"]
+        with self.assertRaisesRegex(Stage3ContractError, "unresolved SPECTER2 token_loss_report"):
+            validate_model_readiness("specter2", missing)
+
+    def test_specter2_text_source_and_title_only_policy(self):
+        rows = plan_specter2_text_inputs(ARTICLES, SOURCES, ELIGIBILITY)
+        self.assertEqual([row["text_state"] for row in rows],
+                         ["both", "title_only", "missing_both"])
+        self.assertEqual([row["embedding_input_status"] for row in rows],
+                         ["ready", "ready", "missing_input"])
+        self.assertEqual(rows[1]["source_record_id"], "apa_psycinfo:AN-202")
+        self.assertTrue(rows[1]["title_only_vector"])
+        self.assertEqual(rows[0]["access_class"], "restricted")
+        self.assertEqual(
+            rows, plan_specter2_text_inputs(
+                list(reversed(ARTICLES)), list(reversed(SOURCES)), ELIGIBILITY))
+        sources = deepcopy(SOURCES)
+        articles = deepcopy(ARTICLES)
+        sources.append({
+            "source_record_id": "pubmed:999", "title": "",
+            "abstract": "Abstract-only in a different database",
+        })
+        articles[1]["source_record_ids"].append("pubmed:999")
+        conflict = plan_specter2_text_inputs(articles, sources, ELIGIBILITY)
+        self.assertEqual(conflict[1]["embedding_input_status"],
+                         "requires_source_resolution")
+        self.assertFalse(conflict[1]["title_only_vector"])
+
+    def test_specter2_truncation_boundary_and_reporting(self):
+        input_rows = plan_specter2_text_inputs(ARTICLES, SOURCES, ELIGIBILITY)
+        for row, full in zip(input_rows, (512, 513, None)):
+            if full is None:
+                continue
+            row["full_input_token_count"] = full
+            row["encoded_token_count"] = min(512, full)
+            row["truncated_token_count"] = max(0, full - 512)
+        report = summarize_specter2_truncation(input_rows, canonical_total=3)
+        self.assertEqual(report["ready_article_count"], 2)
+        self.assertEqual(report["title_only_ready_count"], 1)
+        self.assertEqual(report["truncated_article_count"], 1)
+        self.assertEqual(report["total_truncated_tokens"], 1)
+        self.assertEqual(report["truncated_pct_canonical"], 33.3333)
+        self.assertEqual(report["truncated_pct_ready"], 50.0)
+        for key, value in (
+            ("encoded_token_count", 511),
+            ("truncated_token_count", 0),
+            ("full_input_token_count", 0),
+            ("encoded_token_count", 513),
+        ):
+            changed = deepcopy(input_rows)
+            changed[1][key] = value
+            with self.subTest(key=key, value=value):
+                with self.assertRaises(Stage3ContractError):
+                    summarize_specter2_truncation(changed, canonical_total=3)
+        with self.assertRaisesRegex(Stage3ContractError, "full canonical roster"):
+            summarize_specter2_truncation(input_rows[:2], canonical_total=3)
+        changed = deepcopy(input_rows)
+        changed[2]["full_input_token_count"] = 4
+        with self.assertRaisesRegex(Stage3ContractError, "non-ready row"):
+            summarize_specter2_truncation(changed, canonical_total=3)
+
+    def test_specter2_retains_raw_vector_and_unit_copy(self):
+        raw = [0.0] * 768
+        raw[0], raw[1] = 3.0, 4.0
+        got = preserve_specter2_article_vector(raw)
+        self.assertEqual(got["raw_article_vector"], raw)
+        self.assertEqual(got["raw_l2_norm"], 5.0)
+        self.assertEqual(got["unit_article_vector"][:2], [0.6, 0.8])
+        self.assertEqual(got["normalization"], "l2_after_final_article_vector")
+        self.assertEqual(got["similarity_metric"], "cosine")
+        self.assertEqual(raw[:2], [3.0, 4.0])
+        with self.assertRaises(Stage3ContractError):
+            preserve_specter2_article_vector([0.0] * 768)
+        with self.assertRaises(Stage3ContractError):
+            preserve_specter2_article_vector([3.0, 4.0])
 
     def test_node2vec_approved_p_and_q_are_both_one(self):
         spec = {
