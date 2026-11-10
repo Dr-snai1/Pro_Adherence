@@ -375,6 +375,34 @@ class Stage3PlanningContractTests(unittest.TestCase):
             validate_model_readiness("node2vec", {
                 "scientific_parameters_status": "owner_approved", "config_sha256": HASH})
 
+    def test_node2vec_approved_p_and_q_are_both_one(self):
+        spec = {
+            "scientific_parameters_status": "owner_approved",
+            "config_sha256": HASH,
+            "graph_snapshot_sha256": HASH,
+            "model_ref_id": "synthetic-node2vec",
+            "model_identity_hash": HASH,
+            "walk_length": 40,
+            "walks_per_node": 10,
+            "window": 10,
+            "dimension": 128,
+            "p": 1,
+            "q": 1,
+            "seed": 20261031,
+            "isolate_policy": "flag_missing",
+        }
+        validate_model_readiness("node2vec", spec)
+        for key, value in (
+            ("p", 0.5), ("p", 2), ("q", 0.5), ("q", 2),
+            ("p", float("nan")), ("q", float("inf")),
+            ("p", True), ("q", "1"),
+        ):
+            with self.subTest(parameter=key, value=value):
+                with self.assertRaisesRegex(Stage3ContractError, "requires p=1 and q=1"):
+                    validate_model_readiness("node2vec", {**spec, key: value})
+        # Changing other scientific parameters is NOT decided by p/q.
+        validate_model_readiness("node2vec", {**spec, "dimension": 256})
+
     def test_weighted_fragment_both_pooling_branches_and_reject_loss(self):
         fragments = [
             {"content_start": 0, "content_end": 4, "content_token_count": 4,
