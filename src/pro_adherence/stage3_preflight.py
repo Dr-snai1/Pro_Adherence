@@ -184,3 +184,25 @@ def load_config(path: Path) -> dict:
         config = json.load(handle)
     verify_static_preflight_config(config)
     return config
+
+def main() -> None:
+    """Print planning-only blocked status. Does not read private data by default."""
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--config", type=Path,
+        default=Path("configs/stage3/model_preflight_pins.json"),
+    )
+    parser.add_argument("--require-ready", action="store_true")
+    args = parser.parse_args()
+    report = audit_stage3_preflight(load_config(args.config))
+    print(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True))
+    if args.require_ready and not all(
+        state["ready_for_owner_authorized_compute"]
+        for state in report["lenses"].values()
+    ):
+        raise SystemExit(2)
+
+
+if __name__ == "__main__":
+    main()
