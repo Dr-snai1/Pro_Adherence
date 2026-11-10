@@ -63,6 +63,28 @@ class Stage3ModelPreflightTests(unittest.TestCase):
                 self.assertIn("EXACT_COMPATIBLE_RUNTIME_NOT_VERIFIED", r["blockers"])
         self.assertIn("CITATION_GRAPH_SNAPSHOT_NOT_VERIFIED", report["lenses"]["node2vec"]["blockers"])
 
+    def test_offline_cli_emits_blockers_and_require_ready_exit_two(self):
+        import os
+        import subprocess
+        import sys
+        root = CONFIG.parents[2]
+        env = dict(os.environ, PYTHONPATH=str(root / "src"))
+        cmd = [
+            sys.executable, "-m", "pro_adherence.stage3_preflight",
+            "--config", str(CONFIG),
+        ]
+        result = subprocess.run(cmd, cwd=root, env=env,
+                                capture_output=True, text=True, check=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        report = json.loads(result.stdout)
+        self.assertFalse(report["owner_compute_authorized"])
+        self.assertTrue(all(
+            not item["ready_for_owner_authorized_compute"]
+            for item in report["lenses"].values()))
+        strict = subprocess.run(cmd + ["--require-ready"], cwd=root, env=env,
+                                capture_output=True, text=True, check=False)
+        self.assertEqual(strict.returncode, 2, strict.stderr)
+
     def test_synthetic_ready_only_after_real_byte_hash_and_runtime_checks(self):
         with tempfile.TemporaryDirectory() as temp:
             folder = Path(temp)
