@@ -134,13 +134,15 @@ def validate_model_readiness(lens: str, specification: dict) -> None:
         if not SHA256.fullmatch(str(specification["model_identity_hash"])):
             raise Stage3ContractError("node2vec model identity not pinned")
         # Owner-approved node2vec baseline (2026-11-10):
-        # p=q=1. Other graph/walk/dimension choices remain independent.
+        # p=q=1 and embedding dimension=128. Other graph/walk choices remain open.
         if (type(specification["p"]) not in (float, int)
             or type(specification["q"]) not in (float, int)
             or not math.isfinite(specification["p"])
             or not math.isfinite(specification["q"])
             or specification["p"] != 1 or specification["q"] != 1):
             raise Stage3ContractError("node2vec owner decision requires p=1 and q=1")
+        if type(specification["dimension"]) is not int or specification["dimension"] != 128:
+            raise Stage3ContractError("node2vec owner decision requires dimension=128")
 
 
 
