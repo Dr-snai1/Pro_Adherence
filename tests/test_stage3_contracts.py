@@ -10,6 +10,7 @@ from pro_adherence.stage3_contracts import (
     freeze_snapshot_contract,
     plan_citation_graph,
     plan_approved_node2vec_graph,
+    plan_stage3_canonical_eligibility,
     preserve_node2vec_article_vector,
     plan_text_inputs,
     choose_pubmedbert_source_priority,
@@ -77,6 +78,83 @@ REFERENCES = [
 REFERENCES[2]["external_target_doi"] = "10.1234/shared"
 
 class Stage3PlanningContractTests(unittest.TestCase):
+    def test_owner_approved_canonical_publication_eligibility(self):
+        articles = [
+            {"canonical_article_id": "a", "source_record_ids": ["pubmed:book", "woscc:journal"]},
+            {"canonical_article_id": "b", "source_record_ids": ["pubmed:book_only"]},
+            {"canonical_article_id": "c", "source_record_ids": ["apa_psycinfo:retracted"]},
+            {"canonical_article_id": "d", "source_record_ids": ["apa_psycinfo:unknown_peer"]},
+            {"canonical_article_id": "e", "source_record_ids": ["woscc:nrcr"]},
+            {"canonical_article_id": "f", "source_record_ids": ["woscc:unknown_family"]},
+            {"canonical_article_id": "g", "source_record_ids": ["woscc:ordinary"]},
+        ]
+        sources = [
+            {"source_record_id": "pubmed:book", "record_family": "book"},
+            {"source_record_id": "woscc:journal", "record_family": "journal"},
+            {"source_record_id": "pubmed:book_only", "record_family": "book"},
+            {"source_record_id": "apa_psycinfo:retracted", "record_family": "journal",
+             "is_retracted": True},
+            {"source_record_id": "apa_psycinfo:unknown_peer", "record_family": "journal",
+             "peer_review_unknown": True},
+            {"source_record_id": "woscc:nrcr", "record_family": "journal",
+             "wos_nr_cr_mismatch": True},
+            {"source_record_id": "woscc:unknown_family", "record_family": "unknown"},
+            {"source_record_id": "woscc:ordinary", "record_family": "journal"},
+        ]
+        sources = [
+            {**{"is_retracted": False, "peer_review_unknown": False,
+                "wos_nr_cr_mismatch": False}, **row} for row in sources
+        ]
+        output = plan_stage3_canonical_eligibility(articles, sources)
+        statuses = {row["article_id"]: row["eligibility_status"] for row in output["rows"]}
+        self.assertEqual(statuses, {
+            "a": "eligible_journal", "b": "excluded_book_only",
+            "c": "excluded_retracted", "d": "eligible_journal",
+            "e": "eligible_journal", "f": "requires_family_resolution",
+            "g": "eligible_journal",
+        })
+        self.assertEqual(output["primary_eligible_count"], 4)
+        self.assertEqual(output["article_count"], 7)
+        self.assertEqual(output["source_record_count"], 8)
+        self.assertEqual(output["canonical_flag_counts"]["mixed_book_journal"], 1)
+        self.assertEqual(output["canonical_flag_counts"]["retracted"], 1)
+        self.assertEqual(output["canonical_flag_counts"]["peer_review_unknown"], 1)
+        self.assertEqual(output["canonical_flag_counts"]["wos_nr_cr_mismatch"], 1)
+        self.assertEqual(output["source_flag_counts"]["is_retracted"], 1)
+        self.assertTrue(output["eligibility_by_article_id"]["a"])
+        self.assertFalse(output["eligibility_by_article_id"]["b"])
+        self.assertEqual(
+            output, plan_stage3_canonical_eligibility(
+                list(reversed(articles)), list(reversed(sources))))
+        with self.assertRaisesRegex(Stage3ContractError, "boolean required"):
+            bad = deepcopy(sources)
+            del bad[0]["is_retracted"]
+            plan_stage3_canonical_eligibility(articles, bad)
+        with self.assertRaisesRegex(Stage3ContractError, "record_family required"):
+            bad = deepcopy(sources)
+            bad[0]["record_family"] = None
+            plan_stage3_canonical_eligibility(articles, bad)
+        with self.assertRaisesRegex(Stage3ContractError, "source member coverage"):
+            plan_stage3_canonical_eligibility(articles, sources[:-1])
+        with self.assertRaisesRegex(Stage3ContractError, "duplicate canonical source assignment"):
+            bad = deepcopy(articles)
+            bad[1]["source_record_ids"].append("pubmed:book")
+            plan_stage3_canonical_eligibility(bad, sources)
+
+    def test_excluded_publications_remain_in_original_directed_citation_graph(self):
+        eligible = {"article:A": False, "article:B": True, "article:C": True}
+        graph = plan_approved_node2vec_graph(
+            ARTICLES, SOURCES, REFERENCES, eligible)
+        original = graph["directed_citation_graph"]
+        training = graph["node2vec_training_graph"]
+        self.assertEqual(original["edge_observation_count"], 2)
+        self.assertEqual(original["edge_count"], 1)
+        self.assertEqual(training["edge_observation_count"], 0)
+        self.assertEqual(training["edge_count"], 0)
+        self.assertEqual(training["excluded_edge_observations"]["excluded_policy"], 2)
+        self.assertTrue(original["edges"][0]["source_article_id"] == "article:C")
+        self.assertTrue(original["edges"][0]["target_article_id"] == "article:A")
+
     def test_frozen_stage2_identity_is_required(self):
         snap = {"archive_sha256": FROZEN_STAGE2_ZIP_SHA256,
                 "source_record_count": 87511, "canonical_article_count": 57293,
