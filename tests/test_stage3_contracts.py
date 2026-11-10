@@ -135,7 +135,13 @@ class Stage3PlanningContractTests(unittest.TestCase):
             bad[0]["record_family"] = None
             plan_stage3_canonical_eligibility(articles, bad)
         with self.assertRaisesRegex(Stage3ContractError, "source member coverage"):
-            plan_stage3_canonical_eligibility(articles, sources[:-1])
+            plan_stage3_canonical_eligibility(
+                articles,
+                sources + [{
+                    "source_record_id": "woscc:unassigned",
+                    "record_family": "journal", "is_retracted": False,
+                    "peer_review_unknown": False, "wos_nr_cr_mismatch": False,
+                }])
         with self.assertRaisesRegex(Stage3ContractError, "duplicate canonical source assignment"):
             bad = deepcopy(articles)
             bad[1]["source_record_ids"].append("pubmed:book")
