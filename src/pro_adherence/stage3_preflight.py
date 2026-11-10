@@ -79,7 +79,7 @@ def verify_static_preflight_config(config: dict) -> None:
             raise Stage3PreflightError(f"invalid required file inventory: {key}")
         for file in files:
             if (not isinstance(file, str) or file in {"", ".", ".."}
-                or Path(file).name != file or "/" in file or "\\\\" in file):
+                or Path(file).name != file or "/" in file or "\\" in file):
                 raise Stage3PreflightError(f"unsafe model filename: {key}")
     pending = config.get("pending_before_compute", {})
     if not isinstance(pending, dict) or not pending or any(v is not True for v in pending.values()):
@@ -143,7 +143,7 @@ def audit_stage3_preflight(
         "node2vec": ("python", "node2vec_backend"),
     }.items():
         if (not HEX64.fullmatch(str(runtime.get("lockfile_sha256", "")))
-            or any(not re.fullmatch(r"[0-9]+(?:\\.[0-9]+)+(?:[.+a-zA-Z0-9-]*)", str(runtime.get(pkg, "")))
+            or any(not re.fullmatch(r"[0-9]+(?:\.[0-9]+)+(?:[.+a-zA-Z0-9-]*)", str(runtime.get(pkg, "")))
                    for pkg in packages)):
             blocks[lens].append("EXACT_COMPATIBLE_RUNTIME_NOT_VERIFIED")
 
