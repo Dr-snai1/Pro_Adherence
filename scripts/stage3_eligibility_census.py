@@ -125,40 +125,96 @@ def calculate(archive_path: Path) -> dict:
               for a in result["rows"])
     )
     result["source_record_counts_by_database"] = source_counts
+    # The accepted restricted artifact preserves Stage2's frozen row order.
+    # The planning function sorts by ID internally; retain original read order
+    # so this exact ZIP produces the same deterministic compressed bytes.
+    result["source_canonical_order"] = [
+        a["canonical_article_id"] for a in canonical
+    ]
     return result
 
 
 def write_private_artifacts(result: dict, output_dir: Path) -> dict:
-    """Write an atomic local PRIVATE manifest and a minimal aggregate report."""
+    """Write compressed PRIVATE roster, with deterministic gzip bytes and SHA.
+
+    Full roster order equals frozen canonical JSONL order. A synthetic unit test
+    without source_canonical_order falls back to caller's supplied row order.
+    """
     output_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
     os.chmod(output_dir, 0o700)
-    manifest_path = output_dir / "article_eligibility.jsonl"
-    temp_path = output_dir / "article_eligibility.jsonl.tmp"
+    manifest_path = output_dir / "article_eligibility_stage3_private.jsonl.gz"
+    temp_path = output_dir / "article_eligibility_stage3_private.jsonl.gz.tmp"
+    indexed = {row["article_id"]: row for row in result["rows"]}
+    if len(indexed) != result["article_count"]:
+        raise Stage3ContractError("private derived manifest ID coverage mismatch")
+    order = result.get("source_canonical_order") or [
+        row["article_id"] for row in result["rows"]
+    ]
+    if len(order) != len(indexed) or len(set(order)) != len(indexed) or set(order) != set(indexed):
+        raise Stage3ContractError("frozen canonical row order mismatch")
     fd = os.open(temp_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    count = 0
-    with os.fdopen(fd, "w", encoding="utf-8") as output:
-        for row in result["rows"]:
-            output.write(json.dumps(row, ensure_ascii=False, sort_keys=True,
-                                    separators=(",", ":")) + "\n")
-            count += 1
-    if count != result["article_count"]:
-        raise Stage3ContractError("private derived manifest coverage mismatch")
+    with os.fdopen(fd, "wb") as raw:
+        with gzip.GzipFile(filename="", fileobj=raw, mode="wb", compresslevel=6,
+                           mtime=0) as output:
+            for article_id in order:
+                row = dict(indexed[article_id], policy_id=POLICY_ID)
+                output.write((json.dumps(row, ensure_ascii=False, sort_keys=True,
+                                         separators=(",", ":")) + "\n").encode("utf-8"))
     os.replace(temp_path, manifest_path)
+    os.chmod(manifest_path, 0o600)
     manifest_hash = _sha256_file(manifest_path)
-    summary = {k: v for k, v in result.items() if k not in {
-        "rows", "eligibility_by_article_id"}}
-    summary["derived_manifest_file"] = manifest_path.name
-    summary["derived_manifest_sha256"] = manifest_hash
-    summary["derived_manifest_row_count"] = count
-    summary["access_class"] = "restricted"
-    summary["publication_authorized"] = False
-    summary_path = output_dir / "eligibility_summary.json"
-    fd = os.open(output_dir / "eligibility_summary.json.tmp",
+
+    flags = result.get("source_flag_counts", {})
+    source_positive = {
+        key: flags.get(key, 0) for key in
+        ("is_retracted", "peer_review_unknown", "wos_nr_cr_mismatch")
+    }
+    source_not_exposed = {
+        key + "_not_exposed": flags.get(key + "_not_exposed", 0)
+        for key in ("is_retracted", "peer_review_unknown", "wos_nr_cr_mismatch")
+    }
+    canonical_flags = result.get("canonical_flag_counts", {})
+    summary = {
+        "schema": "pro-adherence-stage3-private-cohort-census/v1",
+        "access_class": "restricted",
+        "publication_authorized": False,
+        "policy_id": POLICY_ID,
+        "frozen_archive_sha256": result.get("input_archive_sha256"),
+        "frozen_source_record_count": result.get("source_record_count"),
+        "frozen_canonical_group_count": result["article_count"],
+        "stage2_article_only_eligible_count":
+            result.get("independent_stage2_article_only_eligible_count"),
+        "primary_eligible_count": result["primary_eligible_count"],
+        "eligibility_status_counts": result["eligibility_status_counts"],
+        "canonical_flag_counts": {
+            "is_retracted": canonical_flags.get("retracted", 0),
+            "mixed_book_journal": canonical_flags.get("mixed_book_journal", 0),
+            "peer_review_unknown": canonical_flags.get("peer_review_unknown", 0),
+            "wos_nr_cr_mismatch": canonical_flags.get("wos_nr_cr_mismatch", 0),
+        },
+        "source_flag_counts": source_positive,
+        "source_not_exposed_counts": source_not_exposed,
+        "source_counts_by_database":
+            result.get("source_record_counts_by_database", {}),
+        "source_membership_coverage": result.get("source_record_count"),
+        "independent_stage2_comparison_mismatches": 0,
+        "derived_manifest_file": manifest_path.name,
+        "derived_manifest_sha256": manifest_hash,
+        "derived_manifest_size_bytes": manifest_path.stat().st_size,
+        "derived_manifest_row_count": result["article_count"],
+        "source_flag_exposure_note": (
+            "APA retraction/peer-review, WoS NR-CR; other sources "
+            "not exposed != false; no evidence to exclude unflagged retractions"
+        ),
+    }
+    summary_path = output_dir / "eligibility_summary_stage3_private.json"
+    fd = os.open(output_dir / "eligibility_summary_stage3_private.json.tmp",
                  os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as output:
         json.dump(summary, output, ensure_ascii=False, sort_keys=True, indent=2)
         output.write("\n")
-    os.replace(output_dir / "eligibility_summary.json.tmp", summary_path)
+    os.replace(output_dir / "eligibility_summary_stage3_private.json.tmp", summary_path)
+    os.chmod(summary_path, 0o600)
     return summary
 
 
