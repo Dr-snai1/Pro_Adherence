@@ -260,6 +260,26 @@ class Stage3PlanningContractTests(unittest.TestCase):
             self.assertEqual(file.read_bytes()[4:8], b"\x00\x00\x00\x00")  # gzip mtime=0
             again = mod.write_private_artifacts(census, private)
             self.assertEqual(again["derived_manifest_sha256"], out["derived_manifest_sha256"])
+            # Protect the end-to-end public CLI summary from schema drift.
+            from contextlib import redirect_stdout
+            from io import StringIO
+            from unittest import mock
+            stdout = StringIO()
+            with (
+                mock.patch.object(mod, "calculate", return_value=census),
+                mock.patch("sys.argv", [
+                    "stage3_eligibility_census.py",
+                    "--archive", "synthetic-no-read.zip",
+                    "--private-output-dir", str(private),
+                ]),
+                redirect_stdout(stdout),
+            ):
+                mod.main()
+            cli = json.loads(stdout.getvalue())
+            self.assertEqual(cli["status"], "PRIVATE_CENSUS_PASS")
+            self.assertEqual(cli["canonical"], 2)
+            self.assertEqual(cli["primary_eligible"], 1)
+            self.assertEqual(cli["archive_sha256"], HASH)
 
     def test_excluded_publications_remain_in_original_directed_citation_graph(self):
         eligible = {"article:A": False, "article:B": True, "article:C": True}
