@@ -257,7 +257,7 @@ class Stage3PlanningContractTests(unittest.TestCase):
             self.assertEqual(actual_rows[0]["article_id"], "article:1")
             self.assertEqual(actual_rows[1]["article_id"], "article:2")
             self.assertEqual(actual_rows[0]["policy_id"], mod.POLICY_ID)
-            self.assertEqual(file.read_bytes()[4:8], b"\\x00\\x00\\x00\\x00")  # gzip mtime=0
+            self.assertEqual(file.read_bytes()[4:8], b"\x00\x00\x00\x00")  # gzip mtime=0
             again = mod.write_private_artifacts(census, private)
             self.assertEqual(again["derived_manifest_sha256"], out["derived_manifest_sha256"])
 
