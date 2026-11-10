@@ -206,6 +206,57 @@ class Stage3PlanningContractTests(unittest.TestCase):
         normalized_positive = normalize_stage3_source_flags(positive)
         self.assertTrue(normalized_positive[1]["is_retracted"])
 
+    def test_private_census_manifest_writer_is_deterministic_and_restricted(self):
+        from hashlib import sha256
+        import importlib.util
+        import json
+        import os
+        from pathlib import Path
+        import tempfile
+        script_path = Path(__file__).resolve().parents[1] / "scripts" / "stage3_eligibility_census.py"
+        spec = importlib.util.spec_from_file_location("stage3_census_script", script_path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        rows = [
+            {"article_id": "article:1", "primary_eligible": True,
+             "eligibility_status": "eligible_journal"},
+            {"article_id": "article:2", "primary_eligible": False,
+             "eligibility_status": "excluded_retracted"},
+        ]
+        census = {
+            "rows": rows, "article_count": 2,
+            "primary_eligible_count": 1,
+            "eligibility_by_article_id": {
+                "article:1": True, "article:2": False,
+            },
+            "eligibility_status_counts": {
+                "eligible_journal": 1, "excluded_retracted": 1,
+            },
+            "source_flag_counts": {"is_retracted": 1},
+            "input_archive_sha256": HASH,
+            "policy_id": mod.POLICY_ID,
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            private = Path(directory) / "restricted"
+            out = mod.write_private_artifacts(census, private)
+            file = private / out["derived_manifest_file"]
+            self.assertEqual(out["derived_manifest_row_count"], 2)
+            self.assertEqual(sha256(file.read_bytes()).hexdigest(),
+                             out["derived_manifest_sha256"])
+            self.assertEqual(file.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(private.stat().st_mode & 0o777, 0o700)
+            self.assertFalse(out["publication_authorized"])
+            self.assertEqual(out["access_class"], "restricted")
+            self.assertEqual(
+                json.loads((private / "eligibility_summary.json").read_text())["derived_manifest_sha256"],
+                out["derived_manifest_sha256"])
+            self.assertEqual(
+                file.read_text().splitlines()[0],
+                json.dumps(rows[0], ensure_ascii=False, sort_keys=True,
+                           separators=(",", ":")))
+            again = mod.write_private_artifacts(census, private)
+            self.assertEqual(again["derived_manifest_sha256"], out["derived_manifest_sha256"])
+
     def test_excluded_publications_remain_in_original_directed_citation_graph(self):
         eligible = {"article:A": False, "article:B": True, "article:C": True}
         graph = plan_approved_node2vec_graph(
