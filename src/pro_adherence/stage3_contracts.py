@@ -459,7 +459,9 @@ def plan_approved_node2vec_graph(
     """
     directed_policy = {
         "orientation": "directed", "duplicate_policy": "binary",
-        "self_loop_policy": "exclude",
+        # Preserve every observed exact-DOI link, including self-citations,
+        # in the original directed evidence network.
+        "self_loop_policy": "retain",
     }
     walk_policy = {
         "orientation": "undirected", "duplicate_policy": "binary",
@@ -473,7 +475,9 @@ def plan_approved_node2vec_graph(
         canonical_articles, source_records, citation_links, eligibility,
         graph_policy=walk_policy,
     )
-    if directed["edge_observation_count"] != training["edge_observation_count"]:
+    excluded_training_self_loops = training["excluded_edge_observations"].get("self_loop_policy", 0)
+    if (directed["edge_observation_count"] !=
+        training["edge_observation_count"] + excluded_training_self_loops):
         raise Stage3ContractError("node2vec graph projection lost citation observations")
     if any(edge["weight"] != 1 for edge in training["edges"]):
         raise Stage3ContractError("node2vec training graph must use unit weights")
