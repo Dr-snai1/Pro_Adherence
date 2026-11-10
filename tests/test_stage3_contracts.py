@@ -456,6 +456,26 @@ class Stage3PlanningContractTests(unittest.TestCase):
                 list(reversed(REFERENCES)), ELIGIBILITY),
             g)
 
+    def test_node2vec_source_preserves_self_citations_training_excludes_them(self):
+        sources = deepcopy(SOURCES)
+        sources[2]["cited_references_raw"].append("synthetic self reference")
+        links = deepcopy(REFERENCES)
+        links.append(observed_reference(5, "exact_doi", "article:C"))
+        result = plan_approved_node2vec_graph(
+            ARTICLES, sources, links, ELIGIBILITY)
+        directed = result["directed_citation_graph"]
+        training = result["node2vec_training_graph"]
+        self.assertEqual(directed["edge_observation_count"], 3)
+        self.assertEqual(training["edge_observation_count"], 2)
+        self.assertEqual(
+            training["excluded_edge_observations"]["self_loop_policy"], 1)
+        self.assertTrue(any(
+            edge["source_article_id"] == edge["target_article_id"] == "article:C"
+            for edge in directed["edges"]))
+        self.assertTrue(all(
+            edge["source_article_id"] != edge["target_article_id"]
+            for edge in training["edges"]))
+
     def test_node2vec_vectors_retain_originals_before_l2_cosine(self):
         raw = [0.0] * 128
         raw[0], raw[1] = 3.0, 4.0
