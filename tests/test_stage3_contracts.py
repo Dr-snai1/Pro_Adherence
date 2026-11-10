@@ -11,6 +11,7 @@ from pro_adherence.stage3_contracts import (
     plan_citation_graph,
     plan_approved_node2vec_graph,
     plan_stage3_canonical_eligibility,
+    normalize_stage3_source_flags,
     preserve_node2vec_article_vector,
     plan_text_inputs,
     choose_pubmedbert_source_priority,
@@ -126,7 +127,7 @@ class Stage3PlanningContractTests(unittest.TestCase):
         self.assertEqual(
             output, plan_stage3_canonical_eligibility(
                 list(reversed(articles)), list(reversed(sources))))
-        with self.assertRaisesRegex(Stage3ContractError, "boolean required"):
+        with self.assertRaisesRegex(Stage3ContractError, "tri-state source flag required"):
             bad = deepcopy(sources)
             del bad[0]["is_retracted"]
             plan_stage3_canonical_eligibility(articles, bad)
@@ -146,6 +147,64 @@ class Stage3PlanningContractTests(unittest.TestCase):
             bad = deepcopy(articles)
             bad[1]["source_record_ids"].append("pubmed:book")
             plan_stage3_canonical_eligibility(bad, sources)
+
+    def test_real_stage2_flag_schema_missing_is_not_exposed(self):
+        h = "a" * 64
+        raw = [
+            {
+                "source_id": "pubmed", "source_record_id": "pubmed:1",
+                "record_family": "book", "raw_export_sha256": h,
+                "raw_record_ordinal": 1,
+            },
+            {
+                "source_id": "woscc", "source_record_id": "woscc:2",
+                "record_family": "journal", "raw_export_sha256": h,
+                "raw_record_ordinal": 2, "cited_references_count_anomaly": True,
+            },
+            {
+                "source_id": "apa_psycinfo", "source_record_id": "apa_psycinfo:3",
+                "record_family": "journal", "raw_export_sha256": h,
+                "raw_record_ordinal": 3, "retracted_article": False,
+                "peer_review_unknown": True,
+            },
+        ]
+        normalized = normalize_stage3_source_flags(raw)
+        self.assertIsNone(normalized[0]["is_retracted"])
+        self.assertIsNone(normalized[0]["peer_review_unknown"])
+        self.assertIsNone(normalized[1]["is_retracted"])
+        self.assertTrue(normalized[1]["wos_nr_cr_mismatch"])
+        self.assertIsNone(normalized[2]["wos_nr_cr_mismatch"])
+        self.assertFalse(normalized[2]["is_retracted"])
+        article = [
+            {"canonical_article_id": "pubmed_only", "source_record_ids": ["pubmed:1"]},
+            {"canonical_article_id": "wos_only", "source_record_ids": ["woscc:2"]},
+            {"canonical_article_id": "apa_only", "source_record_ids": ["apa_psycinfo:3"]},
+        ]
+        census = plan_stage3_canonical_eligibility(article, normalized)
+        self.assertEqual(census["primary_eligible_count"], 2)
+        self.assertEqual(census["source_flag_counts"]["is_retracted_not_exposed"], 2)
+        self.assertEqual(census["source_flag_counts"]["peer_review_unknown_not_exposed"], 2)
+        self.assertEqual(census["source_flag_counts"]["wos_nr_cr_mismatch_not_exposed"], 2)
+        self.assertEqual(census["source_flag_counts"]["peer_review_unknown"], 1)
+        self.assertEqual(census["source_flag_counts"]["wos_nr_cr_mismatch"], 1)
+        self.assertEqual(census["rows"][0]["source_evidence"][0]["raw_export_sha256"], h)
+        bad = deepcopy(raw)
+        del bad[2]["retracted_article"]
+        with self.assertRaisesRegex(Stage3ContractError, "missing declared Stage2"):
+            normalize_stage3_source_flags(bad)
+        bad = deepcopy(raw)
+        bad[1]["cited_references_count_anomaly"] = "unknown"
+        with self.assertRaisesRegex(Stage3ContractError, "invalid Stage2 flag"):
+            normalize_stage3_source_flags(bad)
+        bad = deepcopy(raw)
+        bad[0]["raw_record_ordinal"] = None
+        with self.assertRaisesRegex(Stage3ContractError, "raw record ordinal"):
+            normalize_stage3_source_flags(bad)
+        # Unexpected but explicitly exposed positive retraction must propagate.
+        positive = deepcopy(raw)
+        positive[1]["retracted_article"] = True
+        normalized_positive = normalize_stage3_source_flags(positive)
+        self.assertTrue(normalized_positive[1]["is_retracted"])
 
     def test_excluded_publications_remain_in_original_directed_citation_graph(self):
         eligible = {"article:A": False, "article:B": True, "article:C": True}
