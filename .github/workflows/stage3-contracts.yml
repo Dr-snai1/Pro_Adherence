@@ -7,13 +7,21 @@ on:
       - "stage3/**"
     paths:
       - "src/pro_adherence/stage3_contracts.py"
+      - "src/pro_adherence/stage3_preflight.py"
       - "tests/test_stage3_contracts.py"
+      - "tests/test_stage3_preflight.py"
+      - "configs/stage3/**"
+      - "scripts/stage3_eligibility_census.py"
       - "docs/stage3/**"
       - ".github/workflows/stage3-contracts.yml"
   pull_request:
     paths:
       - "src/pro_adherence/stage3_contracts.py"
+      - "src/pro_adherence/stage3_preflight.py"
       - "tests/test_stage3_contracts.py"
+      - "tests/test_stage3_preflight.py"
+      - "configs/stage3/**"
+      - "scripts/stage3_eligibility_census.py"
       - "docs/stage3/**"
       - ".github/workflows/stage3-contracts.yml"
 
