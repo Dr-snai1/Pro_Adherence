@@ -114,15 +114,46 @@ def validate_model_readiness(lens: str, specification: dict) -> None:
         if specification.get("special_tokens_policy") != "exclude_all_special_and_padding":
             raise Stage3ContractError("PubMedBERT mean must exclude all special tokens and padding")
     elif lens == "specter2":
-        for name in ("base_model_ref", "base_model_identity_hash",
-                     "adapter_ref", "adapter_identity_hash",
-                     "model_identity_hash", "tokenizer_identity",
-                     "input_format", "max_length"):
-            if specification.get(name) in (None, ""):
+        # Owner-approved scientific config (2026-11-10); immutable model
+        # revisions and actual artifact SHA256 values still require preflight.
+        for name in (
+            "base_model_ref", "base_model_revision", "base_model_identity_hash",
+            "adapter_ref", "adapter_revision", "adapter_identity_hash",
+            "model_identity_hash", "tokenizer_identity", "tokenizer_revision",
+            "input_format", "max_length", "embedding_dimension",
+            "output_pooling", "adapter_task", "overflow_policy",
+            "text_source_policy", "title_only_policy",
+            "normalization", "similarity_metric", "raw_vector_retention",
+            "token_loss_report", "fine_tuning",
+        ):
+            if specification.get(name) is None or specification.get(name) == "":
                 raise Stage3ContractError(f"unresolved SPECTER2 {name}")
         for name in ("base_model_identity_hash", "adapter_identity_hash", "model_identity_hash"):
             if not SHA256.fullmatch(str(specification[name])):
                 raise Stage3ContractError(f"invalid SPECTER2 {name}")
+        for name in ("base_model_revision", "adapter_revision", "tokenizer_revision"):
+            if not re.fullmatch(r"[0-9a-f]{40}", str(specification[name])):
+                raise Stage3ContractError(f"SPECTER2 immutable HF revision required: {name}")
+        approved = {
+            "base_model_ref": "allenai/specter2_base",
+            "adapter_ref": "allenai/specter2",
+            "adapter_task": "proximity",
+            "input_format": "title_sep_abstract",
+            "max_length": 512,
+            "embedding_dimension": 768,
+            "output_pooling": "last_hidden_first_token",
+            "overflow_policy": "truncate_512_report_token_loss",
+            "text_source_policy": "pubmed_wos_apa_complete_first",
+            "title_only_policy": "only_if_no_abstract_in_any_source",
+            "normalization": "l2_after_final_article_vector",
+            "similarity_metric": "cosine",
+            "raw_vector_retention": True,
+            "token_loss_report": True,
+            "fine_tuning": False,
+        }
+        for name, expected in approved.items():
+            if specification[name] != expected or type(specification[name]) is not type(expected):
+                raise Stage3ContractError(f"SPECTER2 owner decision mismatch: {name}")
     else:
         for name in ("graph_snapshot_sha256", "model_ref_id", "model_identity_hash",
                      "walk_length", "walks_per_node", "window", "epochs",
@@ -310,6 +341,87 @@ def plan_pubmedbert_text_inputs(
         canonical_articles, source_records, choices, eligibility,
         permitted_missing_states={"both", "title_only"},
     )
+
+def plan_specter2_text_inputs(
+    canonical_articles: list[dict], source_records: list[dict],
+    eligibility: dict[str, bool],
+) -> list[dict]:
+    """SPECTER2 owner-approved complete-record-first PubMed > WoS > APA.
+
+    Reuse the same evidence-preserving source choice as PubMedBERT, but not
+    PubMedBERT's fragmenting/tokenizer policy. Title-only is valid iff every
+    canonical source record lacks an abstract; otherwise expose the conflict.
+    """
+    choices = choose_pubmedbert_source_priority(canonical_articles, source_records)
+    return plan_text_inputs(
+        canonical_articles, source_records, choices, eligibility,
+        permitted_missing_states={"both", "title_only"},
+    )
+
+
+def summarize_specter2_truncation(
+    rows: list[dict], *, canonical_total: int,
+) -> dict:
+    """Audit pinned-tokenizer counts before/after approved SPECTER2 truncation.
+
+    Each ready article must carry its real full (including specials) token count
+    and encoded count. A caller may not claim a full 512-token input was kept if
+    it actually lost any tokens. Raw texts stay in restricted input artifacts.
+    """
+    if type(canonical_total) is not int or canonical_total < 1:
+        raise Stage3ContractError("invalid SPECTER2 canonical denominator")
+    article_rows = _unique_index(rows, "article_id", "SPECTER2 truncation")
+    if len(article_rows) != canonical_total:
+        raise Stage3ContractError("SPECTER2 full canonical roster required")
+    states = Counter()
+    ready = 0
+    has_abstract = 0
+    truncated_articles = 0
+    lost_total = 0
+    title_only_ready = 0
+    for row in article_rows.values():
+        status = row.get("embedding_input_status")
+        if status not in {
+            "ready", "missing_input", "excluded_by_policy", "requires_source_resolution",
+        }:
+            raise Stage3ContractError("SPECTER2 invalid input status")
+        states[status] += 1
+        full = row.get("full_input_token_count")
+        encoded = row.get("encoded_token_count")
+        lost = row.get("truncated_token_count")
+        if status != "ready":
+            if any(x is not None for x in (full, encoded, lost)):
+                raise Stage3ContractError("SPECTER2 non-ready row cannot claim encoded tokens")
+            continue
+        if any(type(x) is not int for x in (full, encoded, lost)):
+            raise Stage3ContractError("SPECTER2 missing tokenizer-derived token counts")
+        if full < 1 or encoded != min(full, 512) or lost != max(0, full - 512):
+            raise Stage3ContractError("SPECTER2 silent truncation / token-count mismatch")
+        state = row.get("text_state")
+        if state not in {"both", "title_only"}:
+            raise Stage3ContractError("SPECTER2 ready row missing title")
+        if row.get("title_only_vector") is not (state == "title_only"):
+            raise Stage3ContractError("SPECTER2 incorrect title-only coverage flag")
+        ready += 1
+        has_abstract += int(state == "both")
+        title_only_ready += int(state == "title_only")
+        truncated_articles += int(lost > 0)
+        lost_total += lost
+    pct = lambda n, d: None if d == 0 else round(n * 100 / d, 4)
+    return {
+        "canonical_article_count": canonical_total,
+        "ready_article_count": ready,
+        "ready_with_abstract_count": has_abstract,
+        "title_only_ready_count": title_only_ready,
+        "truncated_article_count": truncated_articles,
+        "truncated_pct_canonical": pct(truncated_articles, canonical_total),
+        "truncated_pct_ready": pct(truncated_articles, ready),
+        "total_truncated_tokens": lost_total,
+        "input_status_counts": dict(sorted(states.items())),
+        "token_budget_including_specials": 512,
+        "policy": "truncate_512_report_token_loss",
+    }
+
 
 def plan_citation_graph(
     canonical_articles: list[dict],
@@ -834,3 +946,13 @@ def preserve_node2vec_article_vector(
     return result
 
 
+
+def preserve_specter2_article_vector(
+    raw_article_vector: list[float],
+) -> dict:
+    """Retain 768d post-adapter first-token embedding before L2/cosine."""
+    result = preserve_raw_and_l2_article_vector(
+        raw_article_vector, dimension=768,
+    )
+    result["normalization"] = "l2_after_final_article_vector"
+    return result
