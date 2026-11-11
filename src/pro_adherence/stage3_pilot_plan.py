@@ -36,7 +36,9 @@ def _positive_rate(name: str, value: float | None) -> float | None:
 def capacity_plan(*, pubmedbert_articles_per_s: float | None = None,
                   specter2_articles_per_s: float | None = None,
                   node2vec_tokens_per_s: float | None = None,
-                  gpu_price_per_hour: float | None = None) -> dict:
+                  pubmedbert_price_per_hour: float | None = None,
+                  specter2_price_per_hour: float | None = None,
+                  node2vec_price_per_hour: float | None = None) -> dict:
     """Approximate workload only; no invented performance or pricing."""
     pubmedbert_articles_per_s = _positive_rate("pubmedbert_articles_per_s",
                                                 pubmedbert_articles_per_s)
@@ -44,7 +46,16 @@ def capacity_plan(*, pubmedbert_articles_per_s: float | None = None,
                                               specter2_articles_per_s)
     node2vec_tokens_per_s = _positive_rate("node2vec_tokens_per_s",
                                             node2vec_tokens_per_s)
-    gpu_price_per_hour = _positive_rate("gpu_price_per_hour", gpu_price_per_hour)
+    def checked_price(name, value):
+        if value is None:
+            return None
+        from math import isfinite
+        if type(value) not in (int, float) or not isfinite(value) or value < 0:
+            raise ValueError(name + " must be a nonnegative finite price")
+        return float(value)
+    pubmedbert_price_per_hour = checked_price("pubmedbert_price_per_hour", pubmedbert_price_per_hour)
+    specter2_price_per_hour = checked_price("specter2_price_per_hour", specter2_price_per_hour)
+    node2vec_price_per_hour = checked_price("node2vec_price_per_hour", node2vec_price_per_hour)
     active = ELIGIBLE - TRAINING_ISOLATES
     tokens = active * WALKS_PER_NODE * WALK_LENGTH
     # Across all eligible articles: a generous max, not actual readiness.
@@ -52,12 +63,12 @@ def capacity_plan(*, pubmedbert_articles_per_s: float | None = None,
     pubmed_storage = ELIGIBLE * 768 * 4 * 2 * 2
     specter_storage = ELIGIBLE * 768 * 4 * 2
     node_storage = active * DIM * 4 * 2
-    def projection(work, rate):
+    def projection(work, rate, per_hour):
         if rate is None:
             return {"hours": None, "cost": None, "status": "AWAITING_MEASURED_THROUGHPUT"}
         hours = work / rate / 3600
         return {"hours": hours,
-                "cost": None if gpu_price_per_hour is None else hours * gpu_price_per_hour,
+                "cost": None if per_hour is None else hours * per_hour,
                 "status": "PROJECTION_NOT_MEASURED_FULL_RUN"}
     return {
         "schema": "pro-adherence-stage3-pilot-capacity/v1",
@@ -89,9 +100,9 @@ def capacity_plan(*, pubmedbert_articles_per_s: float | None = None,
         },
         "runtime_projections": {
             "pubmedbert_single_encoder_two_poolings": projection(
-                ELIGIBLE, pubmedbert_articles_per_s),
-            "specter2_proximity": projection(ELIGIBLE, specter2_articles_per_s),
-            "node2vec_walk_generation_only": projection(tokens, node2vec_tokens_per_s),
+                ELIGIBLE, pubmedbert_articles_per_s, pubmedbert_price_per_hour),
+            "specter2_proximity": projection(ELIGIBLE, specter2_articles_per_s, specter2_price_per_hour),
+            "node2vec_walk_generation_only": projection(tokens, node2vec_tokens_per_s, node2vec_price_per_hour),
         },
         "limitations": [
             "PubMedBERT real fragment counts and SPECTER2 real ready count are not measured",
@@ -118,14 +129,18 @@ def main() -> None:
     p.add_argument("--pubmedbert-articles-per-s", type=float)
     p.add_argument("--specter2-articles-per-s", type=float)
     p.add_argument("--node2vec-tokens-per-s", type=float)
-    p.add_argument("--gpu-price-per-hour", type=float)
+    p.add_argument("--pubmedbert-price-per-hour", type=float)
+    p.add_argument("--specter2-price-per-hour", type=float)
+    p.add_argument("--node2vec-price-per-hour", type=float)
     p.add_argument("--output", type=Path)
     args = p.parse_args()
     result = capacity_plan(
         pubmedbert_articles_per_s=args.pubmedbert_articles_per_s,
         specter2_articles_per_s=args.specter2_articles_per_s,
         node2vec_tokens_per_s=args.node2vec_tokens_per_s,
-        gpu_price_per_hour=args.gpu_price_per_hour,
+        pubmedbert_price_per_hour=args.pubmedbert_price_per_hour,
+        specter2_price_per_hour=args.specter2_price_per_hour,
+        node2vec_price_per_hour=args.node2vec_price_per_hour,
     )
     content = json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2) + "\n"
     if args.output:

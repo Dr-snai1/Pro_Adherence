@@ -28,20 +28,29 @@ class Stage3PilotTests(unittest.TestCase):
             self.assertIsNone(x["cost"])
         p = capacity_plan(pubmedbert_articles_per_s=2.0,
                           node2vec_tokens_per_s=10000.0,
-                          gpu_price_per_hour=1.25)
+                          pubmedbert_price_per_hour=1.25, node2vec_price_per_hour=0.0)
         self.assertAlmostEqual(p["runtime_projections"]
                                ["pubmedbert_single_encoder_two_poolings"]["hours"],
                                57204 / 2 / 3600)
         self.assertIsNone(p["runtime_projections"]["specter2_proximity"]["hours"])
         self.assertAlmostEqual(p["runtime_projections"]
                                ["node2vec_walk_generation_only"]["cost"],
-                               (17443200 / 10000 / 3600) * 1.25)
+                               0.0)
 
     def test_negative_invalid_input_rejected(self):
         for val in (0, -1, float("nan"), float("inf"), True):
             with self.subTest(val=val):
                 with self.assertRaises(ValueError):
                     capacity_plan(node2vec_tokens_per_s=val)
+
+    def test_zero_cost_supported_and_invalid_prices_rejected(self):
+        p = capacity_plan(node2vec_tokens_per_s=1000,
+                          node2vec_price_per_hour=0.0)
+        self.assertEqual(p["runtime_projections"]["node2vec_walk_generation_only"]["cost"], 0.0)
+        for val in (float("nan"), float("inf"), -1.0, True):
+            with self.subTest(val=val):
+                with self.assertRaises(ValueError):
+                    capacity_plan(node2vec_price_per_hour=val)
 
     def test_offline_cli_reproduces_same_counts(self):
         import os
