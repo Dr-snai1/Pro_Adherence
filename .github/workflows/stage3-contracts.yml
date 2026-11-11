@@ -49,4 +49,3 @@ jobs:
         run: |
           python -m py_compile scripts/stage3_graph_frozen_streaming.py
           python -O scripts/stage3_graph_frozen_streaming.py --help > /tmp/stage3_optimized.out 2>&1 && exit 1 || grep -q 'Python assertions (-O forbidden)' /tmp/stage3_optimized.out
-
