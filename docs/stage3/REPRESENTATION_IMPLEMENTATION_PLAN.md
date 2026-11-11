@@ -114,6 +114,8 @@ Citation evidence: **2 437 863** наблюдений ссылок, из них 
 
 ## 7. Следующий технический рубеж и owner gates
 
+**P1-входы подготовлены 2026-11-11:** из frozen approved cohort выбраны 1 000 реальных канонических статей; 883 title+abstract и 117 title-only, 252 isolates. Два независимых прогона совпали побайтово; закрытый ZIP на owner-only Drive проверен повторным скачиванием. Краткий единый порядок первого пробного анализа — [FIRST_PILOT.md](./FIRST_PILOT.md). Вычисления и загрузка весов пока не разрешены и не выполнялись.
+
 **Выполнено:** restricted frozen Stage2 corpus и primary cohort 57 204 без изменений; approved node2vec graph материализован из настоящего frozen research layout, verified Drive ZIP и отдельный streaming code in [stage3_graph_frozen_streaming.py](../../scripts/stage3_graph_frozen_streaming.py). [MODEL_PREFLIGHT.md](./MODEL_PREFLIGHT.md) §5 содержит hashes и независимый readback; никакого обучения или фальшивых vector outputs.
 
 **Подготовлено и проверено 2026-11-11:** pinned HF provider metadata/LFS SHA для трёх весовых файлов и 9 малых файлов byte-SHA256/Git blob ID (два one-shot CI, независимый ZIP/Drive readback; detail [MODEL_PREFLIGHT.md](./MODEL_PREFLIGHT.md) §8). Runtime security guard, package wheel candidates и расчёт пилота — без фактической установки. **Не готово:** локальный SHA веса, exact wheel lock, совместимый безопасный SPECTER2 loader/numeric smoke, CPU/GPU throughput и финансовый потолок; P1 не запускался. Регулярный CI только synthetic, одноразовые network checks только публичного HF.

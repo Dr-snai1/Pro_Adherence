@@ -86,6 +86,8 @@ PYTHONPATH=src python -m pro_adherence.stage3_pilot_plan
 
 **Owner gate:** после локального verified model byte readback, package wheel hash lock, SPECTER2 numeric compatibility smoke и измеренного resource pilot представить bounded compute proposal, расходы и критерии STOP. Никакого тяжёлого run/оплаты/Stage transition сейчас.
 
+**Первый P1 pilot input готов (11.11.2026):** 1 000 выбранных статей, 883 complete и 117 title-only; private ZIP verified on Drive. Краткий план — [FIRST_PILOT.md](./FIRST_PILOT.md). Model inference не запускался.
+
 ## 8. HF artifact provenance — verified provider + девять малых файлов (2026-11-11)
 
 Фактическая [metadata-only проверка](https://github.com/Dr-snai1/Pro_Adherence/actions/runs/42976194273) подтвердила три pinned full HF revisions и полный обязательный inventory. Provider LFS checksum claims (не локальные binary SHA):
