@@ -19,7 +19,7 @@
 | SPECTER2 Base | `allenai/specter2_base` | `3447645e1def9117997203454fa4495937bfbd83` |
 | SPECTER2 proximity adapter | `allenai/specter2` | `2081559630a80fc5851d8f798a05ba81e9468089` |
 
-Список обязательных файлов и ссылки на verified public commit pages: `configs/stage3/model_preflight_pins.json`. Указанные full commit SHAs **не равны** SHA256 скачанных бинарных весов. Веса ещё НЕ скачаны и их file-level SHA256 ещё НЕ подтверждены. Нельзя объявлять `model_identity_hash` готовым по одному только адресу репозитория или короткому SHA.
+Список обязательных файлов и ссылки на verified public commit pages: `configs/stage3/model_preflight_pins.json`. Указанные full commit SHAs **не равны** SHA256 скачанных бинарных весов. Provider LFS SHA256 трёх весовых файлов подтверждены по pinned HF revision metadata; девять config/tokenizer файлов проверены byte SHA256 и provider Git blob. **Ни один весовой файл не скачан**, независимого весового SHA ещё нет; §8. Нельзя объявлять `model_identity_hash` готовым по одному только адресу репозитория или короткому SHA.
 
 ## 3. ML runtime: безопасные раздельные кандидаты, SPECTER2 BLOCKED
 
@@ -69,7 +69,7 @@ PYTHONPATH=src python -m pro_adherence.stage3_preflight \
 
 ## 7. Metadata-only provenance и рассчитанный пилот (технический, не разрешённый)
 
-[stage3_hf_provenance.py](../../src/pro_adherence/stage3_hf_provenance.py) умеет проверять inventory provider по **точному full HF revision** без загрузки весов: `--offline-snapshot` с ранее полученным JSON или явный `--online-metadata-only` (только HTTPS JSON /api/models/..., без /resolve/, pickle и inference). Проверяет revision, обязательные files и lfs SHA256 claim, но помечает все локальные byte SHA как НЕ проверенные. В текущем сеансе **HF model binaries не скачаны**, verified model identity hash не сформирован; автоматический CI выполняет только synthetic fixtures.
+[stage3_hf_provenance.py](../../src/pro_adherence/stage3_hf_provenance.py) умеет проверять inventory provider по **точному full HF revision** без загрузки весов: `--offline-snapshot` с ранее полученным JSON или явный `--online-metadata-only` (только HTTPS JSON /api/models/..., без /resolve/, pickle и inference). Проверяет revision, обязательные files и lfs SHA256 claim, но помечает все локальные byte SHA как НЕ проверенные. Metadata-only и small-file network probe фактически выполнены 2026-11-11 в двух отдельных one-shot CI и независимо readback-проверены. При этом HF model binaries не скачаны, model identity hash не готов; обычный Stage3 CI продолжает работать только на synthetic fixtures.
 
 Команда ручной metadata-only проверки:
 ```bash
@@ -85,3 +85,22 @@ PYTHONPATH=src python -m pro_adherence.stage3_pilot_plan
 Фактические агрегаты: 57 204 eligible, 43 608 nonisolated, 17 443 200 node2vec walk tokens; условная float32 raw+unit storage при полном покрытии текстом и без других служебных структур — **1 099 038 720 bytes (~1 048 MiB)**. Это **не** RAM peak, не размер моделей и не измеренный GPU-hour budget. Время/cost остаются `null`, пока нет measured articles/sec / walk tokens/sec и подтверждённой цены ресурса; walk speed отдельно не включает Word2Vec training. Пилотный технический smoke на 64 стратифицированных входах является частью возможного P1 до ~1 000, но он не запущен и **не санкционирован**. Полный план — REPRESENTATION_IMPLEMENTATION_PLAN `5.
 
 **Owner gate:** после локального verified model byte readback, package wheel hash lock, SPECTER2 numeric compatibility smoke и измеренного resource pilot представить bounded compute proposal, расходы и критерии STOP. Никакого тяжёлого run/оплаты/Stage transition сейчас.
+
+## 8. HF artifact provenance — verified provider + девять малых файлов (2026-11-11)
+
+Фактическая [metadata-only проверка](https://github.com/Dr-snai1/Pro_Adherence/actions/runs/42976194273) подтвердила три pinned full HF revisions и полный обязательный inventory. Provider LFS checksum claims (не локальные binary SHA):
+
+| Линза | Размер weights, bytes | Provider LFS SHA256 |
+|---|---:|---|
+| PubMedBERT | 440 474 434 | `d513412d396cecec5f67936ac871b4aaf1178dfb5193776e790fd2b28bba240c` |
+| SPECTER2 Base | 439 740 465 | `801eda968fad1752fe846a8e572bfdc25202be85544680dda4c99f4589646ebc` |
+| SPECTER2 proximity adapter | 3 593 365 | `5b6105714f78b294daa7e2d181134df12f0acb7a4ec7c1e3c13e512c908db94a` |
+
+Отчёт провайдера JSON SHA256 `1a6c407e24b5ccf22b9bd2bb9c4cfd6ad69b7b72236a95a3b58c41a3a5a8fd83`. Следующая [one-shot проверка небольших файлов](https://github.com/Dr-snai1/Pro_Adherence/actions/runs/42976618340) скачала **9 config/tokenizer/adapter_config**, но **0 весов**. Все 9/9 соответствуют provider Git blob ID по Git object SHA-1 и независимо рассчитанному SHA256 байтов; подтверждены точные file sizes. Manifest SHA256 `43bcf4bf065e092093da73c6a5651ae0a748aff3ec37bb7a0b350c9efeac1636`. Подробная машинная запись: [hf_pinned_file_evidence_20261111.json](../../configs/stage3/hf_pinned_file_evidence_20261111.json).
+
+**Две независимые проверки:** GitHub Actions HTTP provider readback и индивидуальные local SHA; затем отдельное скачивание обоих GitHub artifacts, SHA manifest и ZIP CRC + полный повторный пересчёт 9 Git blob/sha; после записи обоих ZIP на restricted Google Drive — независимый повторный скачанный ZIP SHA/CRC, ACL owner-only/shared=false. ZIP SHA256 `b293fd357b25fd774fe00fc05df7233f065f1ebcb0df8f9a663fa56fdb39facd` (metadata) и `dfaec23ea0ad1524a44c9b2dbae7a5ee596181fb5ff2ff5511a785bbdc20b38a` (small files). Приватные Drive IDs не в публичном GitHub.
+
+Проверенный `adapter_config.json` для approved proximity: `BertAdapterModel`, hidden_size 768, `reduction_factor=16` (48 bottleneck), activation ReLU, `output_adapter=true`, `mh_adapter=false`. Это конфигурационная идентичность, **не** численное доказательство совместимости с современными Transformers. Runtime SPECTER2 остаётся BLOCKED из-за несовместимости Adapters 1.3.0 с рассмотренным безопасным Transformers. Никакой SPECTER2 inference, обучения, платной аренды, скачивания тяжёлых весов или Stage transition не проводилось.
+
+**Gate:** provider LFS SHA known; small-file byte hashes VERIFIED; all real model weight bytes PENDING; safe SPECTER2 loader + numerical smoke PENDING; separate owner compute authorization NOT_GRANTED.
+

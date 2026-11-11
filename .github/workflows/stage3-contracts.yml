@@ -17,6 +17,7 @@ on:
       - "tests/test_stage3_pilot_plan.py"
       - "tests/test_stage3_hf_provenance.py"
       - "tests/test_stage3_small_file_integrity.py"
+      - "tests/test_stage3_hf_public_evidence.py"
       - "src/pro_adherence/stage3_pilot_plan.py"
       - "src/pro_adherence/stage3_hf_provenance.py"
       - "src/pro_adherence/stage3_small_file_integrity.py"

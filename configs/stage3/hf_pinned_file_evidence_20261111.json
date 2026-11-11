@@ -1,0 +1,130 @@
+{
+  "schema": "pro-adherence-stage3-public-model-file-evidence/v1",
+  "date": "2026-11-11",
+  "status": "SMALL_FILES_VERIFIED_WEIGHT_BYTES_PENDING",
+  "publication_authorized": false,
+  "provider_metadata": {
+    "github_run": "https://github.com/Dr-snai1/Pro_Adherence/actions/runs/42976194273",
+    "json_sha256": "1a6c407e24b5ccf22b9bd2bb9c4cfd6ad69b7b72236a95a3b58c41a3a5a8fd83",
+    "archived_zip_sha256": "b293fd357b25fd774fe00fc05df7233f065f1ebcb0df8f9a663fa56fdb39facd"
+  },
+  "small_file_evidence": {
+    "github_run": "https://github.com/Dr-snai1/Pro_Adherence/actions/runs/42976618340",
+    "json_sha256": "43bcf4bf065e092093da73c6a5651ae0a748aff3ec37bb7a0b350c9efeac1636",
+    "archived_zip_sha256": "dfaec23ea0ad1524a44c9b2dbae7a5ee596181fb5ff2ff5511a785bbdc20b38a",
+    "verified_files": 9,
+    "storage": "owner-only restricted Drive; downloaded ZIP readback SHA and CRC passed"
+  },
+  "components": {
+    "pubmedbert": {
+      "repository": "microsoft/BiomedNLP-BiomedBERT-base-uncased-abstract",
+      "revision": "d673b8835373c6fa116d6d8006b33d48734e305d",
+      "files": {
+        "config.json": {
+          "bytes": 385,
+          "local_sha256": "56bab767c02bc792897638feb8addc06d483d9c73769a5f554bbabea1f5507a1",
+          "provider_git_blob": "f8a8cd37533eee7ab2f72c09890b360824352953",
+          "local_byte_sha256_verified": true,
+          "git_blob_verified": true
+        },
+        "tokenizer_config.json": {
+          "bytes": 28,
+          "local_sha256": "53b6f42b8b8daddbdc6d3532c324187a92b46c1602bd6e8d4ad5a413b4fc90e1",
+          "provider_git_blob": "a661b1a138dac6dc5590367402d100765010ffd6",
+          "local_byte_sha256_verified": true,
+          "git_blob_verified": true
+        },
+        "vocab.txt": {
+          "bytes": 225062,
+          "local_sha256": "7b36651908a88bc38bda41b728b2a598191e0d3b553cbacf7b1e5f026d5b5b9f",
+          "provider_git_blob": "9d65c8495e044c70ce1a30e2ae8e2f0b3738dbae",
+          "local_byte_sha256_verified": true,
+          "git_blob_verified": true
+        },
+        "pytorch_model.bin": {
+          "bytes": 440474434,
+          "provider_lfs_sha256": "d513412d396cecec5f67936ac871b4aaf1178dfb5193776e790fd2b28bba240c",
+          "local_byte_sha256_verified": false
+        }
+      }
+    },
+    "specter2_base": {
+      "repository": "allenai/specter2_base",
+      "revision": "3447645e1def9117997203454fa4495937bfbd83",
+      "files": {
+        "config.json": {
+          "bytes": 754,
+          "local_sha256": "6d9d68ca2bfeca756fd807e7c81e8e9d3203d8a002dff19cc42b29edd48e8802",
+          "provider_git_blob": "b8079041daa9db6f28c7377c47867ba8027e79ca",
+          "local_byte_sha256_verified": true,
+          "git_blob_verified": true
+        },
+        "special_tokens_map.json": {
+          "bytes": 125,
+          "local_sha256": "b6d346be366a7d1d48332dbc9fdf3bf8960b5d879522b7799ddba59e76237ee3",
+          "provider_git_blob": "a8b3208c2884c4efb86e49300fdd3dc877220cdf",
+          "local_byte_sha256_verified": true,
+          "git_blob_verified": true
+        },
+        "tokenizer.json": {
+          "bytes": 716830,
+          "local_sha256": "fcd3fffca5d8fcc0d5863406f5f491293c1e4658ed503f424a30324b70533c0d",
+          "provider_git_blob": "e10b7477b7e9cdd39f0758d280ace492674a986c",
+          "local_byte_sha256_verified": true,
+          "git_blob_verified": true
+        },
+        "tokenizer_config.json": {
+          "bytes": 453,
+          "local_sha256": "afea6e85bb539b2c2de8847d92c2a3ae88334c280abbbdb3baaddc5fb7195242",
+          "provider_git_blob": "96c1fb6539fdcb90c25837977803f6743f853d72",
+          "local_byte_sha256_verified": true,
+          "git_blob_verified": true
+        },
+        "vocab.txt": {
+          "bytes": 227845,
+          "local_sha256": "f0a650346e51ede8996710f79ba65d83fdb8da05b159f17037b74ba4e3a36c6f",
+          "provider_git_blob": "8a2c6673dbaca55493a7449f60f0bf6c18a7e107",
+          "local_byte_sha256_verified": true,
+          "git_blob_verified": true
+        },
+        "pytorch_model.bin": {
+          "bytes": 439740465,
+          "provider_lfs_sha256": "801eda968fad1752fe846a8e572bfdc25202be85544680dda4c99f4589646ebc",
+          "local_byte_sha256_verified": false
+        }
+      }
+    },
+    "specter2_proximity": {
+      "repository": "allenai/specter2",
+      "revision": "2081559630a80fc5851d8f798a05ba81e9468089",
+      "files": {
+        "adapter_config.json": {
+          "bytes": 1032,
+          "local_sha256": "1065ad610a661c5169f05d81040fe14429d2cc7ecdf83ed654dca4a62aaf9a8c",
+          "provider_git_blob": "62444fcfa7392cd780d46e44e9fc15ae850eb2fc",
+          "local_byte_sha256_verified": true,
+          "git_blob_verified": true
+        },
+        "pytorch_adapter.bin": {
+          "bytes": 3593365,
+          "provider_lfs_sha256": "5b6105714f78b294daa7e2d181134df12f0acb7a4ec7c1e3c13e512c908db94a",
+          "local_byte_sha256_verified": false
+        }
+      }
+    }
+  },
+  "adapter_config_observed": {
+    "model_class": "BertAdapterModel",
+    "model_type": "bert",
+    "hidden_size": 768,
+    "reduction_factor": 16,
+    "non_linearity": "relu",
+    "output_adapter": true,
+    "mh_adapter": false
+  },
+  "model_weights_downloaded": false,
+  "model_weights_local_sha256_verified": false,
+  "safe_runtime_verified": false,
+  "active_adapter_smoke_verified": false,
+  "owner_compute_authorized": false
+}
