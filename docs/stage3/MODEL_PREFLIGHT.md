@@ -103,4 +103,3 @@ PYTHONPATH=src python -m pro_adherence.stage3_pilot_plan
 Проверенный `adapter_config.json` для approved proximity: `BertAdapterModel`, hidden_size 768, `reduction_factor=16` (48 bottleneck), activation ReLU, `output_adapter=true`, `mh_adapter=false`. Это конфигурационная идентичность, **не** численное доказательство совместимости с современными Transformers. Runtime SPECTER2 остаётся BLOCKED из-за несовместимости Adapters 1.3.0 с рассмотренным безопасным Transformers. Никакой SPECTER2 inference, обучения, платной аренды, скачивания тяжёлых весов или Stage transition не проводилось.
 
 **Gate:** provider LFS SHA known; small-file byte hashes VERIFIED; all real model weight bytes PENDING; safe SPECTER2 loader + numerical smoke PENDING; separate owner compute authorization NOT_GRANTED.
-
