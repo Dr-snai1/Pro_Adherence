@@ -7,6 +7,10 @@ the separate GitHub one-shot adapter schema. No scientific policy change.
 No model downloads, training, or publication.
 """
 import argparse, collections, gzip, hashlib, json, os, sqlite3, zipfile, time, tempfile
+# This frozen-research loader uses assertions as scientific input invariants.
+# Python -O removes them, so refuse optimized execution before any data read.
+if not __debug__:
+ raise RuntimeError('Stage3 graph input validation requires Python assertions (-O forbidden)')
 from pathlib import Path
 parser=argparse.ArgumentParser(description='Stage3 restricted frozen-research citation graph, no training')
 parser.add_argument('--archive',required=True,type=Path)

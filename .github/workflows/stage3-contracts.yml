@@ -13,6 +13,7 @@ on:
       - "configs/stage3/**"
       - "scripts/stage3_eligibility_census.py"
       - "scripts/stage3_graph_snapshot.py"
+      - "scripts/stage3_graph_frozen_streaming.py"
       - "src/pro_adherence/stage3_runtime_guard.py"
       - "tests/test_stage3_graph_snapshot.py"
       - "tests/test_stage3_runtime_guard.py"
@@ -44,3 +45,8 @@ jobs:
         env:
           PYTHONPATH: src
         run: python -m unittest discover -s tests -p 'test_stage3_*.py' -v
+      - name: Syntax and optimized-mode fail-closed smoke for frozen research graph CLI
+        run: |
+          python -m py_compile scripts/stage3_graph_frozen_streaming.py
+          python -O scripts/stage3_graph_frozen_streaming.py --help > /tmp/stage3_optimized.out 2>&1 && exit 1 || grep -q 'Python assertions (-O forbidden)' /tmp/stage3_optimized.out
+
