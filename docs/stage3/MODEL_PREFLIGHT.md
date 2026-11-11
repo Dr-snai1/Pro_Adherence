@@ -37,7 +37,15 @@ HF full revisions остаются закреплены; **file-level model SHA2
 4. **Numerical and quality checks:** только после отдельного решения о вычислениях валидировать размерности 768/128, pooled/text policies, raw/norm/unit, cosine, null statuses, SPECTER2 token loss; у node2vec проверить reproducible walks/seed без навязанного поиска новых гиперпараметров.
 5. **Owner gate:** отдельно утвердить параметры пилота, финансовый потолок и фактический запуск. Никакой локальный PASS по статическим файлам не считается таким разрешением.
 
-## 5. Автоматический offline preflight
+## 5. Node2vec graph: подготовлен безопасный offline builder (сам граф ещё PENDING)
+
+Сценарий scripts/stage3_graph_snapshot.py использует уже существующий проверенный plan_approved_node2vec_graph из stage3_contracts.py; новую научную графовую политику не вводит. Он принимает **только** exact frozen Stage2 ZIP (SHA256 a76f8cd2...) и restricted 57 293-row eligibility roster (SHA256 c080449e...), проверяет CRC/manifest, 87 511 source records, 57 293 canonical, 57 204 eligible и 2 437 863 reference observations. Сверяет 406 811 exact DOI observations с оригинальным направленным графом, запрещает произвольные ambiguous targets, сохраняет provenance/self-loops в оригинальном слое и материализует отдельно неповторяющиеся бинарные ненаправленные training edges только между eligible, без self-loops. Приватные выходы: directed nodes/edges, training edges, sorted eligible node mapping, manifest с byte SHA256, coverage/isolate counts, readback gzip. Никакого training/inference.
+
+Перед настоящим запуском — только в разрешённом restricted workspace с достаточно RAM, без публичного вывода строк; после локального формирования **обязателен** upload на закрытый Google Drive и независимый SHA/ACL readback. До этого graph_snapshot остаётся PENDING. CLI намеренно требует --prepare-private-graph, --archive, --private-cohort, --private-output-dir; отсутствие флага блокирует исполнение.
+
+Ресурсная аналитическая нижняя граница при 57 204 eligible: 57 204 × 10 × 40 = **22 881 600 шагов прогулок**; raw embedding 128×float32 = **29 288 448 байт**, raw+unit = **58 576 896 байт** без служебных данных. Это арифметическая оценка, **не измерение** peak RAM, walltime, throughput или цены пилота; действительный benchmark и heavy training требуют отдельного разрешения владельца.
+
+## 6. Автоматический offline preflight
 
 ```bash
 PYTHONPATH=src python -m pro_adherence.stage3_preflight \

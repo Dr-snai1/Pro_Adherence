@@ -12,6 +12,10 @@ on:
       - "tests/test_stage3_preflight.py"
       - "configs/stage3/**"
       - "scripts/stage3_eligibility_census.py"
+      - "scripts/stage3_graph_snapshot.py"
+      - "src/pro_adherence/stage3_runtime_guard.py"
+      - "tests/test_stage3_graph_snapshot.py"
+      - "tests/test_stage3_runtime_guard.py"
       - "docs/stage3/**"
       - ".github/workflows/stage3-contracts.yml"
   pull_request:
