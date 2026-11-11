@@ -21,19 +21,19 @@
 
 Список обязательных файлов и ссылки на verified public commit pages: `configs/stage3/model_preflight_pins.json`. Указанные full commit SHAs **не равны** SHA256 скачанных бинарных весов. Веса ещё НЕ скачаны и их file-level SHA256 ещё НЕ подтверждены. Нельзя объявлять `model_identity_hash` готовым по одному только адресу репозитория или короткому SHA.
 
-## 3. ML runtime: подтверждённая несовместимость (не новый научный выбор)
+## 3. ML runtime: безопасные раздельные кандидаты, SPECTER2 BLOCKED
 
-Исходный [AdapterHub setup.py v1.3.0](https://github.com/adapter-hub/adapters/blob/v1.3.0/setup.py) требует transformers~=4.57.6 (то есть >=4.57.6,<4.58.0). Для transformers действует [GHSA-29pf-2h5f-8g72](https://github.com/advisories/GHSA-29pf-2h5f-8g72): исправление — начиная с 5.3.0. **Пересечение диапазонов пусто.** Это риск технической совместимости и безопасности среды, а не основание менять утверждённый SPECTER2 proximity adapter.
+На 2026-11-11 последний опубликованный [Adapters 1.3.0](https://pypi.org/project/adapters/1.3.0/) требует `transformers~=4.57.6` (то есть >=4.57.6,<4.58.0) по [исходному setup.py](https://github.com/adapter-hub/adapters/blob/v1.3.0/setup.py). Официальные GHSA: версии `<5.3.0` [29pf](https://github.com/advisories/GHSA-29pf-2h5f-8g72), `<5.5.0` [fgcw](https://github.com/advisories/GHSA-fgcw-684q-jj6r), `<5.10.0` [xrqw](https://github.com/advisories/GHSA-xrqw-3rrv-vx5w), также `>=4.49.0,<=5.8.1` [x9r9](https://github.com/advisories/GHSA-x9r9-c232-4q39). Максимальная граница среди этих **изученных** advisories — `5.10.0`, не гарантия исчерпывающей безопасности. У поддерживаемой опубликованной пары Adapters 1.3.0 / Transformers >=5.10.0 **пустое пересечение**. Это технический blocker, не решение о смене SPECTER2 proximity adapter.
 
-No-download аудит: PYTHONPATH=src python -m pro_adherence.stage3_runtime_guard --adapters 1.3.0 --transformers 5.3.0 возвращает BLOCKED по несовместимости. С transformers=4.57.6 он возвращает BLOCKED по security-floor. Пока не проверены фактические dependency metadata иной совместимой версии/патча и реальный adapter smoke, **нет подтверждённого безопасного exact ML runtime lock для SPECTER2**. Не создавать фиктивный lock/SHA и не устанавливать заведомо уязвимую пару. PubMedBERT и node2vec могут использовать отдельные среды, но exact wheel hashes и smoke ещё не проверены.
+**Изолированные кандидаты, НЕ установленный exact lock:** [runtime_candidates.json](../../configs/stage3/runtime_candidates.json). Для PubMedBERT кандидатом закреплён `transformers==5.22.2` с [официальным PyPI wheel SHA256](https://pypi.org/project/transformers/5.22.2/) `829c2820aff91730b8ec45a4b8ff4be07f586a140b68a9073998b36fa35297dc`; Python, torch, tokenizers и compatibility smoke ещё отсутствуют. Для node2vec только `node2vec==0.5.0`, не закреплены остальные dependency hashes. Для SPECTER2 последний published `adapters==1.3.0`: wheel SHA256 `c0620b1b98df4af3876aa1e053ba43d0a19d82e62fc6a3ebc67d158183e07919` ([PyPI](https://pypi.org/project/adapters/1.3.0/)), **но безопасного подтверждённого Transformers runtime нет**. SHA на странице провайдера ≠ checksum скачанного wheel.
 
-HF full revisions остаются закреплены; **file-level model SHA256, provider metadata digests, независимые hashes полученных весов и model_identity_hash — PENDING**. SHA коммита Git не является SHA256 бинарных весов. Весовые файлы не загружались.
+[stage3_runtime_guard.py](../../src/pro_adherence/stage3_runtime_guard.py) проверяет конкретные known advisories и несовместимость; [stage3_preflight.py](../../src/pro_adherence/stage3_preflight.py) не принимает формальный hash вместо проверенных bytes. Для безопасного runtime SPECTER2 нужны новые официальные dependency metadata/поддерживаемая безопасная реализация, отдельный lock с hash wheel и настоящий adapter-activated numeric smoke, затем comparison на неизменном научном конфиге. **Нельзя считать установленной заведомо уязвимую пару ради smoke.** Реальные ML runtime для трёх линз остаются **PENDING**.
 
 ## 4. Строго блокирующие условия перед отдельным разрешённым compute
 
 1. **Weights/tokenizer/adapter:** получить только выбранные полные HF revisions, установить проверенные авторитетные file SHA256 по official artifact metadata и независимо сравнить с фактически полученными bytes. Обязательные `config.json`, tokenizer files, `pytorch_model.bin` / `pytorch_adapter.bin` должны проверяться отдельно.
 2. **Runtime:** зафиксировать *отдельный* совместимый dependency lock для модельных вычислений (PyTorch, transformers, tokenizers и adapters для SPECTER2; node2vec backend), версии Python/GPU/CPU и hashes. Действующий Stage0 lock **не содержит** этих ML-библиотек и не считается готовым ML runtime. Совместимость SPECTER2 adapter проверяется в целевом runtime техническим smoke test — не открывать научную развилку.
-3. **Node2vec graph:** на approved primary_eligible cohort `57 204` получить sorted canonical-to-node mapping + hash, immutable directed observed graph + hash, separate binary unweighted undirected graph + hash, isolate/coverage report; воспроизводимо сверить отсечение excluded и self-loops без потери исходных цитирований. Граф и trained node2vec identity пока НЕ созданы.
+3. **Node2vec graph:** VERIFIED_AND_STORED: sorted 57 204 eligible node map + immutable directed citation observations + binary undirected training projection and isolates, private Drive SHA and independent readback (§5). Trained model identity/runtime и owner compute gate остаются PENDING.
 4. **Numerical and quality checks:** только после отдельного решения о вычислениях валидировать размерности 768/128, pooled/text policies, raw/norm/unit, cosine, null statuses, SPECTER2 token loss; у node2vec проверить reproducible walks/seed без навязанного поиска новых гиперпараметров.
 5. **Owner gate:** отдельно утвердить параметры пилота, финансовый потолок и фактический запуск. Никакой локальный PASS по статическим файлам не считается таким разрешением.
 
@@ -48,7 +48,7 @@ HF full revisions остаются закреплены; **file-level model SHA2
 - Проверки **разными механизмами**: streaming input reconciliation по source references/canonical/eligibility; альтернативный полный gzip+graph-invariants scan; независимый второй прогон дал **0 byte differences**; после upload на Google Drive — отдельное скачивание и SHA256 ZIP, ZIP CRC, gzip row-count/digests; ACL owner-only/shared=false, родитель project root подтверждён.
 - Граф — **derived non-model artifact**, не trained node2vec model и не grant compute. Runtime, HF model file SHA/weights, trained-model identity и owner compute permission остаются PENDING. Node2vec training **НЕ** запускался.
 
-Ресурсная нижняя оценка будущего training: 57 204 × 10 × 40 = **22 881 600** nominal walk steps; raw float32 128d = **29 288 448 bytes**, raw+unit = **58 576 896 bytes**, без служебных массивов и peak RAM. Это не measured throughput, memory peak или GPU cost. Нужен отдельный разрешённый pilot benchmark; граф уже подготовлен без heavy training.
+При 13 596 isolates только **43 608** nonisolated training nodes дают **436 080** walks / **17 443 200** nominal 40-step tokens (без фиктивных прогулок изолятов). Нижняя упаковка integer tokens — 69 772 800 bytes; Python peak RAM не измерен. Степени из restricted graph: p50=9, p90=33, p99=95, max=2 714; raw+unit float32 128d для nonisolated = 44 654 592 bytes. Полный ресурсный план — §7.
 
 
 ## 6. Автоматический offline preflight
@@ -65,4 +65,23 @@ PYTHONPATH=src python -m pro_adherence.stage3_preflight \
 
 `src/pro_adherence/stage3_preflight.py` теперь различает approved pins и НЕ проверенные upstream provider metadata (поле upstream_commit_refs_verified=false), требует действительные байты runtime lock и трёх файлов графа при заявлении SHA, проверяет известный конфликт adapters/transformers; данные из одной лишь строки digest не проходят готовность. `src/pro_adherence/stage3_preflight.py` проверяет точные репозитории/full commits, frozen cohort SHA и запрет публикации, локальные SHA файла против **внешних доверенных SHA**, exact runtime lock, node2vec graph hashes и отдельный compute gate. Он не вызывает Hugging Face API, не загружает/не исполняет веса и не читает скрыто приватный корпус без явного пути. Синтетические тесты проверяют отказ при подмене модели, адаптера, cohort, файла/контрольной суммы, graph policy или Stage-gate. Автоматический CI ограничен синтетическими данными.
 
-**Статус:** закрытый census — VERIFIED_AND_STORED; публичные full revision refs — PINNED; фактические модели/runtime/graph — **PENDING**; heavy compute / publication / Stage transition — **NOT_AUTHORIZED**.
+**Статус:** restricted cohort и node2vec graph — VERIFIED_AND_STORED; HF full revision refs — PINNED, но фактические model file bytes — PENDING; published runtime candidates — NOT_LOCKED, безопасный SPECTER2 runtime — BLOCKED; compute / publication / Stage transition — NOT_AUTHORIZED.
+
+## 7. Metadata-only provenance и рассчитанный пилот (технический, не разрешённый)
+
+[stage3_hf_provenance.py](../../src/pro_adherence/stage3_hf_provenance.py) умеет проверять inventory provider по **точному full HF revision** без загрузки весов: `--offline-snapshot` с ранее полученным JSON или явный `--online-metadata-only` (только HTTPS JSON /api/models/..., без /resolve/, pickle и inference). Проверяет revision, обязательные files и lfs SHA256 claim, но помечает все локальные byte SHA как НЕ проверенные. В текущем сеансе **HF model binaries не скачаны**, verified model identity hash не сформирован; автоматический CI выполняет только synthetic fixtures.
+
+Команда ручной metadata-only проверки:
+```bash
+PYTHONPATH=src python -m pro_adherence.stage3_hf_provenance --online-metadata-only \
+  --config configs/stage3/model_preflight_pins.json \
+  --output /secure/hf_provider_metadata.json
+```
+
+[stage3_pilot_plan.py](../../src/pro_adherence/stage3_pilot_plan.py) — deterministic offline resource planner:
+```bash
+PYTHONPATH=src python -m pro_adherence.stage3_pilot_plan
+```
+Фактические агрегаты: 57 204 eligible, 43 608 nonisolated, 17 443 200 node2vec walk tokens; условная float32 raw+unit storage при полном покрытии текстом и без других служебных структур — **1 099 038 720 bytes (~1 048 MiB)**. Это **не** RAM peak, не размер моделей и не измеренный GPU-hour budget. Время/cost остаются `null`, пока нет measured articles/sec / walk tokens/sec и подтверждённой цены ресурса; walk speed отдельно не включает Word2Vec training. Пилотный технический smoke на 64 стратифицированных входах является частью возможного P1 до ~1 000, но он не запущен и **не санкционирован**. Полный план — REPRESENTATION_IMPLEMENTATION_PLAN `5.
+
+**Owner gate:** после локального verified model byte readback, package wheel hash lock, SPECTER2 numeric compatibility smoke и измеренного resource pilot представить bounded compute proposal, расходы и критерии STOP. Никакого тяжёлого run/оплаты/Stage transition сейчас.
