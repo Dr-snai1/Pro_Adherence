@@ -1,0 +1,54 @@
+name: Stage3 pinned HF metadata readback (public files only)
+
+on:
+  push:
+    branches:
+      - "stage2/**"
+    paths:
+      - ".github/workflows/stage3-hf-metadata-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  pinned-provider-metadata:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Read exact HF revision JSON metadata only (no weights or inference)
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m pro_adherence.stage3_hf_provenance \
+            --config configs/stage3/model_preflight_pins.json \
+            --online-metadata-only \
+            --output /tmp/stage3_hf_provider_metadata.json
+      - name: Emit provider LFS checksum claims with fail-closed state
+        run: |
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          f=Path('/tmp/stage3_hf_provider_metadata.json')
+          raw=f.read_bytes()
+          obj=json.loads(raw)
+          print('MODEL_METADATA_AUDIT_SHA256='+hashlib.sha256(raw).hexdigest())
+          print('STATUS='+obj['status'])
+          for key, item in sorted(obj['components'].items()):
+              print('COMPONENT',key,'REVISION',item['pinned_revision'])
+              for name, row in sorted(item['required_files'].items()):
+                  print('FILE',name,'LFS_SHA256',row['provider_lfs_sha256_claim'],
+                        'SIZE',row['provider_file_size_claim'],
+                        'LOCAL_BYTES_VERIFIED',row['local_content_sha256_verified'])
+          assert obj['model_bytes_readback_verified'] is False
+          assert obj['model_load_executed'] is False
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-public-hf-revision-metadata
+          path: /tmp/stage3_hf_provider_metadata.json
+          retention-days: 10
+          if-no-files-found: error
