@@ -86,7 +86,7 @@ PYTHONPATH=src python -m pro_adherence.stage3_pilot_plan
 
 **Owner gate:** после локального verified model byte readback, package wheel hash lock, SPECTER2 numeric compatibility smoke и измеренного resource pilot представить bounded compute proposal, расходы и критерии STOP. Никакого тяжёлого run/оплаты/Stage transition сейчас.
 
-**Первый P1 pilot input готов (11.11.2026):** 1 000 выбранных статей, 883 complete и 117 title-only; private ZIP verified on Drive. Краткий план — [FIRST_PILOT.md](./FIRST_PILOT.md). Model inference не запускался.
+**После successful PubMedBERT P1 владелец 2026-11-12 разрешил полный бесплатный CPU PubMedBERT:** verified full input 57 204, первый штатный shard 1 000/57 204 готов, дальнейшие части НЕ рассчитаны. См. [REPRESENTATION_IMPLEMENTATION_PLAN.md](./REPRESENTATION_IMPLEMENTATION_PLAN.md) §7.
 
 ## 8. Актуальный model provenance и состоявшийся PubMedBERT P1 (2026-11-11)
 
