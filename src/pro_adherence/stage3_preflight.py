@@ -12,6 +12,8 @@ import json
 from pathlib import Path
 import re
 
+from .stage3_runtime_guard import audit_runtime_versions
+
 
 class Stage3PreflightError(ValueError):
     pass
@@ -91,7 +93,9 @@ def audit_stage3_preflight(
     model_cache_dirs: dict[str, Path] | None = None,
     authoritative_file_hashes: dict[str, dict[str, str]] | None = None,
     exact_runtime_lock: dict | None = None,
+    exact_runtime_lock_path: Path | None = None,
     graph_snapshot: dict | None = None,
+    graph_artifact_paths: dict[str, Path] | None = None,
     compute_authorized: bool = False,
 ) -> dict:
     """Report blocking conditions without loading model weights or touching web.
@@ -137,15 +141,33 @@ def audit_stage3_preflight(
                     raise Stage3PreflightError(f"model file checksum mismatch: {component}/{file}")
 
     runtime = exact_runtime_lock or {}
+    runtime_path = Path(exact_runtime_lock_path) if exact_runtime_lock_path else None
+    runtime_hash = str(runtime.get("lockfile_sha256", ""))
+    runtime_bytes_match = (
+        runtime_path is not None and runtime_path.is_file()
+        and HEX64.fullmatch(runtime_hash) is not None
+        and sha256_path(runtime_path) == runtime_hash
+    )
     for lens, packages in {
         "pubmedbert": ("python", "torch", "transformers", "tokenizers"),
         "specter2": ("python", "torch", "transformers", "tokenizers", "adapters"),
         "node2vec": ("python", "node2vec_backend"),
     }.items():
-        if (not HEX64.fullmatch(str(runtime.get("lockfile_sha256", "")))
-            or any(not re.fullmatch(r"[0-9]+(?:\.[0-9]+)+(?:[.+a-zA-Z0-9-]*)", str(runtime.get(pkg, "")))
-                   for pkg in packages)):
+        if (not HEX64.fullmatch(runtime_hash)
+            or any(not re.fullmatch(r"[0-9]+(?:\.[0-9]+)+(?:[.+a-zA-Z0-9-]*)",
+                                      str(runtime.get(pkg, ""))) for pkg in packages)):
             blocks[lens].append("EXACT_COMPATIBLE_RUNTIME_NOT_VERIFIED")
+        if not runtime_bytes_match:
+            blocks[lens].append("RUNTIME_LOCK_BYTES_NOT_VERIFIED")
+    if isinstance(runtime.get("transformers"), str) and isinstance(runtime.get("adapters"), str):
+        try:
+            guard = audit_runtime_versions(
+                transformers=runtime["transformers"], adapters=runtime["adapters"])
+        except ValueError as exc:
+            raise Stage3PreflightError("invalid exact runtime version") from exc
+        blocks["specter2"].extend(guard["blockers"])
+        if "TRANSFORMERS_BELOW_GHSA_29PF_PATCH_FLOOR" in guard["blockers"]:
+            blocks["pubmedbert"].append("TRANSFORMERS_BELOW_GHSA_29PF_PATCH_FLOOR")
 
     if graph_snapshot is None:
         blocks["node2vec"].append("CITATION_GRAPH_SNAPSHOT_NOT_VERIFIED")
@@ -159,6 +181,14 @@ def audit_stage3_preflight(
             or graph_snapshot.get("source_orientation") != "directed"
             or graph_snapshot.get("weights") != "binary_unit"):
             raise Stage3PreflightError("node2vec owner-approved graph policy mismatch")
+        # A 64-character label proves no bytes. Compare the actual three files.
+        for field in ("source_directed_graph_sha256", "training_undirected_graph_sha256",
+                      "sorted_node_mapping_sha256"):
+            f = (graph_artifact_paths or {}).get(field)
+            if f is None or not Path(f).is_file():
+                blocks["node2vec"].append(f"GRAPH_ARTIFACT_BYTES_NOT_VERIFIED:{field}")
+            elif sha256_path(Path(f)) != graph_snapshot[field]:
+                raise Stage3PreflightError(f"node2vec graph artifact SHA256 mismatch: {field}")
 
     if not compute_authorized:
         for key in blocks:
@@ -168,7 +198,8 @@ def audit_stage3_preflight(
         "preflight_only": True,
         "publication_authorized": False,
         "owner_compute_authorized": bool(compute_authorized),
-        "upstream_commit_refs_verified": True,
+        "upstream_commit_refs_match_approved_config": True,
+        "upstream_commit_refs_verified": False,  # no provider readback in offline CLI
         "private_cohort_sha256": PRIVATE_COHORT_SHA,
         "lenses": {
             lens: {

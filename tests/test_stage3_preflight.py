@@ -54,7 +54,8 @@ class Stage3ModelPreflightTests(unittest.TestCase):
         self.assertTrue(report["preflight_only"])
         self.assertFalse(report["owner_compute_authorized"])
         self.assertFalse(report["publication_authorized"])
-        self.assertTrue(report["upstream_commit_refs_verified"])
+        self.assertFalse(report["upstream_commit_refs_verified"])
+        self.assertTrue(report["upstream_commit_refs_match_approved_config"])
         for lens, r in report["lenses"].items():
             with self.subTest(lens=lens):
                 self.assertFalse(r["ready_for_owner_authorized_compute"])
@@ -133,7 +134,8 @@ class Stage3ModelPreflightTests(unittest.TestCase):
                 )
                 for item in r["lenses"].values():
                     self.assertFalse(item["ready_for_owner_authorized_compute"])
-                    self.assertEqual(item["blockers"], ["OWNER_COMPUTE_GATE_NOT_GRANTED"])
+                    self.assertIn("OWNER_COMPUTE_GATE_NOT_GRANTED", item["blockers"])
+                    self.assertIn("RUNTIME_LOCK_BYTES_NOT_VERIFIED", item["blockers"])
                 # Pure software readiness, not launching inference.
                 r = pre.audit_stage3_preflight(
                     cfg, private_cohort_path=cohort,
@@ -142,7 +144,8 @@ class Stage3ModelPreflightTests(unittest.TestCase):
                     exact_runtime_lock=runtime, graph_snapshot=graph,
                     compute_authorized=True,
                 )
-                self.assertTrue(all(v["ready_for_owner_authorized_compute"] for v in r["lenses"].values()))
+                self.assertFalse(all(v["ready_for_owner_authorized_compute"] for v in r["lenses"].values()))
+                self.assertIn("RUNTIME_LOCK_BYTES_NOT_VERIFIED", r["lenses"]["node2vec"]["blockers"])
                 corrupted = folder / "pubmedbert" / "pytorch_model.bin"
                 corrupted.write_bytes(b"different untrusted bytes")
                 with self.assertRaisesRegex(pre.Stage3PreflightError, "model file checksum mismatch"):
@@ -155,6 +158,51 @@ class Stage3ModelPreflightTests(unittest.TestCase):
                 bad_graph = {**graph, "eligible_node_count": 57207}
                 with self.assertRaisesRegex(pre.Stage3PreflightError, "graph policy mismatch"):
                     pre.audit_stage3_preflight(cfg, graph_snapshot=bad_graph)
+
+    def test_claimed_runtime_and_graph_sha_without_file_bytes_never_ready(self):
+        with tempfile.TemporaryDirectory() as temp:
+            folder = Path(temp)
+            runtime_bytes = b"synthetic lock not installed\n"
+            lock = folder / "runtime.lock"
+            lock.write_bytes(runtime_bytes)
+            digest = sha256(runtime_bytes).hexdigest()
+            graph_data = {}
+            graph_paths = {}
+            for key in ("source_directed_graph_sha256", "training_undirected_graph_sha256",
+                        "sorted_node_mapping_sha256"):
+                p = folder / key
+                p.write_bytes(key.encode("utf-8"))
+                graph_data[key] = sha256(p.read_bytes()).hexdigest()
+                graph_paths[key] = p
+            graph = {**graph_data, "eligible_node_count": 57204,
+                     "training_orientation": "undirected",
+                     "source_orientation": "directed", "weights": "binary_unit"}
+            runtime = {"python": "3.13.5", "torch": "2.5.1",
+                       "transformers": "5.3.0", "tokenizers": "0.22.0",
+                       "adapters": "1.3.0", "node2vec_backend": "0.5.0",
+                       "lockfile_sha256": digest}
+            report = pre.audit_stage3_preflight(
+                self.config, exact_runtime_lock=runtime, graph_snapshot=graph,
+                compute_authorized=True)
+            self.assertIn("RUNTIME_LOCK_BYTES_NOT_VERIFIED",
+                          report["lenses"]["node2vec"]["blockers"])
+            self.assertIn("GRAPH_ARTIFACT_BYTES_NOT_VERIFIED:sorted_node_mapping_sha256",
+                          report["lenses"]["node2vec"]["blockers"])
+            self.assertIn("ADAPTERS_1_3_0_TRANSFORMERS_CONSTRAINT_CONFLICT",
+                          report["lenses"]["specter2"]["blockers"])
+            verified = pre.audit_stage3_preflight(
+                self.config, exact_runtime_lock=runtime,
+                exact_runtime_lock_path=lock, graph_snapshot=graph,
+                graph_artifact_paths=graph_paths, compute_authorized=True)
+            self.assertNotIn("RUNTIME_LOCK_BYTES_NOT_VERIFIED",
+                             verified["lenses"]["node2vec"]["blockers"])
+            self.assertFalse(verified["lenses"]["specter2"]["ready_for_owner_authorized_compute"])
+            graph_paths["sorted_node_mapping_sha256"].write_bytes(b"mutated")
+            with self.assertRaisesRegex(pre.Stage3PreflightError, "graph artifact SHA256 mismatch"):
+                pre.audit_stage3_preflight(
+                    self.config, exact_runtime_lock=runtime,
+                    exact_runtime_lock_path=lock, graph_snapshot=graph,
+                    graph_artifact_paths=graph_paths)
 
 
 if __name__ == "__main__":
