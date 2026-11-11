@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 import re
 
-from .stage3_runtime_guard import audit_runtime_versions
+from .stage3_runtime_guard import audit_runtime_versions, audit_transformers_security
 
 
 class Stage3PreflightError(ValueError):
@@ -166,8 +166,11 @@ def audit_stage3_preflight(
         except ValueError as exc:
             raise Stage3PreflightError("invalid exact runtime version") from exc
         blocks["specter2"].extend(guard["blockers"])
-        if "TRANSFORMERS_BELOW_GHSA_29PF_PATCH_FLOOR" in guard["blockers"]:
-            blocks["pubmedbert"].append("TRANSFORMERS_BELOW_GHSA_29PF_PATCH_FLOOR")
+    if isinstance(runtime.get("transformers"), str):
+        try:
+            blocks["pubmedbert"].extend(audit_transformers_security(runtime["transformers"]))
+        except ValueError as exc:
+            raise Stage3PreflightError("invalid transformers security version") from exc
 
     if graph_snapshot is None:
         blocks["node2vec"].append("CITATION_GRAPH_SNAPSHOT_NOT_VERIFIED")

@@ -1,0 +1,56 @@
+{
+  "schema": "pro-adherence-stage3-runtime-candidates/v1",
+  "status": "PLANNING_ONLY_NOT_INSTALLED_NOT_LOCKED",
+  "reviewed_on": "2026-11-11",
+  "scientific_configuration_unchanged": true,
+  "candidate_provenance": {
+    "pypi_adapters": "https://pypi.org/project/adapters/1.3.0/",
+    "pypi_transformers": "https://pypi.org/project/transformers/5.22.2/",
+    "source_adapters_requirements": "https://github.com/adapter-hub/adapters/blob/v1.3.0/setup.py",
+    "advisory_index": [
+      "https://github.com/advisories/GHSA-29pf-2h5f-8g72",
+      "https://github.com/advisories/GHSA-fgcw-684q-jj6r",
+      "https://github.com/advisories/GHSA-xrqw-3rrv-vx5w",
+      "https://github.com/advisories/GHSA-x9r9-c232-4q39"
+    ]
+  },
+  "lanes": {
+    "pubmedbert": {
+      "proposed_transformers": "5.22.2",
+      "published_wheel_sha256": "829c2820aff91730b8ec45a4b8ff4be07f586a140b68a9073998b36fa35297dc",
+      "python": null,
+      "torch": null,
+      "tokenizers": null,
+      "exact_runtime_lock_sha256": null,
+      "dependency_resolution_verified": false,
+      "installed_smoke_verified": false,
+      "model_bytes_verified": false,
+      "notes": "Candidate only; pin torch/tokenizers/Python and verify full dependency graph in isolated runtime"
+    },
+    "specter2": {
+      "published_adapter": "1.3.0",
+      "published_adapter_wheel_sha256": "c0620b1b98df4af3876aa1e053ba43d0a19d82e62fc6a3ebc67d158183e07919",
+      "requires_transformers": ">=4.57.6,<4.58.0",
+      "reviewed_transformers_advisory_floor": ">=5.10.0",
+      "compatible_published_pair_verified": false,
+      "exact_runtime_lock_sha256": null,
+      "installed_adapter_smoke_verified": false,
+      "remedy_gate": "Needs metadata-backed safe adapter/runtime implementation and exact-output equivalence on the owner-approved proximity adapter"
+    },
+    "node2vec": {
+      "published_backend": "node2vec==0.5.0",
+      "python": null,
+      "gensim": null,
+      "networkx": null,
+      "numpy": null,
+      "scipy": null,
+      "exact_runtime_lock_sha256": null,
+      "installed_smoke_verified": false,
+      "graph_snapshot_private_durable_verified": true,
+      "notes": "Candidate backend, not measured speed/memory or authorized training"
+    }
+  },
+  "model_artifact_sha256_download_verified": false,
+  "owner_compute_permission": false,
+  "publication_authorized": false
+}
