@@ -21,7 +21,15 @@
 
 Список обязательных файлов и ссылки на verified public commit pages: `configs/stage3/model_preflight_pins.json`. Указанные full commit SHAs **не равны** SHA256 скачанных бинарных весов. Веса ещё НЕ скачаны и их file-level SHA256 ещё НЕ подтверждены. Нельзя объявлять `model_identity_hash` готовым по одному только адресу репозитория или короткому SHA.
 
-## 3. Строго блокирующие условия перед отдельным разрешённым compute
+## 3. ML runtime: подтверждённая несовместимость (не новый научный выбор)
+
+Исходный [AdapterHub setup.py v1.3.0](https://github.com/adapter-hub/adapters/blob/v1.3.0/setup.py) требует transformers~=4.57.6 (то есть >=4.57.6,<4.58.0). Для transformers действует [GHSA-29pf-2h5f-8g72](https://github.com/advisories/GHSA-29pf-2h5f-8g72): исправление — начиная с 5.3.0. **Пересечение диапазонов пусто.** Это риск технической совместимости и безопасности среды, а не основание менять утверждённый SPECTER2 proximity adapter.
+
+No-download аудит: PYTHONPATH=src python -m pro_adherence.stage3_runtime_guard --adapters 1.3.0 --transformers 5.3.0 возвращает BLOCKED по несовместимости. С transformers=4.57.6 он возвращает BLOCKED по security-floor. Пока не проверены фактические dependency metadata иной совместимой версии/патча и реальный adapter smoke, **нет подтверждённого безопасного exact ML runtime lock для SPECTER2**. Не создавать фиктивный lock/SHA и не устанавливать заведомо уязвимую пару. PubMedBERT и node2vec могут использовать отдельные среды, но exact wheel hashes и smoke ещё не проверены.
+
+HF full revisions остаются закреплены; **file-level model SHA256, provider metadata digests, независимые hashes полученных весов и model_identity_hash — PENDING**. SHA коммита Git не является SHA256 бинарных весов. Весовые файлы не загружались.
+
+## 4. Строго блокирующие условия перед отдельным разрешённым compute
 
 1. **Weights/tokenizer/adapter:** получить только выбранные полные HF revisions, установить проверенные авторитетные file SHA256 по official artifact metadata и независимо сравнить с фактически полученными bytes. Обязательные `config.json`, tokenizer files, `pytorch_model.bin` / `pytorch_adapter.bin` должны проверяться отдельно.
 2. **Runtime:** зафиксировать *отдельный* совместимый dependency lock для модельных вычислений (PyTorch, transformers, tokenizers и adapters для SPECTER2; node2vec backend), версии Python/GPU/CPU и hashes. Действующий Stage0 lock **не содержит** этих ML-библиотек и не считается готовым ML runtime. Совместимость SPECTER2 adapter проверяется в целевом runtime техническим smoke test — не открывать научную развилку.
@@ -29,7 +37,7 @@
 4. **Numerical and quality checks:** только после отдельного решения о вычислениях валидировать размерности 768/128, pooled/text policies, raw/norm/unit, cosine, null statuses, SPECTER2 token loss; у node2vec проверить reproducible walks/seed без навязанного поиска новых гиперпараметров.
 5. **Owner gate:** отдельно утвердить параметры пилота, финансовый потолок и фактический запуск. Никакой локальный PASS по статическим файлам не считается таким разрешением.
 
-## 4. Автоматический offline preflight
+## 5. Автоматический offline preflight
 
 ```bash
 PYTHONPATH=src python -m pro_adherence.stage3_preflight \
