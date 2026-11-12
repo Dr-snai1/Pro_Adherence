@@ -32,6 +32,15 @@ WALKS_PER_NODE=10
 DIM=128
 WINDOW=10
 EPOCHS=1
+# Approved by owner 2026-11-12 (not approval to run full training).
+NEGATIVE=5
+SAMPLE=0.001
+# Existing skip-gram implementation semantics, now explicit.
+SG=1
+HS=0
+MIN_COUNT=1
+SORTED_VOCAB=1
+WORKERS=1
 MAX_START_NODES=436  # 436*10 = 4,360/436,080 nominal walks: 0.99977%
 
 
@@ -116,6 +125,22 @@ def walk_generator(starts,offsets,adj,seed):
             yield walk
 
 
+class RepeatableWalkCorpus:
+    """Re-iterable deterministic walk stream for Gensim's vocabulary/train passes.
+
+    Uses the full supplied adjacency, but materializes no list of walks. Only
+    synthetic/bounded tests are authorized; instantiation does NOT train.
+    """
+    def __init__(self, starts, offsets, adj, seed=SEED):
+        self.starts=np.asarray(starts,dtype=np.int32).copy()
+        self.offsets=offsets
+        self.adj=adj
+        self.seed=seed
+
+    def __iter__(self):
+        return walk_generator(self.starts,self.offsets,self.adj,self.seed)
+
+
 def walk_digest(walks):
     h=hashlib.sha256()
     for walk in walks:
@@ -124,11 +149,12 @@ def walk_digest(walks):
 
 
 def train(walks, seed):
-    # P1 only: Gensim skip-gram defaults are measured, NOT promoted as scientific defaults.
+    # P1 only: backend negative/sample approved 2026-11-12, NOT full training.
     # Stable SHA-derived initialization avoids Python process salted hash behavior.
     stable_hash=lambda s: int.from_bytes(hashlib.sha256(s.encode('utf-8')).digest()[:8], 'little')
-    return Word2Vec(sentences=walks,vector_size=DIM,window=WINDOW,min_count=1,
-        sg=1,workers=1,epochs=EPOCHS,seed=seed,hashfxn=stable_hash,sorted_vocab=1)
+    return Word2Vec(sentences=walks,vector_size=DIM,window=WINDOW,min_count=MIN_COUNT,
+        sg=SG,hs=HS,negative=NEGATIVE,sample=SAMPLE,workers=WORKERS,
+        epochs=EPOCHS,seed=seed,hashfxn=stable_hash,sorted_vocab=SORTED_VOCAB)
 
 
 def vectors_digest(model):
