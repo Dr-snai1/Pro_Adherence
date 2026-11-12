@@ -17,6 +17,11 @@ class Stage3PilotTests(unittest.TestCase):
         self.assertEqual(g["minimum_uint32_walk_token_bytes"], 69772800)
         self.assertEqual(g["node2vec_fixed_parameters"]["seed"], 20261031)
         self.assertEqual(g["training_unique_edges"], 328298)
+        self.assertEqual(g["node2vec_fixed_parameters"]["negative"],5)
+        self.assertEqual(g["node2vec_fixed_parameters"]["sample"],0.001)
+        self.assertEqual(g["node2vec_fixed_parameters"]["hs"],0)
+        self.assertFalse(r["node2vec_full_training_readiness"]["owner_full_training_authorized"])
+        self.assertFalse(r["node2vec_full_training_readiness"]["exact_dependency_wheel_hash_lock_verified"])
         self.assertEqual(r["storage_uncompressed_float32_lower_bound_bytes"]
                          ["combined_raw_and_unit"], 1099038720)
         self.assertFalse(r["owner_compute_authorized"])
