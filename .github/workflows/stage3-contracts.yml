@@ -30,6 +30,7 @@ on:
       - "tests/test_stage3_runtime_guard.py"
       - "scripts/stage3_node2vec_cpu_smoke.py"
       - "scripts/stage3_node2vec_cpu_stream_preflight.py"
+      - "scripts/stage3_node2vec_cpu_synthetic_memory_probe.py"
       - "tests/test_stage3_node2vec_cpu_smoke.py"
       - "docs/stage3/**"
       - ".github/workflows/stage3-contracts.yml"
@@ -47,6 +48,7 @@ on:
       - "scripts/stage3_p1_pubmedbert_local.py"
       - "scripts/stage3_node2vec_cpu_smoke.py"
       - "scripts/stage3_node2vec_cpu_stream_preflight.py"
+      - "scripts/stage3_node2vec_cpu_synthetic_memory_probe.py"
       - "tests/test_stage3_node2vec_cpu_smoke.py"
       - "docs/stage3/**"
       - ".github/workflows/stage3-contracts.yml"
@@ -71,6 +73,7 @@ jobs:
           python -m py_compile scripts/stage3_graph_frozen_streaming.py
           python -m py_compile scripts/stage3_node2vec_cpu_smoke.py src/pro_adherence/stage3_pilot_plan.py
           python -m py_compile scripts/stage3_node2vec_cpu_stream_preflight.py
+          python -m py_compile scripts/stage3_node2vec_cpu_synthetic_memory_probe.py
           if python -O scripts/stage3_node2vec_cpu_smoke.py --help > /tmp/node2vec_optimized.out 2>&1; then exit 1; fi
           grep -q 'Python assertions (-O forbidden)' /tmp/node2vec_optimized.out
           python -O scripts/stage3_graph_frozen_streaming.py --help > /tmp/stage3_optimized.out 2>&1 && exit 1 || grep -q 'Python assertions (-O forbidden)' /tmp/stage3_optimized.out
@@ -104,3 +107,14 @@ jobs:
           PYTHONPATH: src
         run: |
           python -m unittest discover -s tests -p 'test_stage3_node2vec_cpu_smoke.py' -v
+          python scripts/stage3_node2vec_cpu_synthetic_memory_probe.py --out /tmp/node2vec_synthetic_full_vocab_preflight.json
+          python - <<'PY'
+          import json
+          r=json.load(open('/tmp/node2vec_synthetic_full_vocab_preflight.json'))
+          assert r['scope']['vocabulary']==43608
+          assert r['scope']['synthetic_tokens']==174400
+          assert r['scope']['private_graph_loaded'] is False
+          assert r['gates']['full_training_authorized'] is False
+          assert r['gates']['production_vectors_generated'] is False
+          print('SYNTHETIC_FULL_VOCAB_ONLY_PASS')
+          PY
