@@ -47,7 +47,7 @@
       "exact_runtime_lock_sha256": null,
       "installed_smoke_verified": true,
       "graph_snapshot_private_durable_verified": true,
-      "notes": "Observed accepted bounded CPU environment, not wheel-hash lock. Owner approved negative=5 and sample=0.001 on 2026-11-12; skip-gram sg=1 and hierarchical softmax hs=0 are explicit technical backend semantics. Full CPU training remains unapproved and unexecuted; verify full dependency wheel hashes, full-scale RAM/time and obtain owner-scoped compute authorization.",
+      "notes": "Owner-approved negative=5 and sample=0.001; direct skip-gram sg=1, hs=0. Provider-pinned five-wheel file now passes a fresh public Python 3.13 Linux x86-64 CI installation with --require-hashes and synthetic tests. That is NOT full research machine/runtime identity, measured full-scale RAM/time or permission to train.",
       "smart_open": "7.6.1",
       "measured_backend": "direct deterministic p=q=1 graph walks plus gensim.models.Word2Vec (not node2vec==0.5.0 package)",
       "bounded_smoke_only": true,
@@ -89,7 +89,21 @@
         "wrapt": "2.2.1"
       },
       "installed_dependency_metadata_compatibility_checked": true,
-      "installed_dependency_metadata_check_scope": "Gensim direct runtime requires NumPy SciPy smart_open; SciPy requires NumPy; smart_open requires wrapt. Observed versions satisfy package metadata in isolated CPU environment; wheel file SHA and reproducible reinstall remain UNVERIFIED."
+      "installed_dependency_metadata_check_scope": "Gensim direct runtime requires NumPy SciPy smart_open; SciPy requires NumPy; smart_open requires wrapt. Observed versions satisfy package metadata in isolated CPU environment; wheel file SHA and reproducible reinstall remain UNVERIFIED.",
+      "cpu_wheel_hash_gate": {
+        "scope": "Verified PUBLIC fresh Linux x86-64 CPython 3.13 synthetic CI only; NO private data or full training",
+        "hashed_requirements": "configs/stage3/node2vec_cpu_cp313_linux_x86_64.requirements.txt",
+        "published_pypi_wheel_sha256_pins": 5,
+        "fresh_ci_wheel_byte_hash_verification": true,
+        "fresh_ci_pip_check": true,
+        "synthetic_gensim_stream_tests": true,
+        "verified_github_actions_run_id": 43292747039,
+        "verified_git_commit": "84411744769c0a65b93fc6304281e3f005304168",
+        "target_compute_machine_clean_install_verified": false,
+        "target_compute_machine_full_scale_capacity_verified": false,
+        "portable_to_other_os_or_python_abi": false,
+        "owner_full_training_authorized": false
+      }
     }
   },
   "model_artifact_sha256_download_verified": false,
