@@ -31,6 +31,8 @@ on:
       - "scripts/stage3_node2vec_cpu_smoke.py"
       - "scripts/stage3_node2vec_cpu_stream_preflight.py"
       - "scripts/stage3_node2vec_cpu_synthetic_memory_probe.py"
+      - "scripts/stage3_node2vec_cpu_machine_preflight.py"
+      - "tests/test_stage3_node2vec_machine_preflight.py"
       - "tests/test_stage3_node2vec_cpu_smoke.py"
       - "docs/stage3/**"
       - ".github/workflows/stage3-contracts.yml"
@@ -49,6 +51,8 @@ on:
       - "scripts/stage3_node2vec_cpu_smoke.py"
       - "scripts/stage3_node2vec_cpu_stream_preflight.py"
       - "scripts/stage3_node2vec_cpu_synthetic_memory_probe.py"
+      - "scripts/stage3_node2vec_cpu_machine_preflight.py"
+      - "tests/test_stage3_node2vec_machine_preflight.py"
       - "tests/test_stage3_node2vec_cpu_smoke.py"
       - "docs/stage3/**"
       - ".github/workflows/stage3-contracts.yml"
@@ -74,6 +78,9 @@ jobs:
           python -m py_compile scripts/stage3_node2vec_cpu_smoke.py src/pro_adherence/stage3_pilot_plan.py
           python -m py_compile scripts/stage3_node2vec_cpu_stream_preflight.py
           python -m py_compile scripts/stage3_node2vec_cpu_synthetic_memory_probe.py
+          python -m py_compile scripts/stage3_node2vec_cpu_machine_preflight.py
+          if python -O scripts/stage3_node2vec_cpu_machine_preflight.py --help > /tmp/node2vec_machine_optimized.out 2>&1; then exit 1; fi
+          grep -q 'Python assertions (-O forbidden)' /tmp/node2vec_machine_optimized.out
           if python -O scripts/stage3_node2vec_cpu_smoke.py --help > /tmp/node2vec_optimized.out 2>&1; then exit 1; fi
           grep -q 'Python assertions (-O forbidden)' /tmp/node2vec_optimized.out
           python -O scripts/stage3_graph_frozen_streaming.py --help > /tmp/stage3_optimized.out 2>&1 && exit 1 || grep -q 'Python assertions (-O forbidden)' /tmp/stage3_optimized.out
