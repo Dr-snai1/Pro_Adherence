@@ -6,6 +6,8 @@ are intentionally not made global project dependencies.
 import ast
 import importlib.util
 import json
+import sys
+from unittest import mock
 from pathlib import Path
 import unittest
 
@@ -104,6 +106,40 @@ class Node2vecCpuSmokeSyntheticTests(unittest.TestCase):
         self.assertNotIn('3',one.wv)
         self.assertEqual(m.vectors_digest(one),m.vectors_digest(two))
         self.assertEqual((one.sg,one.hs,one.negative,one.sample),(1,0,5,0.001))
+
+
+    def test_stream_resource_probe_synthetic_full_graph_cardinality(self):
+        # Nothing from private Drive or private article identifiers enters this test.
+        m=self.m
+        source=Path(__file__).resolve().parents[1] / 'scripts' / 'stage3_node2vec_cpu_stream_preflight.py'
+        spec=importlib.util.spec_from_file_location('node2vec_stream_probe',source)
+        probe=importlib.util.module_from_spec(spec)
+        with mock.patch.dict(sys.modules,{'stage3_node2vec_cpu_smoke':m}):
+            spec.loader.exec_module(probe)
+        active=43608
+        degrees=np.zeros(m.N_NODES,dtype=np.int32)
+        degrees[:active]=2
+        offsets=np.zeros(m.N_NODES+1,dtype=np.int64)
+        offsets[1:active+1]=np.arange(1,active+1,dtype=np.int64)*2
+        offsets[active+1:]=active*2
+        adj=np.empty(active*2,dtype=np.int32)
+        for i in range(active):
+            adj[2*i]=(i-1)%active
+            adj[2*i+1]=(i+1)%active
+        starts=np.arange(0,active,100,dtype=np.int32)[:436]
+        self.assertEqual(len(starts),436)
+        fake_graph=(degrees,offsets,adj)
+        with mock.patch.object(m,'secure_load',return_value=fake_graph), mock.patch.object(
+            m,'choose_starts',return_value=(starts,[43608,0,0,0])):
+            report=probe.run_bounded_stream_probe(Path('/no-real-graph-needed'))
+        self.assertEqual(report['scope']['pilot_walks'],4360)
+        self.assertEqual(report['scope']['pilot_tokens'],174400)
+        self.assertEqual(report['scope']['nominal_full_walks_not_generated'],436080)
+        self.assertTrue(report['replay']['same_seed_walk_sha256_pass'])
+        self.assertFalse(report['gates']['full_scale_ram_measured'])
+        self.assertFalse(report['gates']['owner_full_training_permission'])
+        self.assertFalse(report['gates']['production_embeddings_generated'])
+        self.assertFalse(report['scope']['private_article_ids_or_vectors_saved'])
 
 
 if __name__=='__main__': unittest.main()
