@@ -6,6 +6,10 @@ never an induced subgraph. Do NOT treat pilot vectors as production embeddings.
 """
 from __future__ import annotations
 
+# The private-graph gate relies on assertions; optimized Python must fail-closed.
+if not __debug__:
+    raise SystemExit('Python assertions (-O forbidden) for private graph verification')
+
 import argparse
 from collections import Counter
 import gzip
@@ -205,7 +209,7 @@ def main():
     assert set(model.wv.index_to_key).isdisjoint({str(i) for i in range(N_NODES) if degree[i]==0})
     report={
       'schema':SCHEMA,'result':'BOUNDED_PILOT_PASS_NOT_FULL_TRAINING',
-      'graph_sha256':GRAPH_SHA,'approved_scientific_method':{'p':1,'q':1,'dimensions':DIM,'walk_length':WALK_LENGTH,'walks_per_node':WALKS_PER_NODE,'window':WINDOW,'epochs':EPOCHS,'seed':SEED,'graph':'full frozen undirected binary graph'},
+      'graph_sha256':GRAPH_SHA,'approved_scientific_method':{'p':1,'q':1,'dimensions':DIM,'walk_length':WALK_LENGTH,'walks_per_node':WALKS_PER_NODE,'window':WINDOW,'epochs':EPOCHS,'seed':SEED,'negative':NEGATIVE,'sample':SAMPLE,'sg':SG,'hs':HS,'graph':'full frozen undirected binary graph'},
       'scope':{'pilot_starts':MAX_START_NODES,'start_selection':'degree-stratified technical stress sample; not a scientific sample',
          'degree_bucket_population':bucket_pop,'pilot_walks':len(walks),'nominal_full_walks':436080,
          'pilot_walk_fraction':len(walks)/436080,'pilot_tokens':len(walks)*WALK_LENGTH,'nominal_full_tokens':17443200,
