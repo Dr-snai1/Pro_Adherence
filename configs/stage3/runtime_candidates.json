@@ -103,7 +103,25 @@
         "target_compute_machine_full_scale_capacity_verified": false,
         "portable_to_other_os_or_python_abi": false,
         "owner_full_training_authorized": false
-      }
+      },
+      "temporary_environment_readonly_resource_probe": {
+        "status": "MEASURED_ONLY_NO_FULL_RUN",
+        "captured_on": "2026-11-12",
+        "machine_scope": "temporary container with private graph access; not a persistent approved production machine",
+        "python": "3.13.5",
+        "frozen_graph_sha_crc_four_member_hashes": "PASS",
+        "observed_versions_match_five_pins": true,
+        "cgroup_v2_memory_limit_bytes": 4294967296,
+        "cgroup_v2_remaining_bytes_approx": 3541416192,
+        "available_disk_bytes_approx": 32005857280,
+        "gensim_model_memory_estimate_bytes_excludes_peak_RSS": 66458592,
+        "actual_full_run_memory_measured": false,
+        "actual_full_run_duration_measured": false,
+        "temporary_machine_clean_pip_check": false,
+        "unrelated_pip_conflict": "moviepy 2.2.1 requires pillow<12, but global pillow 12.3.0; unrelated to isolated node2vec CI lane",
+        "owner_compute_gate": false
+      },
+      "temporary_environment_resource_preflight_code": "scripts/stage3_node2vec_cpu_machine_preflight.py"
     }
   },
   "model_artifact_sha256_download_verified": false,
