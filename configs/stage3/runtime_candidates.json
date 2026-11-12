@@ -127,12 +127,9 @@
         "status": "COMPLETE_INDEPENDENTLY_VERIFIED_PRIVATE_STORED",
         "date": "2026-11-12",
         "graph_zip_sha256": "33fe8b481e0b1040ff2fbe1c0a9bb376811aed3ab2157389de03554bc95da67c",
-        "asset_drive_id": "1EZni6ZnorzRiENZcVH6jASAxnXiNPYGR",
         "asset_sha256": "51f086fb71484065f54e4a8999528417607a817019feb13eef5941f9820947b4",
         "asset_bytes": 46382909,
-        "independent_audit_drive_id": "1qYpNySGusKZPMCL_SGxX2C5fu3Mwg203",
         "independent_audit_sha256": "50cd8537d850a2eff6d39a01ee968200c30738bdaca40297055d38d458202449",
-        "technical_acceptance_drive_id": "1O5B4N_uqPGJ8dLYmMGLtV_mWxZZahqIt",
         "technical_acceptance_sha256": "d8d65c18ba90f17c31969d98b438639034bf3c603d7d1e64260412540ac4687e",
         "runner_sha256": "d91ff9530da3f6dbd40346a9999eb6762fe41f1ac369acc01ae01a50a3de9430",
         "runner_public_git_blob": "9f19d706191d6f3bd185fe5d797c0390f2209592",
@@ -148,7 +145,8 @@
         "private_Drive_owner_only_remote_bytes_verified": true,
         "publication_authorized": false,
         "new_compute_authorized": false,
-        "stage3_closed": false
+        "stage3_closed": false,
+        "restricted_private_evidence": "Private Drive IDs and ACL are recorded in owner-only technical acceptance; public repo contains only aggregate hashes, no private rows or file locators."
       }
     }
   },
