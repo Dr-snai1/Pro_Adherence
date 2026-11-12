@@ -20,7 +20,11 @@ class Stage3PilotTests(unittest.TestCase):
         self.assertEqual(g["node2vec_fixed_parameters"]["negative"],5)
         self.assertEqual(g["node2vec_fixed_parameters"]["sample"],0.001)
         self.assertEqual(g["node2vec_fixed_parameters"]["hs"],0)
-        self.assertFalse(r["node2vec_full_training_readiness"]["owner_full_training_authorized"])
+        self.assertTrue(r["node2vec_full_training_readiness"]["owner_full_training_authorized"])
+        self.assertTrue(r["node2vec_full_training_readiness"]["production_vectors_generated"])
+        self.assertTrue(r["node2vec_full_training_readiness"]["full_scale_duration_verified"])
+        self.assertEqual(r["node2vec_verified_full_cpu_result"]["trained_vectors_128d"],43608)
+        self.assertFalse(r["node2vec_verified_full_cpu_result"]["additional_compute_authorized"])
         self.assertFalse(r["node2vec_full_training_readiness"]["exact_dependency_wheel_hash_lock_verified"])
         self.assertEqual(r["storage_uncompressed_float32_lower_bound_bytes"]
                          ["combined_raw_and_unit"], 1099038720)
