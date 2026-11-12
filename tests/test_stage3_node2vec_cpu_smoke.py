@@ -33,8 +33,16 @@ class Node2vecApprovedBackendContractTests(unittest.TestCase):
         self.assertIsNone(lane['exact_runtime_lock_sha256'])
         self.assertFalse(lane['dependency_resolution_verified'])
         self.assertFalse(lane['full_scale_ram_verified'])
-        self.assertFalse(lane['full_scale_time_verified'])
-        self.assertFalse(lane['production_embeddings_generated'])
+        self.assertTrue(lane['full_scale_time_verified'])
+        self.assertTrue(lane['production_embeddings_generated'])
+        full=lane['completed_full_cpu_execution']
+        self.assertEqual(full['vectors_128d'],43608)
+        self.assertEqual(full['missing_structural_null'],13596)
+        self.assertEqual(full['full_walk_passes'],2)
+        self.assertEqual(full['asset_sha256'],'51f086fb71484065f54e4a8999528417607a817019feb13eef5941f9820947b4')
+        self.assertTrue(full['private_Drive_owner_only_remote_bytes_verified'])
+        self.assertFalse(full['new_compute_authorized'])
+        self.assertFalse(full['stage3_closed'])
         tree=ast.parse((root/'scripts/stage3_node2vec_cpu_smoke.py').read_text(encoding='utf-8'))
         consts={a.targets[0].id:a.value.value for a in tree.body
                 if isinstance(a,ast.Assign) and len(a.targets)==1
