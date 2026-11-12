@@ -80,7 +80,16 @@
         "sorted_vocab": 1,
         "workers": 1,
         "stable_hash": "SHA256 token UTF-8 first 8 bytes little-endian"
-      }
+      },
+      "version_pinned_installed_dependency_closure_candidate": {
+        "gensim": "4.4.0",
+        "numpy": "2.3.5",
+        "scipy": "1.17.0",
+        "smart_open": "7.6.1",
+        "wrapt": "2.2.1"
+      },
+      "installed_dependency_metadata_compatibility_checked": true,
+      "installed_dependency_metadata_check_scope": "Gensim direct runtime requires NumPy SciPy smart_open; SciPy requires NumPy; smart_open requires wrapt. Observed versions satisfy package metadata in isolated CPU environment; wheel file SHA and reproducible reinstall remain UNVERIFIED."
     }
   },
   "model_artifact_sha256_download_verified": false,
