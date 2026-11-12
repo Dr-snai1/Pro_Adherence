@@ -1,6 +1,6 @@
-# Stage 3 — закрытый census и preflight трёх линз (PLANNING ONLY)
+# Stage 3 — закрытый census и preflight трёх линз (SCOPED EXECUTION)
 
-**Единственный текущий статус проекта:** [07_STAGE_STATUS](https://docs.google.com/document/d/1GhQfnsbxK8lilvpnZqWeFu99w67DwWKJmY5OTthxvhM/edit). Это технический план воспроизводимости, **не разрешение** на inference, загрузку больших моделей, оплату GPU, публикацию/merge или переход Stage.
+**Единственный текущий статус проекта:** [07_STAGE_STATUS](https://docs.google.com/document/d/1GhQfnsbxK8lilvpnZqWeFu99w67DwWKJmY5OTthxvhM/edit). Статус Stage 3 обновлён прямым решением владельца 2026-11-12 на OPEN / EXECUTION — SCOPED PUBMEDBERT CPU. Разрешён только следующий пакет 019–022 (4 000 статей) с неизменным научным контрактом и закрытым Google Drive; не разрешены SPECTER2 inference, node2vec training, оплачиваемый compute, публикация/merge или переход Stage. Этот документ описывает технический preflight, а не самостоятельно выдаёт разрешения.
 
 ## 1. Зафиксированная аналитическая популяция — получена и сохранена
 
@@ -65,7 +65,7 @@ PYTHONPATH=src python -m pro_adherence.stage3_preflight \
 
 `src/pro_adherence/stage3_preflight.py` теперь различает approved pins и НЕ проверенные upstream provider metadata (поле upstream_commit_refs_verified=false), требует действительные байты runtime lock и трёх файлов графа при заявлении SHA, проверяет известный конфликт adapters/transformers; данные из одной лишь строки digest не проходят готовность. `src/pro_adherence/stage3_preflight.py` проверяет точные репозитории/full commits, frozen cohort SHA и запрет публикации, локальные SHA файла против **внешних доверенных SHA**, exact runtime lock, node2vec graph hashes и отдельный compute gate. Он не вызывает Hugging Face API, не загружает/не исполняет веса и не читает скрыто приватный корпус без явного пути. Синтетические тесты проверяют отказ при подмене модели, адаптера, cohort, файла/контрольной суммы, graph policy или Stage-gate. Автоматический CI ограничен синтетическими данными.
 
-**Статус:** restricted cohort и node2vec graph — VERIFIED_AND_STORED; HF full revisions PINNED, PubMedBERT весовые bytes verified (P1), SPECTER2 весовые bytes PENDING; published runtime candidates — NOT_LOCKED, безопасный SPECTER2 runtime — BLOCKED; compute / publication / Stage transition — NOT_AUTHORIZED.
+**Статус:** restricted cohort и node2vec graph — VERIFIED_AND_STORED; HF revisions PINNED, PubMedBERT model-byte hash VERIFIED на ранее выполненном P1; SPECTER2 weights PENDING, SPECTER2 safe runtime BLOCKED. Для PubMedBERT CPU разрешён отдельный следующий пакет 019–022 решением владельца 2026-11-12, **но в текущей 03-среде его выполнение BLOCKED**: нет локальных frozen model weights и `transformers/tokenizers`, публичный HF недоступен по DNS. Preflight JSON `status=PLANNING_ONLY_NO_INFERENCE` — прежний машинный fail-closed режим для общего трёхлинейного readiness check, а НЕ актуальный операционный Stage. Общие bulk compute, публикация и Stage transition по-прежнему НЕ разрешены.
 
 ## 7. Metadata-only provenance и рассчитанный пилот (технический, не разрешённый)
 
