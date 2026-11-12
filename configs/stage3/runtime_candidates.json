@@ -47,7 +47,7 @@
       "exact_runtime_lock_sha256": null,
       "installed_smoke_verified": true,
       "graph_snapshot_private_durable_verified": true,
-      "notes": "Observed versions from accepted bounded 1% CPU smoke and read-only environment inventory, NOT a wheel-hash lock. Version-pin full dependency closure plus wheel sha256, validate memory/duration, resolve backend science choices, obtain explicit owner compute scope before full run. No full training was run.",
+      "notes": "Observed accepted bounded CPU environment, not wheel-hash lock. Owner approved negative=5 and sample=0.001 on 2026-11-12; skip-gram sg=1 and hierarchical softmax hs=0 are explicit technical backend semantics. Full CPU training remains unapproved and unexecuted; verify full dependency wheel hashes, full-scale RAM/time and obtain owner-scoped compute authorization.",
       "smart_open": "7.6.1",
       "measured_backend": "direct deterministic p=q=1 graph walks plus gensim.models.Word2Vec (not node2vec==0.5.0 package)",
       "bounded_smoke_only": true,
@@ -55,22 +55,32 @@
       "bounded_smoke_train_seconds": 2.025,
       "bounded_smoke_peak_rss_kib": 340044,
       "measured_workers": 1,
-      "backend_defaults_observed_not_approved": {
+      "scientific_backend_choices_pending": [],
+      "dependency_resolution_verified": false,
+      "full_scale_ram_verified": false,
+      "full_scale_time_verified": false,
+      "production_embeddings_generated": false,
+      "bounded_pilot_backend_settings_observed": {
         "sg": 1,
+        "hs": 0,
         "negative": 5,
         "sample": 0.001,
         "min_count": 1,
         "sorted_vocab": 1
       },
-      "scientific_backend_choices_pending": [
-        "negative",
-        "sample",
-        "sg/negative-vs-hs semantics"
-      ],
-      "dependency_resolution_verified": false,
-      "full_scale_ram_verified": false,
-      "full_scale_time_verified": false,
-      "production_embeddings_generated": false
+      "owner_approved_backend_settings": {
+        "negative": 5,
+        "sample": 0.001,
+        "decision_date": "2026-11-12"
+      },
+      "technical_skipgram_backend": {
+        "sg": 1,
+        "hs": 0,
+        "min_count": 1,
+        "sorted_vocab": 1,
+        "workers": 1,
+        "stable_hash": "SHA256 token UTF-8 first 8 bytes little-endian"
+      }
     }
   },
   "model_artifact_sha256_download_verified": false,
