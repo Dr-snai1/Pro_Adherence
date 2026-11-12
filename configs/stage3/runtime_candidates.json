@@ -1,7 +1,7 @@
 {
   "schema": "pro-adherence-stage3-runtime-candidates/v1",
-  "status": "PLANNING_ONLY_NOT_INSTALLED_NOT_LOCKED",
-  "reviewed_on": "2026-11-11",
+  "status": "MIXED_LANE_STATUS_NOT_A_FULL_RUNTIME_LOCK",
+  "reviewed_on": "2026-11-12",
   "scientific_configuration_unchanged": true,
   "candidate_provenance": {
     "pypi_adapters": "https://pypi.org/project/adapters/1.3.0/",
@@ -39,15 +39,38 @@
     },
     "node2vec": {
       "published_backend": "node2vec==0.5.0",
-      "python": null,
-      "gensim": null,
+      "python": "3.13.5",
+      "gensim": "4.4.0",
       "networkx": null,
-      "numpy": null,
-      "scipy": null,
+      "numpy": "2.3.5",
+      "scipy": "1.17.0",
       "exact_runtime_lock_sha256": null,
-      "installed_smoke_verified": false,
+      "installed_smoke_verified": true,
       "graph_snapshot_private_durable_verified": true,
-      "notes": "Candidate backend, not measured speed/memory or authorized training"
+      "notes": "Observed versions from accepted bounded 1% CPU smoke and read-only environment inventory, NOT a wheel-hash lock. Version-pin full dependency closure plus wheel sha256, validate memory/duration, resolve backend science choices, obtain explicit owner compute scope before full run. No full training was run.",
+      "smart_open": "7.6.1",
+      "measured_backend": "direct deterministic p=q=1 graph walks plus gensim.models.Word2Vec (not node2vec==0.5.0 package)",
+      "bounded_smoke_only": true,
+      "bounded_smoke_walks": 4360,
+      "bounded_smoke_train_seconds": 2.025,
+      "bounded_smoke_peak_rss_kib": 340044,
+      "measured_workers": 1,
+      "backend_defaults_observed_not_approved": {
+        "sg": 1,
+        "negative": 5,
+        "sample": 0.001,
+        "min_count": 1,
+        "sorted_vocab": 1
+      },
+      "scientific_backend_choices_pending": [
+        "negative",
+        "sample",
+        "sg/negative-vs-hs semantics"
+      ],
+      "dependency_resolution_verified": false,
+      "full_scale_ram_verified": false,
+      "full_scale_time_verified": false,
+      "production_embeddings_generated": false
     }
   },
   "model_artifact_sha256_download_verified": false,
