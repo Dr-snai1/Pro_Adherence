@@ -69,3 +69,33 @@ jobs:
           python -m py_compile scripts/stage3_graph_frozen_streaming.py
           python -m py_compile scripts/stage3_node2vec_cpu_smoke.py src/pro_adherence/stage3_pilot_plan.py
           python -O scripts/stage3_graph_frozen_streaming.py --help > /tmp/stage3_optimized.out 2>&1 && exit 1 || grep -q 'Python assertions (-O forbidden)' /tmp/stage3_optimized.out
+
+  node2vec-hashed-wheel-synthetic:
+    # Public wheels only; no access to private research graph or source rows.
+    # Runs a fresh hash-enforced install and tiny synthetic regressions only.
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install exact Linux x86-64 wheels by provider SHA256
+        run: |
+          python -m pip install --disable-pip-version-check --no-cache-dir --require-hashes --only-binary=:all: -r configs/stage3/node2vec_cpu_cp313_linux_x86_64.requirements.txt
+          python -m pip check
+          python - <<'PY'
+          import platform, sys
+          from importlib.metadata import version
+          assert sys.version_info[:2] == (3, 13)
+          assert platform.machine().lower() == 'x86_64'
+          for p, expected in {'gensim':'4.4.0','numpy':'2.3.5','scipy':'1.17.0','smart_open':'7.6.1','wrapt':'2.2.1'}.items():
+              assert version(p)==expected,(p,version(p),expected)
+          import gensim, numpy, scipy, smart_open, wrapt
+          print('STAGE3_NODE2VEC_HASH_VERIFIED_FRESH_INSTALL_SYNTHETIC_ONLY')
+          PY
+      - name: Test repeatable stream and owner approved backend on synthetic graph
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m unittest discover -s tests -p 'test_stage3_node2vec_cpu_smoke.py' -v
