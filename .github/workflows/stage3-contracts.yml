@@ -50,6 +50,9 @@ on:
       - "scripts/stage3_specter2_private_p1_cpu.py"
       - "scripts/stage3_specter2_private_p1_independent_audit.py"
       - "tests/test_stage3_specter2_private_p1_contract.py"
+      - "scripts/stage3_specter2_private_full_cpu.py"
+      - "scripts/stage3_specter2_private_full_independent_audit.py"
+      - "tests/test_stage3_specter2_private_full_contract.py"
       - "src/pro_adherence/stage3_specter2_proximity_compat.py"
       - "tests/test_stage3_specter2_proximity_compat.py"
       - "docs/stage3/**"
@@ -88,6 +91,9 @@ on:
       - "scripts/stage3_specter2_private_p1_cpu.py"
       - "scripts/stage3_specter2_private_p1_independent_audit.py"
       - "tests/test_stage3_specter2_private_p1_contract.py"
+      - "scripts/stage3_specter2_private_full_cpu.py"
+      - "scripts/stage3_specter2_private_full_independent_audit.py"
+      - "tests/test_stage3_specter2_private_full_contract.py"
       - "src/pro_adherence/stage3_specter2_proximity_compat.py"
       - "tests/test_stage3_specter2_proximity_compat.py"
       - "docs/stage3/**"
@@ -122,6 +128,7 @@ jobs:
           python -m py_compile scripts/stage3_specter2_public_end_to_end.py
           python -m py_compile scripts/stage3_specter2_public_official_reference.py
           python -m py_compile scripts/stage3_specter2_private_p1_sample_local.py scripts/stage3_specter2_private_p1_cpu.py scripts/stage3_specter2_private_p1_independent_audit.py
+          python -m py_compile scripts/stage3_specter2_private_full_cpu.py scripts/stage3_specter2_private_full_independent_audit.py
           python -m py_compile src/pro_adherence/stage3_specter2_proximity_compat.py
           if python -O scripts/stage3_node2vec_cpu_full_local.py --help > /tmp/node2vec_production_optimized.out 2>&1; then exit 1; fi
           grep -q 'Python -O forbidden' /tmp/node2vec_production_optimized.out
