@@ -40,6 +40,8 @@ on:
       - "tests/test_stage3_specter2_public_adapter_preflight.py"
       - "scripts/stage3_specter2_base_public_preflight.py"
       - "tests/test_stage3_specter2_base_public_preflight.py"
+      - "scripts/stage3_specter2_public_full12_math_probe.py"
+      - "tests/test_stage3_specter2_public_full12_math_probe.py"
       - "src/pro_adherence/stage3_specter2_proximity_compat.py"
       - "tests/test_stage3_specter2_proximity_compat.py"
       - "docs/stage3/**"
@@ -68,6 +70,8 @@ on:
       - "tests/test_stage3_specter2_public_adapter_preflight.py"
       - "scripts/stage3_specter2_base_public_preflight.py"
       - "tests/test_stage3_specter2_base_public_preflight.py"
+      - "scripts/stage3_specter2_public_full12_math_probe.py"
+      - "tests/test_stage3_specter2_public_full12_math_probe.py"
       - "src/pro_adherence/stage3_specter2_proximity_compat.py"
       - "tests/test_stage3_specter2_proximity_compat.py"
       - "docs/stage3/**"
@@ -98,6 +102,7 @@ jobs:
           python -m py_compile scripts/stage3_node2vec_cpu_full_local.py
           python -m py_compile scripts/stage3_specter2_public_adapter_preflight.py
           python -m py_compile scripts/stage3_specter2_base_public_preflight.py
+          python -m py_compile scripts/stage3_specter2_public_full12_math_probe.py
           python -m py_compile src/pro_adherence/stage3_specter2_proximity_compat.py
           if python -O scripts/stage3_node2vec_cpu_full_local.py --help > /tmp/node2vec_production_optimized.out 2>&1; then exit 1; fi
           grep -q 'Python -O forbidden' /tmp/node2vec_production_optimized.out
@@ -192,60 +197,3 @@ jobs:
           retention-days: 1
 
 
-  specter2-public-pinned-base-byte-readback:
-    # ONE-TIME approved PUBLIC 440 MB base model byte/CRC provenance audit.
-    # No PyTorch deserialization, no private article data and NO model inference.
-    runs-on: ubuntu-latest
-    timeout-minutes: 14
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-      - name: Fetch immutable base-model metadata from authoritative HF API
-        run: |
-          mkdir -p "$RUNNER_TEMP/specter2_base"
-          curl --fail --silent --show-error --location --retry 1 --max-time 40 \
-            "https://huggingface.co/api/models/allenai/specter2_base/revision/3447645e1def9117997203454fa4495937bfbd83?blobs=true" \
-            --output "$RUNNER_TEMP/specter2_base/metadata.json"
-          python scripts/stage3_specter2_base_public_preflight.py \
-            --metadata "$RUNNER_TEMP/specter2_base/metadata.json" \
-            --out "$RUNNER_TEMP/specter2_base/metadata_report.json"
-          grep -q 'HF_METADATA_ONLY_MODEL_BYTES_PENDING' "$RUNNER_TEMP/specter2_base/metadata_report.json"
-      - name: Download exactly six pinned public files; model checkpoint ~440 MB
-        run: |
-          set -euo pipefail
-          base="https://huggingface.co/allenai/specter2_base/resolve/3447645e1def9117997203454fa4495937bfbd83"
-          for file in config.json special_tokens_map.json tokenizer.json tokenizer_config.json vocab.txt; do
-            curl --fail --silent --show-error --location --retry 1 --max-time 100 \
-              "$base/$file" --output "$RUNNER_TEMP/specter2_base/$file"
-          done
-          curl --fail --silent --show-error --location --retry 1 --max-time 420 \
-            "$base/pytorch_model.bin" --output "$RUNNER_TEMP/specter2_base/pytorch_model.bin"
-      - name: Independently SHA256/CRC-verify base checkpoint and tokenizer bytes
-        run: |
-          python scripts/stage3_specter2_base_public_preflight.py \
-            --metadata "$RUNNER_TEMP/specter2_base/metadata.json" \
-            --files-dir "$RUNNER_TEMP/specter2_base" \
-            --out "$RUNNER_TEMP/specter2_base/verified_report.json"
-          python - <<'PY'
-          import os,json
-          from pathlib import Path
-          x=json.loads((Path(os.environ['RUNNER_TEMP'])/'specter2_base'/'verified_report.json').read_text())
-          assert x['status']=='PUBLIC_BASE_AND_TOKENIZER_BYTES_VERIFIED_RUNTIME_BLOCKED'
-          assert x['files']['pytorch_model.bin']['sha256']=='801eda968fad1752fe846a8e572bfdc25202be85544680dda4c99f4589646ebc'
-          assert len(x['files'])==6
-          assert x['gates']['numeric_equivalence_to_official_adapter'] is False
-          assert x['gates']['private_specter2_inference_authorized'] is False
-          assert x['pickle_or_model_executed'] is False
-          print('SPECTER2_PINNED_PUBLIC_BASE_BYTES_AND_TOKENIZER_PASS_NO_INFERENCE')
-          PY
-      - name: Preserve small PUBLIC provenance report only, never model weights
-        uses: actions/upload-artifact@v4
-        with:
-          name: specter2-public-base-sha256-provenance-3447645
-          path: |
-            ${{ runner.temp }}/specter2_base/metadata_report.json
-            ${{ runner.temp }}/specter2_base/verified_report.json
-          if-no-files-found: error
-          retention-days: 7
