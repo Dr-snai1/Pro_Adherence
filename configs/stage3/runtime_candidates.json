@@ -54,10 +54,10 @@
         "synthetic_adapter_activation_delta_max_abs": 0.6729558110237122,
         "evidence_file": "configs/stage3/specter2_public_adapter_evidence.json",
         "experimental_compat_code": "src/pro_adherence/stage3_specter2_proximity_compat.py",
-        "safe_transformers_adapters_runtime_verified": true,
+        "safe_transformers_adapters_runtime_verified": false,
         "official_adapter_numeric_equivalence_verified": true,
         "base_checkpoint_file_bytes_verified": true,
-        "private_inference_authorized": true,
+        "private_inference_authorized": false,
         "production_specter2_embeddings_generated": false,
         "base_checkpoint_file_bytes_verified_in_ephemeral_public_ci": true,
         "public_full12_real_adapter_synthetic_equation_pass": true,
@@ -67,7 +67,9 @@
         "official_adapter_numeric_equivalence_verified_scope": "Three PUBLIC synthetic items, pinned actual base and proximity weights, actual old Adapters1.3.0 activated proximity reference in isolated temporary runner; max_abs=0, no private inputs",
         "safe_transformers_adapters_runtime_verified_scope": "custom PyTorch operator + Transformers 5.22.2, NOT supported official Adapters package; public 3x768 exact official activated proximity comparison PASS; private 64/1000 local CPU P1 PASS",
         "private_inference_authorized_scope": "owner-scoped P1 64+1000 only on 2026-11-13; consumed, not production 57,204 authorization",
-        "private_p1_embeddings_generated": true
+        "private_p1_embeddings_generated": true,
+        "safe_custom_pytorch_transformers_p1_runtime_verified": true,
+        "owner_scoped_private_p1_cpu_inference_completed": true
       },
       "public_base_and_tokenizer_verification": {
         "status": "PINNED_PUBLIC_BASE_AND_TOKENIZER_BYTES_VERIFIED_IN_EPHEMERAL_CI",
@@ -111,10 +113,11 @@
         "evidence_drive_sha256": "0eda292042e358dc208fa9ad45829ea298e50fac6c78489c93e4f19b930a8240",
         "production_runtime_full_wheel_hash_lock_verified": false,
         "representative_private_specter2_64_article_smoke_passed": true,
-        "private_inference_authorized": true,
+        "private_inference_authorized": false,
         "production_vectors_generated": false,
         "stage3_closed": false,
-        "private_inference_authorized_scope": "owner-scoped P1 64+1000 only, consumed"
+        "private_inference_authorized_scope": "owner-scoped P1 64+1000 only, consumed",
+        "owner_scoped_private_p1_cpu_inference_completed": true
       },
       "status": "P1_64_AND_APPROVED_1000_COMPLETE_FULL_PRIVATE_INFERENCE_PENDING",
       "owner_scoped_p1_cpu_execution": {
