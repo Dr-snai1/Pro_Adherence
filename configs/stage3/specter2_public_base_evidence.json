@@ -1,0 +1,64 @@
+{
+  "schema": "pro-adherence-stage3-specter2-public-base-bytes/v1",
+  "date": "2026-11-13",
+  "status": "PUBLIC_BASE_AND_TOKENIZER_BYTES_VERIFIED_RUNTIME_BLOCKED",
+  "source": "Hugging Face public pinned repository/commit, separately checked against actual GitHub Actions download bytes",
+  "base_repo": "allenai/specter2_base",
+  "base_revision": "3447645e1def9117997203454fa4495937bfbd83",
+  "provider_lfs_sha256": "801eda968fad1752fe846a8e572bfdc25202be85544680dda4c99f4589646ebc",
+  "provider_weight_size_bytes": 439740465,
+  "files": {
+    "config.json": {
+      "sha256": "6d9d68ca2bfeca756fd807e7c81e8e9d3203d8a002dff19cc42b29edd48e8802",
+      "bytes": 754
+    },
+    "pytorch_model.bin": {
+      "sha256": "801eda968fad1752fe846a8e572bfdc25202be85544680dda4c99f4589646ebc",
+      "bytes": 439740465
+    },
+    "special_tokens_map.json": {
+      "sha256": "b6d346be366a7d1d48332dbc9fdf3bf8960b5d879522b7799ddba59e76237ee3",
+      "bytes": 125
+    },
+    "tokenizer.json": {
+      "sha256": "fcd3fffca5d8fcc0d5863406f5f491293c1e4658ed503f424a30324b70533c0d",
+      "bytes": 716830
+    },
+    "tokenizer_config.json": {
+      "sha256": "afea6e85bb539b2c2de8847d92c2a3ae88334c280abbbdb3baaddc5fb7195242",
+      "bytes": 453
+    },
+    "vocab.txt": {
+      "sha256": "f0a650346e51ede8996710f79ba65d83fdb8da05b159f17037b74ba4e3a36c6f",
+      "bytes": 227845
+    }
+  },
+  "checks": {
+    "approved_revision_matches_provider_metadata": true,
+    "published_weight_sha_equals_actual_bytes": true,
+    "all_six_file_sha_bytes_verified": true,
+    "base_zip_crc_verified": true,
+    "base_config_architecture_checked": true,
+    "wordpiece_tokenizer_type_checked": true,
+    "unpickle_or_model_inference_executed": false
+  },
+  "evidence": {
+    "github_actions_run_id": 43376845393,
+    "github_actions_job": "specter2-public-pinned-base-byte-readback",
+    "github_actions_artifact_id": 14015166372,
+    "github_actions_commit": "a37d37a3ed68c6ee05634cf84fa3a16d980037cb",
+    "downloaded_evidence_zip_sha256": "4d0a72f1925d1795405beccd1c264809dcf84be098088b32ae15726f54ab92ba",
+    "verified_report_sha256": "e16e9cb4d7b9cbe596c0d589cd7b01d6e262220e7c1ca1f0236e638a69edabd9",
+    "metadata_only_report_sha256": "63113c3f986f2d5977f8e8358c5ed1ed72915ddd857e7440e6e72b40ed8c4fbe"
+  },
+  "limitations": {
+    "base_checkpoint_not_persisted_in_research_private_drive": true,
+    "pinned_base_bytes_verified_in_temporary_public_CI_only": true,
+    "official_adapter_active_numeric_equivalence_verified": false,
+    "supported_safe_transformers_adapters_pair_verified": false,
+    "private_specter2_inference_authorized": false,
+    "production_vectors_generated": false,
+    "publication_authorized": false,
+    "stage3_closed": false
+  }
+}

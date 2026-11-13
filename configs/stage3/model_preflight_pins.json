@@ -1,0 +1,51 @@
+{
+  "schema": "pro-adherence-stage3-model-preflight/v1",
+  "status": "PLANNING_ONLY_NO_INFERENCE",
+  "evidence_date": "2026-11-10",
+  "owner_approved_analytical_population": {
+    "frozen_stage2_sha256": "a76f8cd2acae907c163c417e1ccc7900275f6c12a1e689d591c922b865d41127",
+    "canonical_count": 57293,
+    "eligible_count": 57204,
+    "private_manifest_sha256": "c080449e4a3450e6ff2e396c0463d05960d8b1cd101f42c7f99ccf3ab202e234",
+    "private_summary_sha256": "20a01d4a63976f5db19b3ecf0d336faf2461fe88d830a2a5c6aed56358fbd433",
+    "source_counts": {
+      "book_only_excluded": 86,
+      "confirmed_retraction_excluded": 3,
+      "peer_review_unknown_flagged": 19,
+      "wos_nr_cr_flagged": 413
+    }
+  },
+  "upstream_revisions": {
+    "pubmedbert": {
+      "repository": "microsoft/BiomedNLP-BiomedBERT-base-uncased-abstract",
+      "revision": "d673b8835373c6fa116d6d8006b33d48734e305d",
+      "source": "https://huggingface.co/microsoft/BiomedNLP-BiomedBERT-base-uncased-abstract/commit/d673b8835373c6fa116d6d8006b33d48734e305d",
+      "required_files": ["config.json", "pytorch_model.bin", "tokenizer_config.json", "vocab.txt"]
+    },
+    "specter2_base": {
+      "repository": "allenai/specter2_base",
+      "revision": "3447645e1def9117997203454fa4495937bfbd83",
+      "source": "https://huggingface.co/allenai/specter2_base/commit/3447645e1def9117997203454fa4495937bfbd83",
+      "required_files": ["config.json", "pytorch_model.bin", "special_tokens_map.json", "tokenizer.json", "tokenizer_config.json", "vocab.txt"]
+    },
+    "specter2_proximity": {
+      "repository": "allenai/specter2",
+      "revision": "2081559630a80fc5851d8f798a05ba81e9468089",
+      "source": "https://huggingface.co/allenai/specter2/commit/2081559630a80fc5851d8f798a05ba81e9468089",
+      "required_files": ["adapter_config.json", "pytorch_adapter.bin"]
+    }
+  },
+  "pending_before_compute": {
+    "artifact_sha256_and_cache_readback": true,
+    "compatible_exact_runtime_lock_and_smoke_test": true,
+    "citation_graph_snapshot_and_sorted_node_mapping": true,
+    "node2vec_trained_artifact_identity": true,
+    "owner_compute_authorization": true
+  },
+  "model_semantics": {
+    "pubmedbert": "two independent 768d CLS/Mean; 512-token non-lossy sentence-aware fragments; raw+norm+unit; cosine",
+    "specter2": "768d proximity first token; 512-token truncation with loss audit; raw+norm+unit; cosine",
+    "node2vec": "128d undirected binary edge graph from exact DOI; p=q=1 walks40x10 window10 epoch1 seed20261031; preserve full directed source graph"
+  },
+  "publication_authorized": false
+}

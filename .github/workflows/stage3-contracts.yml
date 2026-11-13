@@ -1,0 +1,228 @@
+name: Stage 3 planning-only contracts (synthetic data)
+
+on:
+  push:
+    branches:
+      - "stage2/**"
+      - "stage3/**"
+    paths:
+      - "src/pro_adherence/stage3_contracts.py"
+      - "src/pro_adherence/stage3_preflight.py"
+      - "tests/test_stage3_contracts.py"
+      - "tests/test_stage3_preflight.py"
+      - "tests/test_stage3_pilot_prepare.py"
+      - "tests/test_stage3_pubmedbert_runner.py"
+      - "configs/stage3/**"
+      - "scripts/stage3_eligibility_census.py"
+      - "scripts/stage3_pilot_prepare.py"
+      - "scripts/stage3_p1_pubmedbert_local.py"
+      - "scripts/stage3_graph_snapshot.py"
+      - "scripts/stage3_graph_frozen_streaming.py"
+      - "tests/test_stage3_pilot_plan.py"
+      - "tests/test_stage3_hf_provenance.py"
+      - "tests/test_stage3_small_file_integrity.py"
+      - "tests/test_stage3_hf_public_evidence.py"
+      - "src/pro_adherence/stage3_pilot_plan.py"
+      - "src/pro_adherence/stage3_hf_provenance.py"
+      - "src/pro_adherence/stage3_small_file_integrity.py"
+      - "src/pro_adherence/stage3_runtime_guard.py"
+      - "tests/test_stage3_graph_snapshot.py"
+      - "tests/test_stage3_runtime_guard.py"
+      - "scripts/stage3_node2vec_cpu_smoke.py"
+      - "scripts/stage3_node2vec_cpu_stream_preflight.py"
+      - "scripts/stage3_node2vec_cpu_synthetic_memory_probe.py"
+      - "scripts/stage3_node2vec_cpu_machine_preflight.py"
+      - "tests/test_stage3_node2vec_machine_preflight.py"
+      - "scripts/stage3_node2vec_cpu_full_local.py"
+      - "tests/test_stage3_node2vec_full_local.py"
+      - "tests/test_stage3_node2vec_cpu_smoke.py"
+      - "scripts/stage3_specter2_public_adapter_preflight.py"
+      - "tests/test_stage3_specter2_public_adapter_preflight.py"
+      - "scripts/stage3_specter2_base_public_preflight.py"
+      - "tests/test_stage3_specter2_base_public_preflight.py"
+      - "scripts/stage3_specter2_public_full12_math_probe.py"
+      - "tests/test_stage3_specter2_public_full12_math_probe.py"
+      - "scripts/stage3_specter2_public_end_to_end.py"
+      - "tests/test_stage3_specter2_public_end_to_end.py"
+      - "scripts/stage3_specter2_public_official_reference.py"
+      - "tests/test_stage3_specter2_official_numeric_evidence.py"
+      - "scripts/stage3_specter2_private_p1_sample_local.py"
+      - "scripts/stage3_specter2_private_p1_cpu.py"
+      - "scripts/stage3_specter2_private_p1_independent_audit.py"
+      - "tests/test_stage3_specter2_private_p1_contract.py"
+      - "scripts/stage3_specter2_private_full_cpu.py"
+      - "scripts/stage3_specter2_private_full_independent_audit.py"
+      - "tests/test_stage3_specter2_private_full_contract.py"
+      - "scripts/stage3_specter2_partial_batch_independent_audit.py"
+      - "tests/test_stage3_specter2_partial_batch_audit.py"
+      - "src/pro_adherence/stage3_specter2_proximity_compat.py"
+      - "tests/test_stage3_specter2_proximity_compat.py"
+      - "docs/stage3/**"
+      - ".github/workflows/stage3-contracts.yml"
+  pull_request:
+    paths:
+      - "src/pro_adherence/stage3_contracts.py"
+      - "src/pro_adherence/stage3_preflight.py"
+      - "tests/test_stage3_contracts.py"
+      - "tests/test_stage3_preflight.py"
+      - "tests/test_stage3_pilot_prepare.py"
+      - "tests/test_stage3_pubmedbert_runner.py"
+      - "configs/stage3/**"
+      - "scripts/stage3_eligibility_census.py"
+      - "scripts/stage3_pilot_prepare.py"
+      - "scripts/stage3_p1_pubmedbert_local.py"
+      - "scripts/stage3_node2vec_cpu_smoke.py"
+      - "scripts/stage3_node2vec_cpu_stream_preflight.py"
+      - "scripts/stage3_node2vec_cpu_synthetic_memory_probe.py"
+      - "scripts/stage3_node2vec_cpu_machine_preflight.py"
+      - "tests/test_stage3_node2vec_machine_preflight.py"
+      - "scripts/stage3_node2vec_cpu_full_local.py"
+      - "tests/test_stage3_node2vec_full_local.py"
+      - "tests/test_stage3_node2vec_cpu_smoke.py"
+      - "scripts/stage3_specter2_public_adapter_preflight.py"
+      - "tests/test_stage3_specter2_public_adapter_preflight.py"
+      - "scripts/stage3_specter2_base_public_preflight.py"
+      - "tests/test_stage3_specter2_base_public_preflight.py"
+      - "scripts/stage3_specter2_public_full12_math_probe.py"
+      - "tests/test_stage3_specter2_public_full12_math_probe.py"
+      - "scripts/stage3_specter2_public_end_to_end.py"
+      - "tests/test_stage3_specter2_public_end_to_end.py"
+      - "scripts/stage3_specter2_public_official_reference.py"
+      - "tests/test_stage3_specter2_official_numeric_evidence.py"
+      - "scripts/stage3_specter2_private_p1_sample_local.py"
+      - "scripts/stage3_specter2_private_p1_cpu.py"
+      - "scripts/stage3_specter2_private_p1_independent_audit.py"
+      - "tests/test_stage3_specter2_private_p1_contract.py"
+      - "scripts/stage3_specter2_private_full_cpu.py"
+      - "scripts/stage3_specter2_private_full_independent_audit.py"
+      - "tests/test_stage3_specter2_private_full_contract.py"
+      - "scripts/stage3_specter2_partial_batch_independent_audit.py"
+      - "tests/test_stage3_specter2_partial_batch_audit.py"
+      - "src/pro_adherence/stage3_specter2_proximity_compat.py"
+      - "tests/test_stage3_specter2_proximity_compat.py"
+      - "docs/stage3/**"
+      - ".github/workflows/stage3-contracts.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  offline-contract-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Validate Stage3 contracts without models or private corpus
+        env:
+          PYTHONPATH: src
+        run: python -m unittest discover -s tests -p 'test_stage3_*.py' -v
+      - name: Syntax and optimized-mode fail-closed smoke for frozen research graph CLI
+        run: |
+          python -m py_compile scripts/stage3_graph_frozen_streaming.py
+          python -m py_compile scripts/stage3_node2vec_cpu_smoke.py src/pro_adherence/stage3_pilot_plan.py
+          python -m py_compile scripts/stage3_node2vec_cpu_stream_preflight.py
+          python -m py_compile scripts/stage3_node2vec_cpu_synthetic_memory_probe.py
+          python -m py_compile scripts/stage3_node2vec_cpu_machine_preflight.py
+          python -m py_compile scripts/stage3_node2vec_cpu_full_local.py
+          python -m py_compile scripts/stage3_specter2_public_adapter_preflight.py
+          python -m py_compile scripts/stage3_specter2_base_public_preflight.py
+          python -m py_compile scripts/stage3_specter2_public_full12_math_probe.py
+          python -m py_compile scripts/stage3_specter2_public_end_to_end.py
+          python -m py_compile scripts/stage3_specter2_public_official_reference.py
+          python -m py_compile scripts/stage3_specter2_private_p1_sample_local.py scripts/stage3_specter2_private_p1_cpu.py scripts/stage3_specter2_private_p1_independent_audit.py
+          python -m py_compile scripts/stage3_specter2_private_full_cpu.py scripts/stage3_specter2_private_full_independent_audit.py
+          python -m py_compile scripts/stage3_specter2_partial_batch_independent_audit.py
+          python -m py_compile src/pro_adherence/stage3_specter2_proximity_compat.py
+          if python -O scripts/stage3_node2vec_cpu_full_local.py --help > /tmp/node2vec_production_optimized.out 2>&1; then exit 1; fi
+          grep -q 'Python -O forbidden' /tmp/node2vec_production_optimized.out
+          if python -O scripts/stage3_node2vec_cpu_machine_preflight.py --help > /tmp/node2vec_machine_optimized.out 2>&1; then exit 1; fi
+          grep -q 'Python assertions (-O forbidden)' /tmp/node2vec_machine_optimized.out
+          if python -O scripts/stage3_node2vec_cpu_smoke.py --help > /tmp/node2vec_optimized.out 2>&1; then exit 1; fi
+          grep -q 'Python assertions (-O forbidden)' /tmp/node2vec_optimized.out
+          python -O scripts/stage3_graph_frozen_streaming.py --help > /tmp/stage3_optimized.out 2>&1 && exit 1 || grep -q 'Python assertions (-O forbidden)' /tmp/stage3_optimized.out
+
+  node2vec-hashed-wheel-synthetic:
+    # Public wheels only; no access to private research graph or source rows.
+    # Runs a fresh hash-enforced install and tiny synthetic regressions only.
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install exact Linux x86-64 wheels by provider SHA256
+        run: |
+          python -m pip install --disable-pip-version-check --no-cache-dir --require-hashes --only-binary=:all: -r configs/stage3/node2vec_cpu_cp313_linux_x86_64.requirements.txt
+          python -m pip check
+          python - <<'PY'
+          import platform, sys
+          from importlib.metadata import version
+          assert sys.version_info[:2] == (3, 13)
+          assert platform.machine().lower() == 'x86_64'
+          for p, expected in {'gensim':'4.4.0','numpy':'2.3.5','scipy':'1.17.0','smart_open':'7.6.1','wrapt':'2.2.1'}.items():
+              assert version(p)==expected,(p,version(p),expected)
+          import gensim, numpy, scipy, smart_open, wrapt
+          print('STAGE3_NODE2VEC_HASH_VERIFIED_FRESH_INSTALL_SYNTHETIC_ONLY')
+          PY
+      - name: Test repeatable stream and owner approved backend on synthetic graph
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m unittest discover -s tests -p 'test_stage3_node2vec_cpu_smoke.py' -v
+          python scripts/stage3_node2vec_cpu_synthetic_memory_probe.py --out /tmp/node2vec_synthetic_full_vocab_preflight.json
+          python - <<'PY'
+          import json
+          r=json.load(open('/tmp/node2vec_synthetic_full_vocab_preflight.json'))
+          assert r['scope']['vocabulary']==43608
+          assert r['scope']['synthetic_tokens']==174400
+          assert r['scope']['private_graph_loaded'] is False
+          assert r['gates']['full_training_authorized'] is False
+          assert r['gates']['production_vectors_generated'] is False
+          print('SYNTHETIC_FULL_VOCAB_ONLY_PASS')
+          PY
+
+  specter2-public-pinned-adapter-artifact:
+    # Approved PUBLIC checkpoint only; no private corpus, model inference or unpickling.
+    # This does not certify a safe Transformers/Adapters execution backend.
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Retrieve exact immutable SPECTER2 public adapter files
+        run: |
+          curl -fsSL --retry 3 --max-time 90 \
+            "https://huggingface.co/allenai/specter2/resolve/2081559630a80fc5851d8f798a05ba81e9468089/adapter_config.json" \
+            -o "$RUNNER_TEMP/adapter_config.json"
+          curl -fsSL --retry 3 --max-time 90 \
+            "https://huggingface.co/allenai/specter2/resolve/2081559630a80fc5851d8f798a05ba81e9468089/pytorch_adapter.bin" \
+            -o "$RUNNER_TEMP/pytorch_adapter.bin"
+      - name: Verify public artifact SHA, config semantics and fail-closed gates
+        run: |
+          python scripts/stage3_specter2_public_adapter_preflight.py \
+            --config "$RUNNER_TEMP/adapter_config.json" \
+            --weights "$RUNNER_TEMP/pytorch_adapter.bin" \
+            --output "$RUNNER_TEMP/specter2_public_adapter_preflight.json"
+          python - <<'PY'
+          import json,os
+          r=json.load(open(os.environ['RUNNER_TEMP']+'/specter2_public_adapter_preflight.json'))
+          assert r['status']=='ADAPTER_BYTES_VERIFIED_RUNTIME_BLOCKED'
+          assert r['weights']['pickle_executed'] is False
+          assert not any(r['gates'].values())
+          print('SPECTER2_PUBLIC_ADAPTER_PINNED_SHA_VERIFIED_NO_INFERENCE')
+          PY
+      - name: Preserve verified PUBLIC adapter checkpoint for offline inspection
+        uses: actions/upload-artifact@v4
+        with:
+          name: specter2-public-adapter-2081559-verified
+          path: |
+            ${{ runner.temp }}/adapter_config.json
+            ${{ runner.temp }}/pytorch_adapter.bin
+            ${{ runner.temp }}/specter2_public_adapter_preflight.json
+          if-no-files-found: error
+          retention-days: 1

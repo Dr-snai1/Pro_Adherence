@@ -1,0 +1,126 @@
+name: Stage3 public PubMedBERT weights for private local P1 (one shot)
+
+on:
+  push:
+    branches:
+      - "stage2/**"
+    paths:
+      - ".github/workflows/stage3-pubmedbert-public-transport.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  fetch-public-weights:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Download only open MIT-licensed model weights to ephemeral runner
+        env:
+          HF_HUB_DISABLE_XET: "1"
+        run: |
+          python -m pip install --disable-pip-version-check -q "huggingface_hub==1.16.1"
+          python - <<'PY'
+          from huggingface_hub import hf_hub_download
+          from pathlib import Path
+          from hashlib import sha256
+          import shutil
+          repo="microsoft/BiomedNLP-BiomedBERT-base-uncased-abstract"
+          revision="d673b8835373c6fa116d6d8006b33d48734e305d"
+          p=Path(hf_hub_download(repo_id=repo, filename="pytorch_model.bin", revision=revision))
+          h=sha256()
+          with p.open("rb") as f:
+              for chunk in iter(lambda:f.read(4*1024*1024), b""):h.update(chunk)
+          expected="d513412d396cecec5f67936ac871b4aaf1178dfb5193776e790fd2b28bba240c"
+          print("PROVIDER_SHA256_MATCH",h.hexdigest()==expected,"WEIGHT_BYTES",p.stat().st_size)
+          assert h.hexdigest()==expected and p.stat().st_size==440474434
+          Path("/tmp/model_chunks").mkdir()
+          shutil.copyfile(p,"/tmp/model_chunks/pytorch_model.bin")
+          PY
+          cd /tmp/model_chunks
+          split -b 50m -d -a 2 pytorch_model.bin stage3_model_chunk_
+          test "$(find . -name 'stage3_model_chunk_*' | wc -l)" -eq 9
+          rm pytorch_model.bin
+      - name: Download exact Python 3.13 Linux wheel dependencies (no private corpus)
+        run: |
+          python -m pip download --only-binary=:all: --dest /tmp/p1_wheels "transformers==5.22.2"
+          python - <<'PY'
+          from pathlib import Path
+          from hashlib import sha256
+          for p in sorted(Path("/tmp/p1_wheels").iterdir()):
+              print("WHEEL",p.name,p.stat().st_size,sha256(p.read_bytes()).hexdigest())
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-p1-public-python-wheels
+          path: /tmp/p1_wheels/
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-p1-public-model-00
+          path: /tmp/model_chunks/stage3_model_chunk_00
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-p1-public-model-01
+          path: /tmp/model_chunks/stage3_model_chunk_01
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-p1-public-model-02
+          path: /tmp/model_chunks/stage3_model_chunk_02
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-p1-public-model-03
+          path: /tmp/model_chunks/stage3_model_chunk_03
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-p1-public-model-04
+          path: /tmp/model_chunks/stage3_model_chunk_04
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-p1-public-model-05
+          path: /tmp/model_chunks/stage3_model_chunk_05
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-p1-public-model-06
+          path: /tmp/model_chunks/stage3_model_chunk_06
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-p1-public-model-07
+          path: /tmp/model_chunks/stage3_model_chunk_07
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-p1-public-model-08
+          path: /tmp/model_chunks/stage3_model_chunk_08
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error

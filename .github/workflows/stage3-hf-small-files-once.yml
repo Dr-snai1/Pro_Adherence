@@ -1,0 +1,54 @@
+name: Stage3 frozen small HF file identity probe (no weights)
+
+on:
+  push:
+    branches:
+      - "stage2/**"
+    paths:
+      - ".github/workflows/stage3-hf-small-files-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  small-file-byte-readback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Fetch only pinned small HF metadata/text/tokenizer files
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m pro_adherence.stage3_small_file_integrity \
+            --config configs/stage3/model_preflight_pins.json \
+            --output-dir /tmp/stage3_verified_small_files \
+            --online-small-files
+      - name: Read back exact file SHA and provenance flags
+        run: |
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          root=Path('/tmp/stage3_verified_small_files')
+          manifest=(root/'small_file_integrity.json').read_bytes()
+          obj=json.loads(manifest)
+          print('SMALL_FILE_MANIFEST_SHA256='+hashlib.sha256(manifest).hexdigest())
+          print('PROVIDER_GIT_BLOBS_VERIFIED='+str(obj['all_provider_git_blobs_verified']))
+          for component,entry in sorted(obj['components'].items()):
+              for fname,data in sorted(entry['files'].items()):
+                  real=(root/component/fname).read_bytes()
+                  assert hashlib.sha256(real).hexdigest()==data['local_sha256']
+                  print('CHECKED',component,fname,data['size_bytes'],
+                        data['local_sha256'],data['provider_git_blob_identity_verified'])
+          assert obj['weights_downloaded'] is False
+          assert obj['model_inference_executed'] is False
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stage3-public-hf-small-file-byte-evidence
+          path: /tmp/stage3_verified_small_files/
+          retention-days: 10
+          if-no-files-found: error

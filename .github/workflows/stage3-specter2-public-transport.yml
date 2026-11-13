@@ -1,0 +1,92 @@
+name: Stage3 SPECTER2 public model transport (no private data)
+
+on:
+  push:
+    branches:
+      - stage2/multisource-wos-ingest-20261029
+    paths:
+      - .github/workflows/stage3-specter2-public-transport.yml
+
+permissions:
+  contents: read
+
+jobs:
+  public-model-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Get exact public pinned model and tokenizer
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'huggingface-hub==2.4.0' 'hf-xet==1.8.0'
+          mkdir -p bundle/base bundle/wheels
+          python - <<'PY'
+          from huggingface_hub import snapshot_download
+          import pathlib,hashlib
+          p=pathlib.Path("bundle/base")
+          snapshot_download(repo_id="allenai/specter2_base",revision="3447645e1def9117997203454fa4495937bfbd83",
+            local_dir=str(p),allow_patterns=["pytorch_model.bin","config.json","vocab.txt","tokenizer.json",
+                         "tokenizer_config.json","special_tokens_map.json"],max_workers=3)
+          f=p/"pytorch_model.bin"
+          h=hashlib.sha256(f.read_bytes()).hexdigest()
+          print("PUBLIC_MODEL_BASE_SHA256",h,flush=True)
+          assert h=="801eda968fad1752fe846a8e572bfdc25202be85544680dda4c99f4589646ebc"
+          assert all((p/n).is_file() for n in ["config.json","vocab.txt","tokenizer.json","tokenizer_config.json","special_tokens_map.json"])
+          PY
+      - name: Retrieve preapproved 31 public Python wheels
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/approved-wheels.txt <<'REQ'
+          annotated-doc==0.0.6
+          annotated-types==0.8.0
+          anyio==4.16.0
+          click==8.5.1
+          filelock==4.2.10
+          fsspec==2026.9.0
+          h11==0.16.0
+          hf-xet==1.8.0
+          httpcore2==2.16.0
+          httpx2==2.16.0
+          huggingface-hub==2.4.0
+          idna==3.20
+          markdown-it-py==4.3.0
+          mdurl==0.1.2
+          numpy==2.5.4
+          packaging==26.3
+          pydantic==2.14.3
+          pydantic-core==2.50.4
+          pygments==2.21.0
+          pyyaml==6.0.3
+          regex==2026.11.9
+          rich==15.0.0
+          safetensors==0.8.0
+          shellingham==1.5.4
+          tokenizers==0.23.3
+          tqdm==4.70.1
+          transformers==5.22.2
+          truststore==0.10.5
+          typer==0.29.1
+          typing-extensions==4.16.0
+          typing-inspection==0.4.5
+          REQ
+          python -m pip download --disable-pip-version-check --no-deps --only-binary=:all: --dest bundle/wheels -r /tmp/approved-wheels.txt
+          test "$(find bundle/wheels -maxdepth 1 -type f -name '*.whl' | wc -l)" -eq 31
+      - name: Check no research input was included
+        shell: bash
+        run: |
+          set -euo pipefail
+          find bundle -type f -printf '%P %s bytes\n' | head -60
+          test -f bundle/base/pytorch_model.bin
+          test ! -e bundle/inputs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: specter2-pinned-public-model-and-wheelhouse
+          path: bundle/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 2
