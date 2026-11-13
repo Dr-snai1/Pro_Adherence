@@ -1,0 +1,38 @@
+{
+  "adapter_repo": "allenai/specter2",
+  "adapter_revision": "2081559630a80fc5851d8f798a05ba81e9468089",
+  "all_tensors_float32_finite": true,
+  "base_repo": "allenai/specter2_base",
+  "base_revision": "3447645e1def9117997203454fa4495937bfbd83",
+  "bottleneck_size": 48,
+  "date": "2026-11-13",
+  "hidden_size": 768,
+  "layers": 12,
+  "limitations": {
+    "actual_base_weights_verified": false,
+    "full_specter2_vectors_created": false,
+    "numerical_equivalence_to_official_AdapterHub_model_verified": false,
+    "private_input_used": false,
+    "production_inference_authorized": false,
+    "publication_authorized": false,
+    "safe_transformers_runtime_with_adapter_activation_verified": false,
+    "stage3_closed": false
+  },
+  "public_config_sha256": "1065ad610a661c5169f05d81040fe14429d2cc7ecdf83ed654dca4a62aaf9a8c",
+  "public_weight_sha256": "5b6105714f78b294daa7e2d181134df12f0acb7a4ec7c1e3c13e512c908db94a",
+  "schema": "pro-adherence-specter2-public-weights-readonly-compat-candidate/v1",
+  "status": "PUBLIC_ADAPTER_WEIGHTS_AND_SYNTHETIC_EQUATION_PASS_NOT_NUMERIC_EQUIVALENCE",
+  "synthetic_adapter_activation_delta_vs_base_max_abs": 0.6729558110237122,
+  "synthetic_candidate_vs_independent_source_equations_max_abs": 0.0,
+  "tensor_inventory_count": 48,
+  "tensor_key_shape_signature_sha256": "755ce311afd7bb7004e1a1bf31684de00ee95b9753e03b66697838c9e53a1814",
+  "tensors_per_layer": 4,
+  "torch_version": "2.10.0+cpu",
+  "upstream_algorithm_sources": {
+    "AdapterHub_v1.3.0_Adapter": "fb7bed348345e244cace47305e9e67b6d7a0a528",
+    "AdapterHub_v1.3.0_BertOutput": "aa165651b4b3b7021d423a98e1451a28aca9650f",
+    "AdapterHub_v1.3.0_BottleneckLayer": "1271cc215ddbfc172d114d9715321f436042542f"
+  },
+  "weights_bytes": 3593365,
+  "weights_only_load": true
+}
