@@ -70,7 +70,7 @@ jobs:
           python - <<'PY'
           import hashlib,json,os,sys
           from pathlib import Path
-          from packaging.utils import parse_wheel_filename
+          from pip._vendor.packaging.utils import parse_wheel_filename
           root=Path(os.environ["RUNNER_TEMP"])/"s2_bundle"
           wheels=list((root/"wheels").glob("*.whl"))
           assert len(wheels)>=10 and not list((root/"wheels").glob("*tar.gz"))
