@@ -6,7 +6,7 @@ import tempfile
 import unittest
 import zipfile
 
-SOURCE=Path(__file__).with_name('stage3_specter2_public_adapter_preflight.py')
+SOURCE=Path(__file__).resolve().parents[1]/'scripts'/'stage3_specter2_public_adapter_preflight.py'
 spec=importlib.util.spec_from_file_location('specter2_probe',SOURCE)
 probe=importlib.util.module_from_spec(spec)
 spec.loader.exec_module(probe)
