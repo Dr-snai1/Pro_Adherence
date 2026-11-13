@@ -170,7 +170,7 @@ def synthetic_documents(tokenizer):
     return encoded,stats
 
 
-def public_numeric_probe(base_dir:Path, adapter_path:Path, evidence_path:Path):
+def public_numeric_probe(base_dir:Path, adapter_path:Path, evidence_path:Path, public_vectors_out:Path|None=None):
     if platform.machine().lower() not in ('x86_64','amd64'):
         raise RuntimeError('unsupported CPU architecture for this witness')
     if torch.__version__ != RUNTIME_TORCH or transformers.__version__ != RUNTIME_TRANSFORMERS:
@@ -211,6 +211,10 @@ def public_numeric_probe(base_dir:Path, adapter_path:Path, evidence_path:Path):
         raise RuntimeError('full public output L2 normalization invalid')
     arr = candidate.cpu().numpy().astype('float32',copy=False)
     digest = hashlib.sha256(arr.tobytes(order='C')).hexdigest()
+    if public_vectors_out is not None:
+        if public_vectors_out.exists():
+            raise RuntimeError('refuse overwrite of public synthetic vectors')
+        np.save(public_vectors_out,arr,allow_pickle=False)  # public synthetic ONLY
     return {
        'schema':'pro-adherence-specter2-pinned-public-full-bert-activated-adapter-source-reference/v1',
        'status':'PUBLIC_FULL_BERT_REAL_WEIGHTS_SOURCE_REFERENCE_NUMERIC_PASS_OFFICIAL_ADAPTER_RUNTIME_PENDING',
@@ -244,9 +248,10 @@ def main():
     p.add_argument('--adapter',type=Path,required=True)
     p.add_argument('--public-evidence',type=Path,required=True)
     p.add_argument('--out',type=Path,required=True)
+    p.add_argument('--public-synthetic-vectors-out',type=Path)
     a=p.parse_args()
     if a.out.exists():raise RuntimeError('refuse overwrite of numeric witness')
-    r=public_numeric_probe(a.base_dir,a.adapter,a.public_evidence)
+    r=public_numeric_probe(a.base_dir,a.adapter,a.public_evidence,a.public_synthetic_vectors_out)
     a.out.write_text(json.dumps(r,ensure_ascii=False,indent=2,sort_keys=True)+'\n',encoding='utf-8')
     print(r['status'])
 
