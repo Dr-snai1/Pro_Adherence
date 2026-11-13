@@ -1,0 +1,26 @@
+{
+  "actual_pinned_weights_loaded_with_weights_only": true,
+  "adapter_layers_tested": 12,
+  "adapter_sha256": "5b6105714f78b294daa7e2d181134df12f0acb7a4ec7c1e3c13e512c908db94a",
+  "deterministic_seed": 20261113,
+  "gates": {
+    "official_adapters_activated_numeric_equivalence": false,
+    "private_specter2_inference_authorized": false,
+    "production_embeddings_created": false,
+    "publication_authorized": false,
+    "real_base_weights_loaded": false,
+    "scientific_corpus_used": false,
+    "stage3_closed": false
+  },
+  "max_abs_vs_independent_source_equation": 0.0,
+  "max_adapter_activation_delta_vs_plain_bert_output": 0.650722324848175,
+  "min_adapter_activation_delta_vs_plain_bert_output": 0.41864901781082153,
+  "schema": "pro-adherence-specter2-pinned-adapter-full12-synthetic-algebra/v1",
+  "status": "PUBLIC_ACTUAL_ADAPTER_12_LAYER_SYNTHETIC_ALGEBRA_PASS_NOT_OFFICIAL_EQUIVALENCE",
+  "torch_version": "2.10.0+cpu",
+  "upstream_source": {
+    "AdapterHub_v1.3.0_Adapter_blob": "fb7bed348345e244cace47305e9e67b6d7a0a528",
+    "AdapterHub_v1.3.0_BottleneckLayer_blob": "1271cc215ddbfc172d114d9715321f436042542f",
+    "Transformers_v5.22.2_BertOutput_blob": "a10a59c7e4da62f6727c9f6670ff725436aea929"
+  }
+}
