@@ -48,7 +48,7 @@ class Stage3Specter2PrivatePilotContracts(unittest.TestCase):
         self.assertIn("return_token_type_ids=False",s)
         self.assertIn("no overwrite",s)
         self.assertIn("STAGE3",SAMPLE.read_text())
-        self.assertIn("Pro",str(ROOT))
+        self.assertTrue((ROOT / "scripts" / "stage3_specter2_private_p1_cpu.py").is_file())
         ast.parse(SAMPLE.read_text(encoding="utf-8"))
 
     def test_independent_auditor_never_runs_inference(self):
