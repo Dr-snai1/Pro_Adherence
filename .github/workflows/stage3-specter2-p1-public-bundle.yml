@@ -1,9 +1,6 @@
 name: Stage3 SPECTER2 one-time PUBLIC runtime and pinned weights bundle
 
 on:
-  pull_request:
-    paths:
-      - ".github/workflows/stage3-specter2-p1-public-bundle.yml"
   workflow_dispatch:
 
 permissions:
