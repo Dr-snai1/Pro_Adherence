@@ -36,6 +36,8 @@ on:
       - "scripts/stage3_node2vec_cpu_full_local.py"
       - "tests/test_stage3_node2vec_full_local.py"
       - "tests/test_stage3_node2vec_cpu_smoke.py"
+      - "scripts/stage3_specter2_public_adapter_preflight.py"
+      - "tests/test_stage3_specter2_public_adapter_preflight.py"
       - "docs/stage3/**"
       - ".github/workflows/stage3-contracts.yml"
   pull_request:
@@ -58,6 +60,8 @@ on:
       - "scripts/stage3_node2vec_cpu_full_local.py"
       - "tests/test_stage3_node2vec_full_local.py"
       - "tests/test_stage3_node2vec_cpu_smoke.py"
+      - "scripts/stage3_specter2_public_adapter_preflight.py"
+      - "tests/test_stage3_specter2_public_adapter_preflight.py"
       - "docs/stage3/**"
       - ".github/workflows/stage3-contracts.yml"
 
@@ -84,6 +88,7 @@ jobs:
           python -m py_compile scripts/stage3_node2vec_cpu_synthetic_memory_probe.py
           python -m py_compile scripts/stage3_node2vec_cpu_machine_preflight.py
           python -m py_compile scripts/stage3_node2vec_cpu_full_local.py
+          python -m py_compile scripts/stage3_specter2_public_adapter_preflight.py
           if python -O scripts/stage3_node2vec_cpu_full_local.py --help > /tmp/node2vec_production_optimized.out 2>&1; then exit 1; fi
           grep -q 'Python -O forbidden' /tmp/node2vec_production_optimized.out
           if python -O scripts/stage3_node2vec_cpu_machine_preflight.py --help > /tmp/node2vec_machine_optimized.out 2>&1; then exit 1; fi
@@ -131,4 +136,37 @@ jobs:
           assert r['gates']['full_training_authorized'] is False
           assert r['gates']['production_vectors_generated'] is False
           print('SYNTHETIC_FULL_VOCAB_ONLY_PASS')
+          PY
+
+  specter2-public-pinned-adapter-artifact:
+    # Approved PUBLIC checkpoint only; no private corpus, model inference or unpickling.
+    # This does not certify a safe Transformers/Adapters execution backend.
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Retrieve exact immutable SPECTER2 public adapter files
+        run: |
+          curl -fsSL --retry 3 --max-time 90 \
+            "https://huggingface.co/allenai/specter2/resolve/2081559630a80fc5851d8f798a05ba81e9468089/adapter_config.json" \
+            -o "$RUNNER_TEMP/adapter_config.json"
+          curl -fsSL --retry 3 --max-time 90 \
+            "https://huggingface.co/allenai/specter2/resolve/2081559630a80fc5851d8f798a05ba81e9468089/pytorch_adapter.bin" \
+            -o "$RUNNER_TEMP/pytorch_adapter.bin"
+      - name: Verify public artifact SHA, config semantics and fail-closed gates
+        run: |
+          python scripts/stage3_specter2_public_adapter_preflight.py \
+            --config "$RUNNER_TEMP/adapter_config.json" \
+            --weights "$RUNNER_TEMP/pytorch_adapter.bin" \
+            --output "$RUNNER_TEMP/specter2_public_adapter_preflight.json"
+          python - <<'PY'
+          import json,os
+          r=json.load(open(os.environ['RUNNER_TEMP']+'/specter2_public_adapter_preflight.json'))
+          assert r['status']=='ADAPTER_BYTES_VERIFIED_RUNTIME_BLOCKED'
+          assert r['weights']['pickle_executed'] is False
+          assert not any(r['gates'].values())
+          print('SPECTER2_PUBLIC_ADAPTER_PINNED_SHA_VERIFIED_NO_INFERENCE')
           PY
