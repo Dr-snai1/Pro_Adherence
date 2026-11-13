@@ -1,0 +1,71 @@
+{
+  "adapter_revision": "2081559630a80fc5851d8f798a05ba81e9468089",
+  "adapter_sha256": "5b6105714f78b294daa7e2d181134df12f0acb7a4ec7c1e3c13e512c908db94a",
+  "base_revision": "3447645e1def9117997203454fa4495937bfbd83",
+  "base_sha256": "801eda968fad1752fe846a8e572bfdc25202be85544680dda4c99f4589646ebc",
+  "gates": {
+    "full_research_runtime_lock_verified": false,
+    "official_adapterhub_package_activated_model_equivalence_verified": false,
+    "private_specter2_inference_authorized": false,
+    "production_vectors_generated": false,
+    "public_pinned_real_base_and_adapter_numeric_source_equation_reference_verified": true,
+    "publication_authorized": false,
+    "stage3_closed": false
+  },
+  "model": {
+    "adapter_layers_enabled": 12,
+    "base": {
+      "base_weights_only_safe_load": true,
+      "discarded_pooler_only": [
+        "embeddings.position_ids",
+        "pooler.dense.weight",
+        "pooler.dense.bias"
+      ],
+      "pretrained_base_tensors_loaded": 197
+    },
+    "candidate_output_bytes_sha256": "e2f2d9db99020d1f5db7dbaa3ed1867556fe03bc8f5c4681277487f71947ca06",
+    "max_abs_adapter_vs_plain_bert": 0.9386113882064819,
+    "max_abs_candidate_vs_independent_source_reference": 0.0,
+    "max_abs_repeated_same_process": 0.0,
+    "max_raw_l2_norm": 22.136772925788204,
+    "min_raw_l2_norm": 21.43807284688869,
+    "public_input_count": 3,
+    "synthetic_first_token_vectors_shape": [
+      3,
+      768
+    ],
+    "tokenization_audit_including_long_text": [
+      {
+        "encoded_tokens": 13,
+        "tokens_lost": 0,
+        "untruncated_tokens": 13
+      },
+      {
+        "encoded_tokens": 5,
+        "tokens_lost": 0,
+        "untruncated_tokens": 5
+      },
+      {
+        "encoded_tokens": 14,
+        "tokens_lost": 0,
+        "untruncated_tokens": 14
+      },
+      {
+        "encoded_tokens": 512,
+        "tokens_lost": 275,
+        "untruncated_tokens": 787
+      }
+    ]
+  },
+  "runtime": {
+    "device": "cpu",
+    "eval_only": true,
+    "python": "3.13.18",
+    "safetensors": "0.8.0",
+    "torch": "2.10.0+cpu",
+    "torch_threads": 2,
+    "transformers": "5.22.2"
+  },
+  "schema": "pro-adherence-specter2-pinned-public-full-bert-activated-adapter-source-reference/v1",
+  "status": "PUBLIC_FULL_BERT_REAL_WEIGHTS_SOURCE_REFERENCE_NUMERIC_PASS_OFFICIAL_ADAPTER_RUNTIME_PENDING"
+}
