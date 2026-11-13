@@ -170,3 +170,14 @@ jobs:
           assert not any(r['gates'].values())
           print('SPECTER2_PUBLIC_ADAPTER_PINNED_SHA_VERIFIED_NO_INFERENCE')
           PY
+      - name: Preserve verified PUBLIC adapter checkpoint for offline inspection
+        uses: actions/upload-artifact@v4
+        with:
+          name: specter2-public-adapter-2081559-verified
+          path: |
+            ${{ runner.temp }}/adapter_config.json
+            ${{ runner.temp }}/pytorch_adapter.bin
+            ${{ runner.temp }}/specter2_public_adapter_preflight.json
+          if-no-files-found: error
+          retention-days: 1
+
