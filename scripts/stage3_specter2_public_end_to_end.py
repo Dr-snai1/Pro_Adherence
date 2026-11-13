@@ -89,6 +89,19 @@ def load_pinned_base(base_dir: Path):
             if expected_state[stripped].shape != value.shape:
                 raise RuntimeError('base checkpoint tensor shape mismatch: '+stripped)
             filtered[stripped] = value
+        elif stripped == 'embeddings.position_ids':
+            # Historical checkpoint buffer is nonpersistent in Transformers 5.x.
+            # Accept it ONLY after exact shape/content verification.
+            count = int(model.config.max_position_embeddings)
+            if tuple(value.shape) != (1,count) or not torch.equal(
+                value.cpu(), torch.arange(count, dtype=value.dtype).reshape(1,-1)
+            ):
+                raise RuntimeError('upstream positional buffer mismatch')
+            ignored.append(original_name)
+        elif stripped == 'embeddings.token_type_ids':
+            if tuple(value.shape) != (1,int(model.config.max_position_embeddings)) or torch.any(value):
+                raise RuntimeError('upstream token_type_ids buffer mismatch')
+            ignored.append(original_name)
         elif stripped.startswith('pooler.dense.'):
             ignored.append(original_name)
         else:
