@@ -1,0 +1,33 @@
+{
+  "actual_official_package": "adapters==1.3.0",
+  "adapter_config_sha256": "1065ad610a661c5169f05d81040fe14429d2cc7ecdf83ed654dca4a62aaf9a8c",
+  "approved_adapter_sha256": "5b6105714f78b294daa7e2d181134df12f0acb7a4ec7c1e3c13e512c908db94a",
+  "approved_base_sha256": "801eda968fad1752fe846a8e572bfdc25202be85544680dda4c99f4589646ebc",
+  "gates": {
+    "official_activated_proximity_public_synthetic_equivalence_verified": true,
+    "permanent_secure_production_runtime_pinned_hash_lock_verified": false,
+    "private_specter2_inference_authorized": false,
+    "production_vectors_generated": false,
+    "publication_authorized": false,
+    "stage3_closed": false,
+    "temporary_old_transformers_reference_is_approved_for_private_inference": false
+  },
+  "max_abs_safe_vs_official": 0.0,
+  "min_cosine_safe_vs_official": 0.9999999999999999,
+  "numerical_tolerance": {
+    "atol": 5e-05,
+    "max_abs_ceiling": 5e-05,
+    "min_cosine": 0.999999,
+    "rtol": 3e-05
+  },
+  "official_active_adapter": "Stack[proximity]",
+  "official_output_sha256": "e2f2d9db99020d1f5db7dbaa3ed1867556fe03bc8f5c4681277487f71947ca06",
+  "safe_candidate_output_sha256": "e2f2d9db99020d1f5db7dbaa3ed1867556fe03bc8f5c4681277487f71947ca06",
+  "schema": "pro-adherence-stage3-specter2-public-official-adapter-reference-equivalence/v1",
+  "shape": [
+    3,
+    768
+  ],
+  "status": "PUBLIC_OFFICIAL_ADAPTER_REFERENCE_NUMERIC_PASS_TEMPORARY_UNSUPPORTED_ENV_ONLY",
+  "temporary_reference_transformers": "4.57.6"
+}
