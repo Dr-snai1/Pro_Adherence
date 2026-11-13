@@ -35,7 +35,31 @@
       "compatible_published_pair_verified": false,
       "exact_runtime_lock_sha256": null,
       "installed_adapter_smoke_verified": false,
-      "remedy_gate": "Needs metadata-backed safe adapter/runtime implementation and exact-output equivalence on the owner-approved proximity adapter"
+      "remedy_gate": "Pinned proximity checkpoint bytes/12x4 tensor inventory verified and experimental PyTorch bottleneck algebra matches source-derived synthetic equations, BUT the official supported safe Adapters/Transformers pair is absent. Must validate a secure runtime with exact base model weights, numeric equivalence against adapter-activated upstream reference, separate owner compute scope before any private SPECTER2 inference.",
+      "public_proximity_adapter_pinned_evidence": {
+        "adapter_repo": "allenai/specter2",
+        "adapter_revision": "2081559630a80fc5851d8f798a05ba81e9468089",
+        "approved_base_repo": "allenai/specter2_base",
+        "base_revision": "3447645e1def9117997203454fa4495937bfbd83",
+        "adapter_config_sha256": "1065ad610a661c5169f05d81040fe14429d2cc7ecdf83ed654dca4a62aaf9a8c",
+        "adapter_weights_sha256": "5b6105714f78b294daa7e2d181134df12f0acb7a4ec7c1e3c13e512c908db94a",
+        "adapter_weight_bytes": 3593365,
+        "public_pinned_checkpoint_zip_crc_and_sha_pass": true,
+        "actual_weights_only_safe_load_pass": true,
+        "layer_count": 12,
+        "checkpoint_tensor_count": 48,
+        "projection_dimensions": "768->48->768",
+        "public_tensor_shape_key_signature_sha256": "755ce311afd7bb7004e1a1bf31684de00ee95b9753e03b66697838c9e53a1814",
+        "synthetic_source_derived_adapter_algebra_max_abs": 0,
+        "synthetic_adapter_activation_delta_max_abs": 0.6729558110237122,
+        "evidence_file": "configs/stage3/specter2_public_adapter_evidence.json",
+        "experimental_compat_code": "src/pro_adherence/stage3_specter2_proximity_compat.py",
+        "safe_transformers_adapters_runtime_verified": false,
+        "official_adapter_numeric_equivalence_verified": false,
+        "base_checkpoint_file_bytes_verified": false,
+        "private_inference_authorized": false,
+        "production_specter2_embeddings_generated": false
+      }
     },
     "node2vec": {
       "published_backend": "node2vec==0.5.0",
