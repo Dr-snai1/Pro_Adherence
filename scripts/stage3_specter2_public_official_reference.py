@@ -46,7 +46,8 @@ def witness(base:Path, adapter:Path, ids:Path, safe_vectors:Path)->dict:
     import adapters
     import transformers
     from adapters import AutoAdapterModel
-    if transformers.__version__!=VALIDATED_REF_TRANSFORMERS or adapters.__version__!=VALIDATED_REF_ADAPTERS:
+    from importlib.metadata import version
+    if transformers.__version__!=VALIDATED_REF_TRANSFORMERS or version('adapters')!=VALIDATED_REF_ADAPTERS:
         raise RuntimeError('wrong upstream temporary reference package version')
     if torch.__version__!='2.10.0+cpu':
         raise RuntimeError('wrong reference Torch')
