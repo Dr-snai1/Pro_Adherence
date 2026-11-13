@@ -35,7 +35,7 @@
       "compatible_published_pair_verified": false,
       "exact_runtime_lock_sha256": null,
       "installed_adapter_smoke_verified": false,
-      "remedy_gate": "Pinned proximity checkpoint bytes/12x4 tensor inventory verified and experimental PyTorch bottleneck algebra matches source-derived synthetic equations, BUT the official supported safe Adapters/Transformers pair is absent. Must validate a secure runtime with exact base model weights, numeric equivalence against adapter-activated upstream reference, separate owner compute scope before any private SPECTER2 inference.",
+      "remedy_gate": "Both exact approved PUBLIC SPECTER2 base/tokenizer (6 files) and proximity adapter SHA verified; 12-layer adapter algebra with real checkpoint and seeded synthetic activations passes. No supported secure official Adapters/Transformers pair, no adapter-activated official full-model numerical equivalence, no staged base weights in target execution runtime, no separate owner-scoped SPECTER2 inference permission. These gates remain BLOCKED.",
       "public_proximity_adapter_pinned_evidence": {
         "adapter_repo": "allenai/specter2",
         "adapter_revision": "2081559630a80fc5851d8f798a05ba81e9468089",
@@ -56,9 +56,29 @@
         "experimental_compat_code": "src/pro_adherence/stage3_specter2_proximity_compat.py",
         "safe_transformers_adapters_runtime_verified": false,
         "official_adapter_numeric_equivalence_verified": false,
-        "base_checkpoint_file_bytes_verified": false,
+        "base_checkpoint_file_bytes_verified": true,
         "private_inference_authorized": false,
-        "production_specter2_embeddings_generated": false
+        "production_specter2_embeddings_generated": false,
+        "base_checkpoint_file_bytes_verified_in_ephemeral_public_ci": true,
+        "public_full12_real_adapter_synthetic_equation_pass": true,
+        "public_full12_equation_max_abs": 0,
+        "public_full12_synthetic_evidence_file": "configs/stage3/specter2_public_full12_synthetic_math_evidence.json",
+        "public_full12_two_process_replay_same_sha256": "865f7746b7d4f9e1ed3be4c086c85b720b5f27f5d430d059353e2ae056471c90"
+      },
+      "public_base_and_tokenizer_verification": {
+        "status": "PINNED_PUBLIC_BASE_AND_TOKENIZER_BYTES_VERIFIED_IN_EPHEMERAL_CI",
+        "base_repo": "allenai/specter2_base",
+        "base_revision": "3447645e1def9117997203454fa4495937bfbd83",
+        "base_weight_sha256": "801eda968fad1752fe846a8e572bfdc25202be85544680dda4c99f4589646ebc",
+        "base_weight_size_bytes": 439740465,
+        "public_files_hashed_and_crc_verified": 6,
+        "public_evidence_file": "configs/stage3/specter2_public_base_evidence.json",
+        "script": "scripts/stage3_specter2_base_public_preflight.py",
+        "github_actions_run_id": 43376845393,
+        "ci_public_model_forward_executed": false,
+        "target_runtime_pretrained_base_bytes_staged": false,
+        "official_full_model_numeric_equivalence_verified": false,
+        "production_specter2_vectors_created": false
       }
     },
     "node2vec": {
