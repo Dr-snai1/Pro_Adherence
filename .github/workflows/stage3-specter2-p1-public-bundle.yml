@@ -1,0 +1,113 @@
+name: Stage3 SPECTER2 one-time PUBLIC runtime and pinned weights bundle
+
+on:
+  push:
+    branches:
+      - "stage2/**"
+    paths:
+      - ".github/workflows/stage3-specter2-p1-public-bundle.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-assets-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Download public exact SPECTER2 base and proximity revisions
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/s2_bundle/base" "$RUNNER_TEMP/s2_bundle/adapter" "$RUNNER_TEMP/s2_bundle/wheels"
+          base="https://huggingface.co/allenai/specter2_base/resolve/3447645e1def9117997203454fa4495937bfbd83"
+          for f in config.json special_tokens_map.json tokenizer.json tokenizer_config.json vocab.txt; do
+            curl -fLsS --retry 2 --max-time 100 "$base/$f" -o "$RUNNER_TEMP/s2_bundle/base/$f"
+          done
+          curl -fLsS --retry 2 --max-time 420 "$base/pytorch_model.bin" -o "$RUNNER_TEMP/s2_bundle/base/pytorch_model.bin"
+          curl -fLsS --retry 2 --max-time 90 \
+            "https://huggingface.co/allenai/specter2/resolve/2081559630a80fc5851d8f798a05ba81e9468089/pytorch_adapter.bin" \
+            -o "$RUNNER_TEMP/s2_bundle/adapter/pytorch_adapter.bin"
+          curl -fLsS --retry 2 --max-time 90 \
+            "https://huggingface.co/allenai/specter2/resolve/2081559630a80fc5851d8f798a05ba81e9468089/adapter_config.json" \
+            -o "$RUNNER_TEMP/s2_bundle/adapter/adapter_config.json"
+          curl -fLsS --retry 2 --max-time 50 \
+            "https://huggingface.co/api/models/allenai/specter2_base/revision/3447645e1def9117997203454fa4495937bfbd83?blobs=true" \
+            -o "$RUNNER_TEMP/s2_bundle/base/metadata.json"
+      - name: Verify immutable public weight and tokenizer bytes against accepted evidence
+        run: |
+          set -euo pipefail
+          python scripts/stage3_specter2_base_public_preflight.py \
+            --metadata "$RUNNER_TEMP/s2_bundle/base/metadata.json" \
+            --files-dir "$RUNNER_TEMP/s2_bundle/base" \
+            --out "$RUNNER_TEMP/s2_bundle/base_sha_audit.json"
+          python scripts/stage3_specter2_public_adapter_preflight.py \
+            --config "$RUNNER_TEMP/s2_bundle/adapter/adapter_config.json" \
+            --weights "$RUNNER_TEMP/s2_bundle/adapter/pytorch_adapter.bin" \
+            --output "$RUNNER_TEMP/s2_bundle/adapter_sha_audit.json"
+          python - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          root=Path(os.environ["RUNNER_TEMP"])/"s2_bundle"
+          e=json.loads(Path("configs/stage3/specter2_public_base_evidence.json").read_text())
+          for name, spec in e["files"].items():
+              p=root/"base"/name
+              h=hashlib.file_digest(p.open("rb"),"sha256").hexdigest()
+              assert (h,p.stat().st_size)==(spec["sha256"],spec["bytes"])
+          assert hashlib.file_digest((root/"adapter"/"pytorch_adapter.bin").open("rb"),"sha256").hexdigest()=="5b6105714f78b294daa7e2d181134df12f0acb7a4ec7c1e3c13e512c908db94a"
+          print("STAGE3_PUBLIC_PINNED_BUNDLE_BASE_AND_PROXIMITY_HASH_PASS")
+          PY
+      - name: Obtain only binary Python3.13 Linux runtime dependency wheels
+        run: |
+          set -euo pipefail
+          python -m pip download --disable-pip-version-check --no-cache-dir --only-binary=:all: \
+            --dest "$RUNNER_TEMP/s2_bundle/wheels" \
+            "transformers==5.22.2" "tokenizers==0.23.3" \
+            "safetensors==0.8.0" "huggingface-hub==2.4.0" \
+            "numpy==2.5.4"
+          python - <<'PY'
+          import hashlib,json,os,sys
+          from pathlib import Path
+          from packaging.utils import parse_wheel_filename
+          root=Path(os.environ["RUNNER_TEMP"])/"s2_bundle"
+          wheels=list((root/"wheels").glob("*.whl"))
+          assert len(wheels)>=10 and not list((root/"wheels").glob("*tar.gz"))
+          lock={}
+          for p in wheels:
+              name,version,build,tags=parse_wheel_filename(p.name)
+              norm=str(name).replace("_","-").lower()
+              assert norm not in lock
+              lock[norm]={"version":str(version),"filename":p.name,"sha256":hashlib.file_digest(p.open("rb"),"sha256").hexdigest(),"bytes":p.stat().st_size}
+          req="".join(f"{name}=={x['version']} --hash=sha256:{x['sha256']}\n" for name,x in sorted(lock.items()))
+          (root/"requirements.sha256.txt").write_text(req)
+          (root/"lock.json").write_text(json.dumps({"scope":"public-pinned-runtime-wheels-for-owner-only-local-P1","python":"3.13","architecture":"linux-x86_64","wheels":lock},sort_keys=True,indent=2)+"\n")
+          print("WHEEL_SHA_LOCK_PASS",len(lock))
+          PY
+      - name: Independently reinstall SHA-locked wheels into clean test venv
+        run: |
+          python -m venv "$RUNNER_TEMP/s2_smoke_venv"
+          "$RUNNER_TEMP/s2_smoke_venv/bin/python" -m pip install \
+            --disable-pip-version-check --no-index --only-binary=:all: \
+            --find-links="$RUNNER_TEMP/s2_bundle/wheels" \
+            --require-hashes -r "$RUNNER_TEMP/s2_bundle/requirements.sha256.txt"
+          "$RUNNER_TEMP/s2_smoke_venv/bin/python" -m pip check
+          "$RUNNER_TEMP/s2_smoke_venv/bin/python" - <<'PY'
+          from importlib.metadata import version
+          import transformers,tokenizers,safetensors,huggingface_hub,numpy
+          for n,v in {'transformers':'5.22.2','tokenizers':'0.23.3','safetensors':'0.8.0','huggingface-hub':'2.4.0','numpy':'2.5.4'}.items():
+              assert version(n)==v,(n,version(n))
+          print("SPECTER2_CLEAN_PUBLIC_WHEEL_SHA256_RUNTIME_PASS")
+          PY
+      - name: Preserve PUBLIC bundle for owner-local P1 ONLY; no private inputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage3-specter2-p1-public-runtime-bundle-3447645-2081559
+          path: |
+            {{ runner.temp }}/s2_bundle/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
