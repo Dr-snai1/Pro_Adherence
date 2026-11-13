@@ -170,7 +170,7 @@ def synthetic_documents(tokenizer):
     return encoded,stats
 
 
-def public_numeric_probe(base_dir:Path, adapter_path:Path, evidence_path:Path, public_vectors_out:Path|None=None):
+def public_numeric_probe(base_dir:Path, adapter_path:Path, evidence_path:Path, public_vectors_out:Path|None=None, public_inputs_out:Path|None=None):
     if platform.machine().lower() not in ('x86_64','amd64'):
         raise RuntimeError('unsupported CPU architecture for this witness')
     if torch.__version__ != RUNTIME_TORCH or transformers.__version__ != RUNTIME_TRANSFORMERS:
@@ -183,6 +183,10 @@ def public_numeric_probe(base_dir:Path, adapter_path:Path, evidence_path:Path, p
     model, base_load = load_pinned_base(base_dir)
     tokenizer = BertTokenizerFast.from_pretrained(str(base_dir),local_files_only=True)
     inputs,token_stats = synthetic_documents(tokenizer)
+    if public_inputs_out is not None:
+        if public_inputs_out.exists():
+            raise RuntimeError('refuse overwrite of public synthetic token IDs')
+        np.savez(public_inputs_out,**{k:v.numpy() for k,v in inputs.items()})
     originals = [layer.output for layer in model.encoder.layer]
     if len(originals) != LAYERS or any(int(x.shape[1])!=BERT_DIM for x in [model.embeddings.word_embeddings.weight]):
         raise RuntimeError('not exactly 12-layer/768d BERT')
@@ -249,9 +253,10 @@ def main():
     p.add_argument('--public-evidence',type=Path,required=True)
     p.add_argument('--out',type=Path,required=True)
     p.add_argument('--public-synthetic-vectors-out',type=Path)
+    p.add_argument('--public-synthetic-inputs-out',type=Path)
     a=p.parse_args()
     if a.out.exists():raise RuntimeError('refuse overwrite of numeric witness')
-    r=public_numeric_probe(a.base_dir,a.adapter,a.public_evidence,a.public_synthetic_vectors_out)
+    r=public_numeric_probe(a.base_dir,a.adapter,a.public_evidence,a.public_synthetic_vectors_out,a.public_synthetic_inputs_out)
     a.out.write_text(json.dumps(r,ensure_ascii=False,indent=2,sort_keys=True)+'\n',encoding='utf-8')
     print(r['status'])
 
