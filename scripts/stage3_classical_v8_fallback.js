@@ -159,7 +159,8 @@ function analyze(name,neighborhoods){
  const sensitivity=thresholds.map((thr,i)=>{
   const d=results[i],c=covered[i],sizes=new Map();let nodes=0;
   for(let j=0;j<N;j++)if(c[j]){nodes++;let rt=root(d,j);sizes.set(rt,(sizes.get(rt)||0)+1)}
-  return {min_weight:thr,edges:d.count,covered_articles:nodes,isolates:N-nodes,nontrivial_components:sizes.size,largest_component:Math.max(0,...sizes.values())};
+  let largest=0;for(const value of sizes.values())if(value>largest)largest=value;
+  return {min_weight:thr,edges:d.count,covered_articles:nodes,isolates:N-nodes,nontrivial_components:sizes.size,largest_component:largest};
  });
  let maxdegree=0,maxweighted=0,nonzero=0;let degSum=0;
  for(let i=0;i<N;i++){maxdegree=Math.max(maxdegree,degree[i]);maxweighted=Math.max(maxweighted,weighted[i]);degSum+=degree[i];if(degree[i])nonzero++}
