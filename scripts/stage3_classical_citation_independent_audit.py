@@ -50,13 +50,15 @@ def jsonl_member(z, member):
 
 def load_graph(z):
     eligible={}
+    seen_indices=set()
     for row in jsonl_member(z,"node2vec_node_mapping.private.jsonl.gz"):
         ind=row["node_index"];aid=row["article_id"]
-        if type(ind) is not int or ind<0 or ind>=N or ind in eligible.values():
+        if type(ind) is not int or ind<0 or ind>=N or ind in seen_indices:
             raise ValueError("Bad node mapping index")
         if aid in eligible:
             raise ValueError("Duplicate article mapping")
         eligible[aid]=ind
+        seen_indices.add(ind)
     if len(eligible)!=N:
         raise ValueError("Incorrect eligible mapping length")
     outgoing=[set() for _ in range(N)]
