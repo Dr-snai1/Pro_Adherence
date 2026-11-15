@@ -25,3 +25,6 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_stage3_classical_citation_independent_audit.py' -v
       - name: Run source-free metadata observation tests
         run: python -m unittest discover -s tests -p 'test_stage3_classical_observational_metadata.py' -v
+
+      - name: Run source-free raw-field source-aware observation tests
+        run: python -m unittest discover -s tests -p 'test_stage3_sourceaware_observations.py' -v
