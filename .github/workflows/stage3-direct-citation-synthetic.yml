@@ -1,0 +1,25 @@
+name: Stage3 direct citation synthetic checks
+on:
+  push:
+    branches:
+      - "work/stage3-classical-citation-20261114"
+    paths:
+      - "scripts/stage3_direct_citation_analysis.py"
+      - "tests/test_stage3_direct_citation_analysis.py"
+      - ".github/workflows/stage3-direct-citation-synthetic.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  direct-citation-source-free:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Verify source-free Stage3 directed citation tests
+        run: python -m unittest discover -s tests -p 'test_stage3_direct_citation_analysis.py' -v
