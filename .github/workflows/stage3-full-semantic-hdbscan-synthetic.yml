@@ -1,0 +1,27 @@
+name: Stage3 full semantic HDBSCAN source-free checks
+on:
+  push:
+    branches:
+      - "work/stage3-classical-citation-20261114"
+    paths:
+      - "scripts/stage3_full_semantic_hdbscan.py"
+      - "scripts/stage3_specter2_full_input_rebuild.py"
+      - "scripts/stage3_full_semantic_hdbscan_audit.py"
+      - "tests/test_stage3_full_semantic_hdbscan.py"
+      - ".github/workflows/stage3-full-semantic-hdbscan-synthetic.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-free-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install pinned dependencies
+        run: python -m pip install --disable-pip-version-check numpy==2.3.5 scipy==1.17.0 scikit-learn==1.8.0
+      - name: Run source-free exact full-fit synthetic tests
+        run: PYTHONPATH=scripts OPENBLAS_NUM_THREADS=2 python -m unittest discover -s tests -p 'test_stage3_full_semantic_hdbscan.py' -v
