@@ -1,0 +1,43 @@
+name: Stage 3 public Leiden wheelhouse
+on:
+  push:
+    branches: [work/stage3-classical-citation-20261114]
+    paths: ['.github/workflows/stage3-leiden-wheel-verify.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Download pinned public wheels and verify synthetic Leiden
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir wheelhouse
+          python -m pip download --index-url https://pypi.org/simple --only-binary=:all: --no-deps igraph==0.11.9 texttable==1.7.0 -d wheelhouse
+          (cd wheelhouse && sha256sum *.whl > SHA256SUMS)
+          python -m pip install --no-index --find-links wheelhouse igraph==0.11.9 texttable==1.7.0
+          python - <<'PY'
+          import igraph as ig, random
+          assert ig.__version__ == '0.11.9'
+          ig.set_random_number_generator(random.Random(20261031))
+          g=ig.Graph.Famous('Zachary')
+          p=g.community_leiden(objective_function='modularity', resolution=1.0, n_iterations=-1)
+          assert len(p.membership)==34
+          assert g.modularity(p.membership)>0.3
+          assert all(g.induced_subgraph(c).is_connected() for c in p)
+          print('Synthetic Leiden PASS')
+          PY
+      - name: Retain public wheels for offline local install
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: stage3-leiden-public-wheelhouse
+          path: wheelhouse/
+          if-no-files-found: error
+          retention-days: 7
