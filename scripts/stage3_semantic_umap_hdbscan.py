@@ -97,7 +97,7 @@ def should_use_leaf(cluster_count, assigned, largest):
     """Owner-approved conditional leaf extraction for a few oversized EOM groups."""
     return bool(1<=cluster_count<=3 and assigned>0 and largest/assigned>=0.75)
 
-def fit_one(base,config):
+def fit_one(base,config,umap_only=False):
     from umap import UMAP
     from sklearn.cluster._hdbscan.hdbscan import tree_to_labels
     from stage3_full_semantic_hdbscan_dense_exact import compute_single_linkage
@@ -136,6 +136,7 @@ def fit_one(base,config):
                 'warning':'UMAP approximate kNN and density-distorting layout; do not interpret lower noise as validation'}
         write_json(umeta,report)
         print(json.dumps({'event':'umap_fit_complete','config_index':config['index'],'sha':sha(output)}),flush=True)
+    if umap_only:return
     for ms in MIN_SAMPLES:
         target=work/f'hdbscan_ms{ms}.npz';manifest=work/f'hdbscan_ms{ms}.json'
         if target.exists() and manifest.exists():
@@ -186,6 +187,7 @@ def main():
     selector=parser.add_mutually_exclusive_group(required=True)
     selector.add_argument('--all',action='store_true');selector.add_argument('--index',type=int)
     selector.add_argument('--preflight-only',action='store_true')
+    parser.add_argument('--umap-only',action='store_true',help='Only create or verify UMAP projection; run exact Prim backend separately')
     args=parser.parse_args();os.umask(0o077)
     grid=config_grid()
     preflight={'schema':'stage3-umap-hdbscan-runtime-preflight/v1','full_cohort':N,'umap_fits':len(grid),
@@ -204,6 +206,6 @@ def main():
     if not all(v['sha256']==v['expected_sha256'] for v in preflight['inputs'].values()):
         raise RuntimeError('Frozen inputs missing or not identical')
     selected=grid if args.all else [grid[args.index]]
-    for config in selected:fit_one(args.base,config)
-    print(json.dumps({'status':'all_selected_runs_complete','selected':[v['index'] for v in selected]}),flush=True)
+    for config in selected:fit_one(args.base,config,umap_only=args.umap_only)
+    print(json.dumps({'status':'selected_umap_complete' if args.umap_only else 'all_selected_runs_complete','selected':[v['index'] for v in selected]}),flush=True)
 if __name__=='__main__':main()
